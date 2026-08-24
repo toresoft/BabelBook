@@ -49,6 +49,7 @@ progettazione. Codice e commenti sono in inglese.
 | Confine | Monorepo npm workspaces: `core/` puro, `app/` Electron |
 | Macchina a stati | XState 5, come autorità sugli stati e non come esecutore |
 | Impaginazione fissa | Rilevata all'ingestione e dichiarata all'utente; il libro si traduce comunque |
+| Lettura sincronizzata | Gli overlay SMIL vengono rimossi dall'EPUB tradotto, con i loro metadati e l'audio rimasto orfano |
 
 ## Runtime
 
@@ -212,6 +213,51 @@ Il rilevamento costa niente: `rendition:layout` è nell'OPF, che apriamo comunqu
 L'avviso non elimina il rischio, lo sposta dove qualcuno può decidere: chi
 traduce un fumetto sa che dovrà guardare le tavole.
 
+## Lettura sincronizzata (media overlay)
+
+Un EPUB con media overlay porta file SMIL che accoppiano l'id di un elemento del
+testo a un intervallo di un file audio, così il lettore illumina la frase mentre
+la voce la legge. Tradurre il testo non rompe il legame — punta agli id, non alle
+parole — ma lo svuota di senso: la voce continua a leggere la lingua di partenza
+sotto un testo che ora è un'altra.
+
+**Decisione: l'EPUB tradotto non ha overlay.** Un audio nella lingua sbagliata
+non serve a nessuno, e trascinarlo significa portarsi dietro decine o centinaia
+di megabyte di narrazione inutilizzabile.
+
+Rimuovere vuol dire cinque cose, tutte insieme o nessuna:
+
+1. gli `<item>` dei file SMIL escono dal manifest, e i file escono dall'archivio;
+2. l'attributo `media-overlay` sparisce dagli `<item>` dei documenti di
+   contenuto che lo portavano;
+3. escono i metadati che esistono solo per gli overlay: i `media:duration` per
+   singolo overlay dichiarati con `refines`, il `media:duration` totale della
+   pubblicazione, `media:narrator`, `media:active-class` e
+   `media:playback-active-class`;
+4. escono le risorse audio che, tolti gli SMIL, non sono più referenziate da
+   nessun documento di contenuto — solo quelle: un `<audio>` scritto nel testo
+   è contenuto del libro e resta;
+5. gli id degli elementi nei documenti di contenuto **restano dove sono**.
+   Erano il bersaglio degli overlay, ma possono essere anche il bersaglio di
+   link interni, e toglierli romperebbe la navigazione.
+
+**È l'unica eccezione alla regola dei metadati in sola lettura**, insieme a
+`dc:language` e `dcterms:modified`, e va trattata come tale: dichiarata nella
+spec, coperta da un'invariante, non lasciata alla buona volontà del codice che
+scrive lo zip.
+
+L'invariante verifica che la rimozione sia completa e non parziale: nell'output
+non resta nessun file SMIL, nessun `media-overlay`, nessuno dei metadati
+dell'elenco, e nessun riferimento pendente. Una rimozione a metà è peggio che
+non rimuovere: EPUBCheck rifiuta un `media-overlay` che punta a un item
+inesistente, e un `media:duration` orfano fa scattare `MED-016`.
+
+Va dichiarato in due punti: un avviso alla creazione del progetto, perché
+l'utente sappia prima di spendere che il libro tradotto perderà la lettura ad
+alta voce, e una riga nel Report con quanti overlay e quanti file audio sono
+usciti. Il sorgente nel workspace resta intatto: niente è perduto, l'edizione
+originale è ancora lì.
+
 ## Fasi
 
 ### Alla creazione del progetto — locale, salvo un caso
@@ -222,7 +268,8 @@ traduce un fumetto sa che dovrà guardare le tavole.
    livelli in cui può comparire: la proprietà del package e la sovrascrittura
    per singolo `itemref` della spine. Ogni documento porta il suo valore in
    `project_document.layout`, e `project.layout` riassume il libro come
-   `reflowable`, `pre-paginated` o `mixed`.
+   `reflowable`, `pre-paginated` o `mixed`. Si rileva qui anche la presenza di
+   overlay SMIL, per poterla dichiarare prima che l'utente spenda.
 2. **Separazione in unità** — scansione di ogni documento della spine con
    `saxes`, individuazione dei blocchi foglia, mascheramento del markup inline
    in segnaposto numerati. Ogni unità nasce con uno stato deterministico dedotto
@@ -267,7 +314,8 @@ fine il progetto è `ready`.
    diagnosi. Ogni unità confermata viene scritta subito: è questo che rende la
    pausa gratuita.
 9. **Creazione EPUB** — costruzione dello scheletro, riempimento, riscrittura
-   del solo `dc:language` e di `dcterms:modified`, scrittura dello zip. Poi il
+   del solo `dc:language` e di `dcterms:modified`, rimozione degli overlay se
+   il libro ne ha, scrittura dello zip. Poi il
    gate: invarianti strutturali sempre, EPUBCheck se il jar è presente. Se non
    c'è, la UI dice "non eseguito", mai "passato".
 
@@ -505,13 +553,14 @@ Sono verità sul dominio, non preferenze; violarle rompe cose che non si vedono.
 - **Traduzione vera con modello vero.** Il prototipo ha tradotto libri reali,
   ma qui la pipeline è riscritta: finché un EPUB reale non attraversa babelBook
   con un provider reale, nessuna suite lo dimostra.
-- **Media overlay e font offuscati** non sono mai passati dalla pipeline fuori
-  dal corpus generato, e sono i due casi in cui il fallimento è invisibile ai
-  controlli: EPUBCheck emette `RSC-004` e salta il contenuto delle risorse
-  cifrate, quindi un font offuscato reso illeggibile da un `dc:identifier`
-  riscritto non viene segnalato da nessuno; e un audio sincronizzato resta nella
-  lingua di partenza mentre il testo sotto è tradotto. Che fare dell'overlay —
-  conservarlo sbagliato o rimuoverlo con i suoi `media:duration` — non è deciso.
+- **I font offuscati** non sono mai passati dalla pipeline fuori dal corpus
+  generato, ed è il caso in cui il fallimento è invisibile: EPUBCheck emette
+  `RSC-004` e salta il contenuto delle risorse cifrate, quindi un font reso
+  illeggibile da un `dc:identifier` riscritto non viene segnalato da nessuno.
+  Serve un libro reale con font offuscati, tradotto e aperto.
+- **La rimozione degli overlay** è decisa e coperta da un'invariante, ma non è
+  mai stata eseguita su un audiolibro vero: nel corpus generato gli SMIL non
+  esistono.
 - **L'impaginazione fissa è rilevata ma non risolta.** L'avviso dice all'utente
   che il testo non si riadatta; nessuno verifica che non trabocchi.
 - **`node:sqlite` in Electron.** Il modulo esiste in Node 24.18.1 ed Electron 43
