@@ -19,8 +19,8 @@ Questo è il primo di cinque. Ognuno produce software che funziona da solo.
 | **1. Layer EPUB del core** (questo) | zip, scan, blocchi, scheletro, package, overlay, layout, invarianti, corpus | — |
 | 2. Layer traduzione del core | porte, pianificazione, protocollo, validazione, motore, glossari, analisi | 1 |
 | 3. Shell Electron e database | main, preload, migrazioni, `ProjectStore` su `node:sqlite`, creazione progetto, libreria Angular | 1 |
-| 4. Esecuzione | `utilityProcess`, macchina a stati XState, pausa e ripresa, tray, notifiche | 2, 3 |
-| 5. Gate, configurazione e schede | termini, esclusioni, unità, report, provider, glossari, i18n | 4 |
+| 4. Esecuzione, provider e composizione | provider e chiavi cifrate, `utilityProcess`, macchina a stati XState, pausa e ripresa, tray, composizione dell'EPUB | 2, 3 |
+| 5. Gate, glossari e report | approvazione termini, revisione esclusioni, scheda unità, report, glossari, impostazioni, i18n | 4 |
 
 ## Global Constraints
 
