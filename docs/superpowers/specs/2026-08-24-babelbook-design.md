@@ -48,6 +48,7 @@ progettazione. Codice e commenti sono in inglese.
 | Localizzazione | Transloco, cataloghi JSON a runtime |
 | Confine | Monorepo npm workspaces: `core/` puro, `app/` Electron |
 | Macchina a stati | XState 5, come autorità sugli stati e non come esecutore |
+| Impaginazione fissa | Rilevata all'ingestione e dichiarata all'utente; il libro si traduce comunque |
 
 ## Runtime
 
@@ -125,10 +126,11 @@ versionate a mano in `app/main/db/migrations/`.
 ```sql
 project(id, filename, title, author, workspace_path, source_sha256,
         created_at, description, source_language, target_language,
-        provider_id, model_id, state, machine_snapshot)
+        provider_id, model_id, state, machine_snapshot, layout)
 -- state è denormalizzato per i filtri della libreria: la verità è
 -- machine_snapshot, e state si riscrive a ogni transizione accettata
-project_document(id, project_id, zip_path, spine_order, encoding, read_outcome)
+project_document(id, project_id, zip_path, spine_order, encoding, read_outcome,
+                 layout)
 unit(id, project_id, document_id, ordinal, unit_id, range_start, range_end,
      state, source_text, placeholders, forced_state, forced_by)
 translation(id, unit_id, text, cache_key, attempts, outcome, created_at)
@@ -178,13 +180,49 @@ restano leggibili.
 L'output va **sempre su un percorso nuovo**, mai sopra l'originale: se il gate
 rifiuta il libro, il sorgente è intatto e il file rifiutato resta ispezionabile.
 
+## Impaginazione fissa
+
+L'EPUB 3 non è solo riflowable: `rendition:layout: pre-paginated` posiziona il
+contenuto in modo assoluto dentro un viewport a pixel fissi, dichiarato nel
+documento XHTML da un meta `viewport` con `width` e `height`. La proprietà sta
+nel package e si sovrascrive per singolo `itemref`, quindi un libro può
+mescolare capitoli riflowable e tavole pre-paginate. È così che sono distribuiti
+fumetti, manga, libri illustrati e per bambini, e molti ricettari.
+
+Tradurre allunga il testo — tra il 15% e il 35% verso le lingue romanze e
+germaniche. Dove il testo scorre non succede niente; dove è posizionato in modo
+assoluto, la frase più lunga esce dalla sua scatola e viene tagliata o si
+sovrappone.
+
+**Nessun controllo automatico lo vede.** EPUBCheck non renderizza: per lui la
+struttura è valida, e l'overflow è un esito di rendering, non una violazione
+della specifica. Le invarianti strutturali passano per lo stesso motivo.
+
+**Decisione: rilevare e avvisare, non rifiutare.** Il libro si traduce comunque —
+è pur sempre l'unico modo di averlo tradotto — ma l'utente deve saperlo prima di
+spendere:
+
+- nell'anteprima di **Nuovo progetto**, un avviso che nomina il numero di
+  documenti pre-paginati e dice che il testo tradotto non si riadatta;
+- un indicatore sullo stesso progetto, nella libreria e nell'intestazione, così
+  l'avvertenza non vale solo per il giorno della creazione;
+- una riga nel **Report**, perché resti scritto accanto all'esito dei gate.
+
+Il rilevamento costa niente: `rendition:layout` è nell'OPF, che apriamo comunque.
+L'avviso non elimina il rischio, lo sposta dove qualcuno può decidere: chi
+traduce un fumetto sa che dovrà guardare le tavole.
+
 ## Fasi
 
 ### Alla creazione del progetto — locale, salvo un caso
 
 1. **Ingestione** — copia nel workspace, sha256, apertura dello zip, lettura
    dell'OPF, estrazione di copertina, titolo, autore, `dc:language`. Un file
-   non-EPUB viene rifiutato qui.
+   non-EPUB viene rifiutato qui. Si legge anche `rendition:layout`, ai due
+   livelli in cui può comparire: la proprietà del package e la sovrascrittura
+   per singolo `itemref` della spine. Ogni documento porta il suo valore in
+   `project_document.layout`, e `project.layout` riassume il libro come
+   `reflowable`, `pre-paginated` o `mixed`.
 2. **Separazione in unità** — scansione di ogni documento della spine con
    `saxes`, individuazione dei blocchi foglia, mascheramento del markup inline
    in segnaposto numerati. Ogni unità nasce con uno stato deterministico dedotto
@@ -467,8 +505,15 @@ Sono verità sul dominio, non preferenze; violarle rompe cose che non si vedono.
 - **Traduzione vera con modello vero.** Il prototipo ha tradotto libri reali,
   ma qui la pipeline è riscritta: finché un EPUB reale non attraversa babelBook
   con un provider reale, nessuna suite lo dimostra.
-- **Layout fisso, media overlay, font offuscati** non sono mai passati dalla
-  pipeline fuori dal corpus generato.
+- **Media overlay e font offuscati** non sono mai passati dalla pipeline fuori
+  dal corpus generato, e sono i due casi in cui il fallimento è invisibile ai
+  controlli: EPUBCheck emette `RSC-004` e salta il contenuto delle risorse
+  cifrate, quindi un font offuscato reso illeggibile da un `dc:identifier`
+  riscritto non viene segnalato da nessuno; e un audio sincronizzato resta nella
+  lingua di partenza mentre il testo sotto è tradotto. Che fare dell'overlay —
+  conservarlo sbagliato o rimuoverlo con i suoi `media:duration` — non è deciso.
+- **L'impaginazione fissa è rilevata ma non risolta.** L'avviso dice all'utente
+  che il testo non si riadatta; nessuno verifica che non trabocchi.
 - **`node:sqlite` in Electron.** Il modulo esiste in Node 24.18.1 ed Electron 43
   monta quella versione; va confermato nel processo main reale al primo giorno
   di implementazione, con `better-sqlite3` più `electron-rebuild` come ripiego
