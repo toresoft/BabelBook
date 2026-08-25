@@ -3,10 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": ["core", "app"],
-  "engines": { "node": ">=24" },
+  "workspaces": [
+    "core",
+    "app"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
-    "test": "npm test -w core",
-    "typecheck": "npm run typecheck -w core"
+    "test": "npm test -w core && npm test -w app",
+    "typecheck": "npm run typecheck -w core && npm run typecheck -w app"
   }
 }

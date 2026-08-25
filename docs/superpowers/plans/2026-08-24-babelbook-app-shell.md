@@ -53,20 +53,37 @@ app/
 
 **Files:**
 - Create: `app/package.json`, `app/esbuild.mjs`, `app/main/main.ts`, `app/main/window.ts`, `app/preload/preload.ts`, `app/renderer/` (progetto Angular), `app/test/smoke.test.ts`
-- Modify: `package.json` (radice: aggiungere `app` ai workspaces)
+- Modify: `package.json` (radice: aggiungere `app` ai workspaces, e portare gli script a
+  `"test": "npm test -w core && npm test -w app"` e
+  `"typecheck": "npm run typecheck -w core && npm run typecheck -w app"`)
+- Create: `vitest.config.ts` (radice)
 
 **Interfaces:**
 - Produces: `npm start` apre una finestra che mostra l'applicazione Angular; `npm run build -w app` produce i bundle.
+
+**Tre cose verificate eseguendo questo task, non dedotte:**
+
+- **Angular 22 richiede TypeScript 6.** `@angular/compiler-cli@22` dichiara `typescript >=6.0 <6.1`; `core` resta sul 5.x e npm annida le due versioni senza conflitto.
+- **`zone.js` non serve.** Angular 22 è zoneless di default e lo dichiara come peer opzionale.
+- **La build serve al test, quindi la fa il test.** Il primo test asserisce su `app/dist/`: senza costruire, passa sulla macchina di chi ha appena compilato e fallisce su un clone fresco, che è il verso sbagliato. La build di un'app segnaposto con il builder esbuild costa meno di un secondo, quindi farla in `beforeAll` non pesa.
 
 - [ ] **Step 1: Scrivere il test che fallisce**
 
 `app/test/smoke.test.ts`:
 
 ```ts
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { promisify } from "node:util";
+import { beforeAll, describe, expect, it } from "vitest";
+
+const run = promisify(execFile);
 
 describe("build output", () => {
+  beforeAll(async () => {
+    await run("npm", ["run", "build", "-w", "app"], { cwd: process.cwd() });
+  }, 300_000);
+
   it("produces the three bundles the app needs", () => {
     expect(existsSync("app/dist/main/main.js")).toBe(true);
     expect(existsSync("app/dist/preload/preload.js")).toBe(true);
@@ -112,12 +129,13 @@ Atteso: FAIL, i tre file non esistono.
     "electron": "^43.4.1",
     "esbuild": "^0.25.0",
     "rxjs": "^7.8.0",
-    "typescript": "^5.8.0",
-    "vitest": "^4.1.10",
-    "zone.js": "^0.15.0"
+    "typescript": "^6.0.0",
+    "vitest": "^4.1.10"
   }
 }
 ```
+
+Serve anche un `vitest.config.ts` alla radice che escluda `.claude/**`, `.worktrees/**` e `.angular/**`: i worktree vivono dentro il repository, quindi un filtro come `vitest run app/test` combacia anche con `.claude/worktrees/<agente>/app/test` ed esegue la suite di un altro ramo insieme alla propria.
 
 `app/esbuild.mjs` produce due bundle con `platform: "node"`, `format: "esm"`, `external: ["electron"]`: `main/main.ts` in `dist/main/main.js` e `preload/preload.ts` in `dist/preload/preload.js`. Il preload va emesso in **CommonJS** (`format: "cjs"`, estensione `.js`): con `sandbox: true` Electron carica lo script di preload come CommonJS, e un bundle ESM lì fallisce silenziosamente a finestra già aperta.
 
