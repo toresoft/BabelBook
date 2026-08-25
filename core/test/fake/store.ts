@@ -39,8 +39,13 @@ export class FakeStore implements ProjectStore {
     return [...this.#terms];
   }
 
+  /** Upsert by source: the same term written twice is one term, not two. */
   async putTerms(terms: TermEntry[]): Promise<void> {
-    this.#terms = [...terms];
+    for (const term of terms) {
+      const at = this.#terms.findIndex((held) => held.source === term.source);
+      if (at === -1) this.#terms.push(term);
+      else this.#terms[at] = term;
+    }
   }
 
   async event(event: RunEvent): Promise<void> {

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { runProjectStoreContract } from "./contract/project-store.ts";
 import { FakeStore } from "./fake/store.ts";
 import { FakeBackend } from "./fake/backend.ts";
+
+runProjectStoreContract("FakeStore", async (units) => new FakeStore(units));
 
 describe("fakes", () => {
   it("stores and returns a translation under its cache key", async () => {
