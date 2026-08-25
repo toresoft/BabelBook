@@ -9,7 +9,7 @@ const unit = (n: number, source: string, state: TranslationUnit["state"] = "tran
 });
 
 const context: ChunkContext = {
-  sourceLanguage: "en", targetLanguage: "it", before: [], after: [],
+  sourceLanguage: "en", targetLanguage: "it", before: [], after: [], interleaved: [],
   chapter: { doc: "c1.xhtml", position: 1, total: 1 },
 };
 

@@ -57,6 +57,10 @@ export function buildPayload(request: TranslationRequest): string {
   if (context.after.length > 0) {
     lines.push("", "Text after, for context only, do not translate:", ...context.after);
   }
+  if (context.interleaved.length > 0) {
+    lines.push("", "Text between the units below, for context only, do not translate:",
+      ...context.interleaved);
+  }
 
   lines.push("", `Translate the ${request.units.length} units below.`,
     "Answer with the same markers, in the same order, and finish with END.", "");

@@ -11,6 +11,17 @@ export interface ChunkContext {
   /** Source text of the units around this chunk: read, never translated. */
   before: string[];
   after: string[];
+  /**
+   * Untranslated units that sit *between* this chunk's units — a code block
+   * between two paragraphs, a surface the author marked `translate="no"`.
+   *
+   * They are sent because the model needs them to understand what surrounds
+   * the prose, and they are sent here rather than by breaking the chunk at
+   * each one: measured on a real technical book, 1248 units were code, and a
+   * break at every one would turn a few dozen calls into a few thousand.
+   * Their position within the chunk is lost, which is the price of that.
+   */
+  interleaved: string[];
   chapter: { doc: string; position: number; total: number };
 }
 
