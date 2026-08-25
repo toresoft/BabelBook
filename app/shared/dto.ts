@@ -38,6 +38,13 @@ export interface CreatedProject {
   hasOverlays: boolean;
 }
 
+export interface UpdateProjectRequest {
+  id: string;
+  targetLanguage?: string;
+  sourceLanguage?: string | null;
+  description?: string;
+}
+
 export interface ProjectSummary {
   id: string;
   title: string;

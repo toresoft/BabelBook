@@ -62,6 +62,26 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       return created;
     },
 
+    "project.update": async ({ id, targetLanguage, sourceLanguage, description }) => {
+      // The language decides the cache key, so it is not a label: changing it
+      // makes every stored translation belong to another contract. Confirming
+      // it before any run starts is the cheap moment to get it right.
+      const changed = deps.db.prepare(`
+        UPDATE project
+           SET target_language = coalesce(?, target_language),
+               source_language = coalesce(?, source_language),
+               description     = coalesce(?, description),
+               state = CASE
+                 WHEN state = 'needs-language' AND coalesce(?, source_language) IS NOT NULL
+                   THEN 'ready' ELSE state END
+         WHERE id = ?
+      `).run(targetLanguage ?? null, sourceLanguage ?? null, description ?? null,
+        sourceLanguage ?? null, id);
+
+      if (changed.changes === 0) throw new Error(`no such project: ${id}`);
+      deps.broadcast("project.changed", { id });
+    },
+
     "project.delete": async ({ id, keepOutput }) => {
       const workspace = workspaceOf(deps.db, id);
       await deleteWorkspace(workspace, keepOutput === undefined ? {} : { keepOutput });

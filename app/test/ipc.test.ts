@@ -131,3 +131,40 @@ describe("settings", () => {
     await expect(buildHandlers(d)["settings.set"]({ concurrency: 0 })).rejects.toThrow();
   });
 });
+
+describe("project.update", () => {
+  const created = async () => {
+    const { dir, db, deps: d } = await deps();
+    const epub = join(dir, "book.epub");
+    await writeFile(epub, await buildEpub({
+      language: "und", documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    }));
+    const handlers = buildHandlers(d);
+    return { db, handlers, project: await handlers["project.create"]({ epubPath: epub, targetLanguage: "it" }) };
+  };
+
+  it("confirms the language and moves the project out of needs-language", async () => {
+    const { db, handlers, project } = await created();
+    expect((db.prepare("SELECT state FROM project WHERE id=?").get(project.id) as { state: string }).state)
+      .toBe("needs-language");
+
+    await handlers["project.update"]({ id: project.id, sourceLanguage: "en" });
+
+    expect(db.prepare("SELECT state, source_language FROM project WHERE id=?").get(project.id))
+      .toMatchObject({ state: "ready", source_language: "en" });
+  });
+
+  it("leaves alone what the request does not name", async () => {
+    const { db, handlers, project } = await created();
+    await handlers["project.update"]({ id: project.id, description: "Secondo volume" });
+
+    expect(db.prepare("SELECT target_language, description FROM project WHERE id=?").get(project.id))
+      .toMatchObject({ target_language: "it", description: "Secondo volume" });
+  });
+
+  it("refuses a project that is not there", async () => {
+    const { deps: d } = await deps();
+    await expect(buildHandlers(d)["project.update"]({ id: "ghost", targetLanguage: "fr" }))
+      .rejects.toThrow();
+  });
+});

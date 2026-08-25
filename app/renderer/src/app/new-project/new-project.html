@@ -1,0 +1,81 @@
+<section class="new" data-testid="new-project-screen" *transloco="let t">
+  <h1>{{ t('newProject.title') }}</h1>
+
+  <button type="button" data-testid="choose-epub" (click)="choose()">
+    {{ t('newProject.chooseEpub') }}
+  </button>
+  @if (chosenName()) {
+    <p class="new__file">{{ t('newProject.chosen', { name: chosenName() }) }}</p>
+  }
+
+  @if (analysing()) {
+    <p class="new__analysing">{{ t('newProject.analysing') }}</p>
+  }
+
+  @if (failure(); as problem) {
+    <p class="new__failure" data-testid="failure">{{ t(problem.key, problem.params ?? {}) }}</p>
+  }
+
+  @if (project(); as found) {
+    <div class="new__preview">
+      @if (found.coverPath) {
+        <img class="new__cover" [src]="found.coverPath" [alt]="found.title" />
+      }
+      <div>
+        <h2 data-testid="preview-title">{{ found.title }}</h2>
+        @if (found.author) { <p class="new__author">{{ found.author }}</p> }
+        <p class="new__counts">
+          {{ t('newProject.documents', { count: found.documents }) }} ·
+          {{ t('newProject.units', { count: found.units.work }) }} ·
+          {{ t('newProject.words', { count: found.words }) }}
+        </p>
+
+        @if (found.layout.book !== 'reflowable') {
+          <p class="new__warning" data-testid="layout-warning">
+            {{ t('layout.warning', { count: found.layout.prePaginated, total: found.documents }) }}
+          </p>
+        }
+        @if (found.hasOverlays) {
+          <p class="new__warning" data-testid="overlay-warning">{{ t('overlays.warning') }}</p>
+        }
+      </div>
+    </div>
+
+    <label>
+      {{ t('newProject.targetLanguage') }}
+      <select data-testid="target-language" [ngModel]="targetLanguage()"
+              (ngModelChange)="targetLanguage.set($event)">
+        @for (language of languages; track language) {
+          <option [value]="language">{{ language }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      {{ t('newProject.sourceLanguage') }}
+      <input data-testid="source-language" [ngModel]="sourceLanguage()"
+             (ngModelChange)="sourceLanguage.set($event)" />
+    </label>
+
+    <label>
+      {{ t('newProject.description') }}
+      <textarea data-testid="description" rows="3" [ngModel]="description()"
+                (ngModelChange)="description.set($event)"></textarea>
+      <small>{{ t('newProject.descriptionHint') }}</small>
+    </label>
+
+    @if (estimated(); as guess) {
+      <p class="new__estimate" data-testid="estimate">
+        {{ t('newProject.estimate', { tokens: guess.tokensIn + guess.tokensOut }) }}
+      </p>
+      @if (guess.cost === null) {
+        <p class="new__hint">{{ t('newProject.noPrices') }}</p>
+      }
+    }
+
+    <div class="new__actions">
+      <button type="button" data-testid="create" (click)="create()">{{ t('newProject.create') }}</button>
+      <button type="button" data-testid="cancel" (click)="cancel()">{{ t('newProject.cancel') }}</button>
+    </div>
+  }
+</section>
