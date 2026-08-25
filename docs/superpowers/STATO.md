@@ -35,29 +35,35 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 1. Layer EPUB del core | **completo**, 17/17 | `core/epub/` |
 | 2. Layer traduzione del core | **completo**, 14/14 | `core/translate/`, `core/analyze/`, `core/glossary/`, `core/ports.ts` |
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
-| 4. Esecuzione, provider, composizione | **task 1-4 su 9** | `app/main/providers/`, `app/engine/backends/`, `core/workflow/` |
+| 4. Esecuzione, provider, composizione | **task 1-6 su 9** | `app/main/providers/`, `app/engine/`, `app/main/run/`, `core/workflow/` |
 | 5. Gate, glossari, report | non iniziato | — |
 
-Suite: **370 test verdi** (257 core, 113 app) piu' **3 prove end-to-end**
-(`npm run test:e2e -w app`), typecheck pulito.
+Suite: **411 test verdi** (260 core, 151 app) piu' **3 prove end-to-end** del
+percorso Electron. Typecheck e build di produzione sono puliti. Il nuovo
+end-to-end di traduzione appartiene al Task 9.
 
 ## Il prossimo passo
 
-**Piano 4, Task 5** — l'engine in un `utilityProcess` e il proxy di
-`ProjectStore`. I task 1-4 del piano 4 sono gia' fatti (provider, chiavi
-cifrate, risoluzione del modello, macchina a stati). Da li' si prosegue con
-l'orchestratore (6), la composizione dell'EPUB (7), tray e ciclo di vita (8) e
-la prova end-to-end di una traduzione intera con backend finto (9).
+**Piano 4, Task 7** — composizione dell'EPUB e gate del file prodotto. I task
+1-6 sono fatti: provider e chiavi cifrate, risoluzione/verifica del modello,
+macchina a stati, engine in `utilityProcess` con proxy di `ProjectStore`, e
+orchestratore persistente con gate e ripresa idempotente. Dopo il Task 7 restano
+tray e ciclo di vita (8), quindi la traduzione end-to-end con backend finto (9).
 
 Quello che l'applicazione fa oggi: si apre, crea un progetto da un EPUB senza
 alcun provider configurato, lo mostra in libreria con copertina, lingue,
-avanzamento e gli avvisi di impaginazione fissa e overlay. Non traduce ancora.
+avanzamento e gli avvisi di impaginazione fissa e overlay. Il motore e
+l'orchestratore esistono e sono testati, ma il main non li ha ancora cablati ai
+comandi dell'interfaccia: l'applicazione non traduce ancora.
 
 ## Da fare appena si riprende il piano 4
 
-- **`app/tsconfig.node.json` non elenca `engine` in `include`.** I file
-  dell'agente sono typecheckati solo di rimbalzo dai test. Chi scrive
-  `app/engine/main.ts` (Task 5) deve aggiungerlo.
+- **Il Task 7 deve chiudere l'handoff `compose`.** L'orchestratore emette la
+  fase di composizione ma, correttamente, non manda `COMPOSED` o `done` finche'
+  non esiste e non passa il gate un EPUB reale.
+- **Il Task 8 deve cablare il runtime.** Deve registrare store e crash handler
+  con `configureEngineHost`, applicare nel main i messaggi `transition`, e
+  rimettere lo snapshot persistito nel comando `start` alla ripresa.
 - **Il cablaggio IPC della verifica provider non è fatto**, di proposito: i
   canali erano territorio di un altro agente. Il flusso previsto è
   `resolveModel` in try/catch, `classifyError(e)` sul fallimento, altrimenti
@@ -95,7 +101,18 @@ Non sono nei piani originali. Sono nel codice e nei commit.
   lingua e descrizione si confermano dopo, e annullare cancella il progetto.
 - **Colonne aggiunte allo schema**: `unit.raw_text` (migrazione 002),
   `term.rule` con `prefer` e `term.sense` (003), `project.cover_file` e
-  `project.cache_key` (004).
+  `project.cache_key` (004), `project_phase_result` (005).
+- **Protocollo dell'engine in `shared/run.ts`**: il processo engine non apre
+  SQLite; usa un `MessagePort` dedicato e un proxy con allowlist esplicita dei
+  metodi di `ProjectStore`. I payload malformati vengono ignorati o rifiutati,
+  non possono abbattere il main.
+- **Lo snapshot della macchina è la verita'**: la colonna `project.state` è
+  denormalizzata. Al riavvio si reidrata lo snapshot e ogni progetto davvero
+  `running` passa a `paused`, anche se la colonna era rimasta indietro.
+- **Risultati di fase persistenti**: candidati termini e code-index vengono
+  salvati prima della transizione. Il checkpoint del code-index copre anche il
+  risultato vuoto, è legato alla chiave della configurazione e rende la ripresa
+  idempotente; le astensioni diventano eventi di degradazione.
 - **Ganci per le prove end-to-end**, letti in un punto solo di `main.ts`:
   `BABELBOOK_USER_DATA` sposta database e workspace, `BABELBOOK_EPUB_FOR_TEST`
   fa restituire un percorso al posto del dialogo nativo.
@@ -103,7 +120,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 370 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 411 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è

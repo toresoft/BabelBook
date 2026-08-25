@@ -1,13 +1,15 @@
 # babelBook — Piano 4: esecuzione, provider e composizione
 
-**Stato: task 1-4 su 9 fatti**, al 2026-08-25 — provider e chiavi cifrate,
-risoluzione del modello, verifica, macchina a stati. Il prossimo è il **Task 5**,
-l'engine nell'`utilityProcess`.
+**Stato: task 1-6 su 9 fatti**, al 2026-08-25 — provider e chiavi cifrate,
+risoluzione del modello, verifica, macchina a stati, engine nell'`utilityProcess`
+e orchestratore persistente. Il prossimo è il **Task 7**, la composizione
+dell'EPUB con il suo gate.
 
-Due cose da sapere prima di riprendere. `app/tsconfig.node.json` non elenca
-`engine` in `include`, e va aggiunto. Il cablaggio IPC della verifica provider è
-volutamente non fatto: i canali erano territorio di un altro agente, e vanno
-aggiunti in `app/shared/channels.ts` più i gestori nella mappa di `buildHandlers`.
+Due cose da sapere prima di riprendere. Il Task 7 deve consumare l'handoff
+`compose` dell'orchestratore e mandare `COMPOSED` solo dopo aver scritto e
+validato l'EPUB. Il cablaggio IPC della verifica provider è volutamente non
+fatto: i canali erano territorio di un altro agente, e vanno aggiunti in
+`app/shared/channels.ts` più i gestori nella mappa di `buildHandlers` col Task 8.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
