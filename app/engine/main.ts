@@ -19,13 +19,35 @@ function failureCode(error: unknown): string {
   return typeof code === "string" ? code : "ENGINE_FAILED";
 }
 
+function isRunConfig(config: unknown): config is RunConfig {
+  if (typeof config !== "object" || config === null) return false;
+  const value = config as Partial<RunConfig>;
+  return typeof value.projectId === "string"
+    && typeof value.cacheKey === "string"
+    && typeof value.sourceLanguage === "string"
+    && typeof value.targetLanguage === "string"
+    && typeof value.autoAcceptTerms === "boolean"
+    && typeof value.autoAcceptExclusions === "boolean"
+    && typeof value.concurrency === "number";
+}
+
+function isEngineCommand(message: unknown): message is EngineCommand {
+  if (typeof message !== "object" || message === null) return false;
+  const command = message as Partial<EngineCommand>;
+  if (command.type === "pause" || command.type === "cancel") return true;
+  return command.type === "start"
+    && typeof command.projectId === "string"
+    && isRunConfig(command.config);
+}
+
 /** Installs the command loop without importing a database or an orchestrator. */
 export function startEngineRuntime(port: MessagePortLike, runner?: EngineRunner): void {
   const store = new StoreClient(port);
   let controller: AbortController | undefined;
 
   port.on("message", (event) => {
-    const command = event.data as EngineCommand;
+    if (!isEngineCommand(event.data)) return;
+    const command = event.data;
     if (command.type === "pause" || command.type === "cancel") {
       controller?.abort();
       return;

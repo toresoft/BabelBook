@@ -1,8 +1,11 @@
+import { createRequire } from "node:module";
+import { join } from "node:path";
 import type { ProjectStore } from "../../../core/ports.ts";
 import { makeStoreProxy, type StoreProxy } from "./store-proxy.ts";
 import type {
   EngineCommand, EngineHandle, EngineMessage, MessagePortLike, StoreRequest,
 } from "../../shared/run.ts";
+import type { MessagePortMain } from "electron";
 
 export type { EngineHandle } from "../../shared/run.ts";
 
@@ -22,7 +25,14 @@ export interface EngineHostDeps {
   onCrash(projectId: string): Promise<void>;
 }
 
+const require = createRequire(import.meta.url);
+
+function isRecord(message: unknown): message is Record<string, unknown> {
+  return typeof message === "object" && message !== null;
+}
+
 function isStoreRequest(message: unknown): message is StoreRequest {
+  if (!isRecord(message)) return false;
   const candidate = message as Partial<StoreRequest>;
   return candidate.type === "store"
     && typeof candidate.id === "number"
@@ -30,11 +40,79 @@ function isStoreRequest(message: unknown): message is StoreRequest {
     && Array.isArray(candidate.args);
 }
 
+function isEngineEvent(message: unknown): message is Exclude<EngineMessage, StoreRequest> {
+  if (!isRecord(message)) return false;
+  switch (message.type) {
+    case "phase": return typeof message.phase === "string";
+    case "progress": return typeof message.done === "number" && typeof message.total === "number";
+    case "gate": return message.gate === "terms" || message.gate === "code";
+    case "done": return isRecord(message.summary);
+    case "failed": return typeof message.code === "string";
+    default: return false;
+  }
+}
+
+interface ElectronRuntime {
+  utilityProcess: typeof import("electron").utilityProcess;
+  MessageChannelMain: typeof import("electron").MessageChannelMain;
+}
+
+function electronDeps(): Pick<EngineHostDeps, "enginePath" | "fork" | "makeChannel"> {
+  const electron = require("electron") as ElectronRuntime;
+  return {
+    enginePath: join(import.meta.dirname, "..", "..", "engine", "main.js"),
+    fork: (path) => {
+      const child = electron.utilityProcess.fork(path);
+      return {
+        postMessage: (message, ports) => child.postMessage(message, ports as unknown as MessagePortMain[]),
+        kill: () => child.kill(),
+        on: (event, listener) => child.on(event, listener),
+        off: (event, listener) => child.off(event, listener),
+      };
+    },
+    makeChannel: () => {
+      const channel = new electron.MessageChannelMain();
+      return {
+        port1: channel.port1 as unknown as MessagePortLike,
+        port2: channel.port2 as unknown as MessagePortLike,
+      };
+    },
+  };
+}
+
+let productionConfig: Partial<EngineHostDeps> = {};
+
+/**
+ * Registers main-owned persistence for the zero-argument production entry.
+ *
+ * Task 6/8 supplies the actual project store and paused/event transaction. A
+ * no-op crash handler is safer than guessing a run id before that wiring is
+ * available, while the configured handler remains the only place that writes
+ * lifecycle state.
+ */
+export function configureEngineHost(config: Partial<EngineHostDeps>): () => void {
+  const previous = productionConfig;
+  productionConfig = { ...productionConfig, ...config };
+  return () => { productionConfig = previous; };
+}
+
+function productionDeps(): EngineHostDeps {
+  const defaults = electronDeps();
+  return {
+    ...defaults,
+    ...productionConfig,
+    storeFor: productionConfig.storeFor ?? (() => {
+      throw new Error("ENGINE_HOST_NOT_CONFIGURED");
+    }),
+    onCrash: productionConfig.onCrash ?? (async () => {}),
+  };
+}
+
 /**
  * Starts one utility process and makes its dedicated MessagePort the sole
  * channel for run commands, events and ProjectStore RPC.
  */
-export function startEngine(deps: EngineHostDeps): EngineHandle {
+export function makeEngineHost(deps: EngineHostDeps): EngineHandle {
   const child = deps.fork(deps.enginePath);
   const channel = deps.makeChannel();
   const port = channel.port1;
@@ -65,11 +143,8 @@ export function startEngine(deps: EngineHostDeps): EngineHandle {
       return;
     }
 
-    const eventMessage = message as EngineMessage;
-    if (eventMessage.type === "phase" || eventMessage.type === "progress" || eventMessage.type === "gate"
-      || eventMessage.type === "done" || eventMessage.type === "failed") {
-      for (const listener of listeners) listener(eventMessage);
-    }
+    if (!isEngineEvent(message)) return;
+    for (const listener of listeners) listener(message);
   });
   port.start?.();
   child.postMessage({ type: "connect" }, [channel.port2]);
@@ -106,4 +181,9 @@ export function startEngine(deps: EngineHostDeps): EngineHandle {
       return alive;
     },
   };
+}
+
+/** Starts the real Electron utility process through the production boundary. */
+export function startEngine(): EngineHandle {
+  return makeEngineHost(productionDeps());
 }

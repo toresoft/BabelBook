@@ -93,8 +93,10 @@ export class StoreClient implements ProjectStore {
   }
 
   #receive(message: unknown): void {
+    if (typeof message !== "object" || message === null) return;
     const response = message as Partial<StoreResponse>;
     if (response.type !== "store-result" || typeof response.id !== "number" || typeof response.ok !== "boolean") return;
+    if (!response.ok && typeof (response as { code?: unknown }).code !== "string") return;
 
     const pending = this.#pending.get(response.id);
     if (pending === undefined) return;

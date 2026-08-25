@@ -2,7 +2,9 @@ import { EventEmitter } from "node:events";
 import { describe, expect, it } from "vitest";
 import { startEngineRuntime } from "../engine/main.ts";
 import { StoreClient, type MessagePortLike } from "../engine/store-client.ts";
-import { startEngine, type UtilityProcessLike } from "../main/run/engine-host.ts";
+import {
+  configureEngineHost, makeEngineHost, startEngine, type UtilityProcessLike,
+} from "../main/run/engine-host.ts";
 import { makeStoreProxy } from "../main/run/store-proxy.ts";
 import type { EngineCommand, StoreRequest } from "../shared/run.ts";
 import { FakeStore } from "../../core/test/fake/store.ts";
@@ -100,6 +102,20 @@ describe("store proxy", () => {
 });
 
 describe("store client", () => {
+  // Catches a malformed main-process reply crashing the engine's store client before its valid reply arrives.
+  it("ignores null and malformed messages before resolving a later valid response", async () => {
+    const port = new TestPort();
+    const store = new StoreClient(port);
+    const pending = store.terms();
+    const [{ id }] = port.sent as StoreRequest[];
+
+    expect(() => port.send(null)).not.toThrow();
+    expect(() => port.send({ type: "store-result", id, ok: "yes" })).not.toThrow();
+    port.send({ type: "store-result", id, ok: true, value: [] });
+
+    await expect(pending).resolves.toEqual([]);
+  });
+
   // Catches responses resolving the wrong outstanding store call when messages arrive out of order.
   it("correlates concurrent responses by request id", async () => {
     const port = new TestPort();
@@ -144,6 +160,18 @@ describe("store client", () => {
 });
 
 describe("engine runtime", () => {
+  // Catches a malformed main-process command dereferencing `.type` and killing the utility process.
+  it("ignores null and malformed commands before accepting a valid start", () => {
+    const port = new TestPort();
+    startEngineRuntime(port);
+
+    expect(() => port.send(null)).not.toThrow();
+    expect(() => port.send({ type: "start", projectId: 3 })).not.toThrow();
+    port.send(command());
+
+    expect(port.sent).toEqual([{ type: "failed", code: "RUNNER_UNAVAILABLE" }]);
+  });
+
   // Catches the entry point importing Task 6 orchestration instead of accepting its runner at the boundary.
   it("runs an injected command runner with an engine-owned AbortSignal", async () => {
     const port = new TestPort();
@@ -178,7 +206,7 @@ describe("engine host", () => {
     const mainPort = new TestPort();
     const enginePort = new TestPort();
     const received: string[] = [];
-    const handle = startEngine({
+    const handle = makeEngineHost({
       enginePath: "/app/engine.js",
       fork: () => child,
       makeChannel: () => ({ port1: mainPort, port2: enginePort }),
@@ -204,7 +232,7 @@ describe("engine host", () => {
     const child = new TestUtilityProcess();
     const mainPort = new TestPort();
     const selected = new FakeStore();
-    const handle = startEngine({
+    const handle = makeEngineHost({
       enginePath: "/app/engine.js",
       fork: () => child,
       makeChannel: () => ({ port1: mainPort, port2: new TestPort() }),
@@ -231,7 +259,7 @@ describe("engine host", () => {
     const child = new TestUtilityProcess();
     const mainPort = new TestPort();
     const paused: string[] = [];
-    const handle = startEngine({
+    const handle = makeEngineHost({
       enginePath: "/app/engine.js",
       fork: () => child,
       makeChannel: () => ({ port1: mainPort, port2: new TestPort() }),
@@ -247,7 +275,7 @@ describe("engine host", () => {
     expect(paused).toEqual(["p1"]);
 
     const deliberate = new TestUtilityProcess();
-    const killed = startEngine({
+    const killed = makeEngineHost({
       enginePath: "/app/engine.js",
       fork: () => deliberate,
       makeChannel: () => ({ port1: new TestPort(), port2: new TestPort() }),
@@ -260,5 +288,53 @@ describe("engine host", () => {
 
     expect(deliberate.killed).toBe(true);
     expect(paused).toEqual(["p1"]);
+  });
+
+  // Catches the documented zero-argument entry point being absent or bypassing the registered production wiring.
+  it("starts the production entry through its registered Electron boundary", () => {
+    const child = new TestUtilityProcess();
+    const mainPort = new TestPort();
+    const enginePort = new TestPort();
+    const reset = configureEngineHost({
+      enginePath: "/app/engine.js",
+      fork: () => child,
+      makeChannel: () => ({ port1: mainPort, port2: enginePort }),
+      storeFor: () => new FakeStore(),
+      onCrash: async () => {},
+    });
+
+    try {
+      const handle = startEngine();
+      handle.send(command());
+
+      expect(child.sent).toEqual([{ message: { type: "connect" }, ports: [enginePort] }]);
+      expect(mainPort.sent).toEqual([command()]);
+    } finally {
+      reset();
+    }
+  });
+
+  // Catches a malformed engine message crashing main before a later valid event can be delivered.
+  it("ignores null and malformed engine messages before delivering a valid event", () => {
+    const child = new TestUtilityProcess();
+    const mainPort = new TestPort();
+    const phases: string[] = [];
+    const handle = makeEngineHost({
+      enginePath: "/app/engine.js",
+      fork: () => child,
+      makeChannel: () => ({ port1: mainPort, port2: new TestPort() }),
+      storeFor: () => new FakeStore(),
+      onCrash: async () => {},
+    });
+    handle.on((message) => {
+      if (message.type === "phase") phases.push(message.phase);
+    });
+
+    expect(() => mainPort.send(null)).not.toThrow();
+    expect(() => mainPort.send({ type: "store", id: 5, method: "terms", args: "not-an-array" })).not.toThrow();
+    expect(() => mainPort.send({ type: "phase" })).not.toThrow();
+    mainPort.send({ type: "phase", phase: "translate" });
+
+    expect(phases).toEqual(["translate"]);
   });
 });
