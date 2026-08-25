@@ -1,5 +1,6 @@
 import type { TranslationUnit } from "./blocks.ts";
 import type { EpubModel } from "./inspect.ts";
+import { resolveHref } from "./package.ts";
 import { assertWellFormed, scan } from "./scan.ts";
 
 export interface InvariantResult {
@@ -35,27 +36,9 @@ function primarySubtag(tag: string): string {
   return tag.split("-")[0].toLowerCase();
 }
 
-function directoryOf(path: string): string {
-  const at = path.lastIndexOf("/");
-  return at === -1 ? "" : path.slice(0, at + 1);
-}
-
-function resolve(from: string, href: string): { path: string; fragment: string } {
-  const [target, fragment = ""] = href.split("#");
-  if (target === "") return { path: from, fragment };
-  const segments = `${directoryOf(from)}${target}`.split("/");
-  const out: string[] = [];
-  for (const segment of segments) {
-    if (segment === "." || segment === "") continue;
-    if (segment === "..") out.pop();
-    else out.push(segment);
-  }
-  return { path: out.join("/"), fragment };
-}
-
 function resolves(model: EpubModel, from: string, href: string): boolean {
-  const { path, fragment } = resolve(from, href);
-  if (!model.resourcePaths.includes(path)) return false;
+  const { path, fragment } = resolveHref(from, href);
+  if (path === "" || !model.resourcePaths.includes(path)) return false;
   if (fragment === "") return true;
   const ids = model.elementIds[path];
   return ids === undefined || ids.includes(fragment);

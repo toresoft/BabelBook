@@ -267,7 +267,7 @@ export async function buildEpub(spec: EpubSpec): Promise<Buffer> {
 
   const chunks: Buffer[] = [];
   for await (const chunk of zip.outputStream) chunks.push(chunk as Buffer);
-  let archive = Buffer.concat(chunks);
+  let archive: Buffer = Buffer.concat(chunks);
   for (const { alias, real } of aliases) archive = patchName(archive, alias, real);
   return archive;
 }

@@ -111,6 +111,16 @@ interface OtherNode {
 
 type Node = ElementNode | TextNode | OtherNode;
 
+/** Where a node begins in the source, tag included when it has one. */
+function startOf(node: Node): number {
+  return node.kind === "element" ? node.openStart : node.rawStart;
+}
+
+/** Where a node ends in the source, closing tag included when it has one. */
+function endOf(node: Node): number {
+  return node.kind === "element" ? node.closeEnd : node.rawEnd;
+}
+
 function toTree(events: ScanEvent[]): Node[] {
   const roots: Node[] = [];
   const stack: ElementNode[] = [];
@@ -407,7 +417,7 @@ class Extractor {
       if (run.length === 0) return;
       const first = run[0];
       const last = run[run.length - 1];
-      this.emit("text", null, run, [first.rawStart, last.rawEnd], frame);
+      this.emit("text", null, run, [startOf(first), endOf(last)], frame);
       run = [];
     };
 

@@ -1,4 +1,5 @@
-import { decodeEntities, scan } from "./scan.ts";
+import { resolveHref } from "./package.ts";
+import { scan } from "./scan.ts";
 import type { ZipEntry } from "./zip.ts";
 
 export interface OverlayRemoval {
@@ -22,20 +23,10 @@ function directoryOf(path: string): string {
   return at === -1 ? "" : path.slice(0, at + 1);
 }
 
-/** Resolves a document-relative href against the archive root. */
+/** The archive path an href names, or "" when it names nothing in the archive. */
 function resolve(base: string, href: string): string {
-  const target = decodeEntities(href).split("#")[0].trim();
-  if (target === "" || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(target)) return "";
-  if (target.startsWith("/")) return target.slice(1);
-
-  const segments = `${directoryOf(base)}${target}`.split("/");
-  const out: string[] = [];
-  for (const segment of segments) {
-    if (segment === "." || segment === "") continue;
-    if (segment === "..") out.pop();
-    else out.push(segment);
-  }
-  return out.join("/");
+  const { path } = resolveHref(base, href);
+  return path === base ? "" : path;
 }
 
 export function hasOverlays(entries: ZipEntry[]): boolean {

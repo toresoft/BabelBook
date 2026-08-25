@@ -32,6 +32,45 @@ export interface PackageDoc {
 
 export const CONTAINER_PATH = "META-INF/container.xml";
 
+function directoryOf(path: string): string {
+  const at = path.lastIndexOf("/");
+  return at === -1 ? "" : path.slice(0, at + 1);
+}
+
+/**
+ * From an href to the archive path it names, and the fragment it points at.
+ *
+ * An href is a URL, not a file name: real books write `The%20Dig%20-01.htm` for
+ * an entry stored as `The Dig -01.htm`. Reading it as a file name loses every
+ * document whose name carries a space, and loses it in silence — the entry
+ * simply is not found. An external href resolves to the empty path.
+ */
+export function resolveHref(base: string, href: string): { path: string; fragment: string } {
+  const [rawTarget, fragment = ""] = decodeEntities(href).split("#");
+  const target = rawTarget.trim();
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(target) || target.startsWith("//")) {
+    return { path: "", fragment };
+  }
+  if (target === "") return { path: base, fragment };
+
+  let decoded = target;
+  try {
+    decoded = decodeURIComponent(target);
+  } catch {
+    // A stray `%` is not an escape; the href stands as written.
+  }
+
+  const segments = (decoded.startsWith("/") ? decoded.slice(1) : `${directoryOf(base)}${decoded}`)
+    .split("/");
+  const out: string[] = [];
+  for (const segment of segments) {
+    if (segment === "." || segment === "") continue;
+    if (segment === "..") out.pop();
+    else out.push(segment);
+  }
+  return { path: out.join("/"), fragment };
+}
+
 function attr(event: ScanEvent, name: string): string | undefined {
   return event.attrs?.find((a) => a.name === name)?.value;
 }
