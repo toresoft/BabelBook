@@ -33,12 +33,16 @@ export interface EpubModel {
   /** canonical form, comparable as text */
   spine: string;
   elementIds: Record<string, string[]>;
+  /** the text of every content document, so the invariants can reread it */
+  documents: Record<string, string>;
   internalLinks: Array<{ from: string; href: string }>;
   nav: NavEntry[];
   guide: GuideRef[];
   spineToc: string | null;
   languages: Record<string, string>;
   uniqueIdentifier: string;
+  /** identifiers, title and creator, canonical: metadata we may never rewrite */
+  identityMetadata: string;
   /** the opf:* attributes, in the order they appear */
   opfAttributes: string;
   overlays: { smil: string[]; mediaAttributes: number; mediaMetadata: number };
@@ -198,9 +202,12 @@ interface OpfFacts {
   guide: GuideRef[];
   hrefById: Map<string, string>;
   navHref: string;
+  identityMetadata: string;
   mediaAttributes: number;
   mediaMetadata: number;
 }
+
+const IDENTITY_ELEMENTS = ["dc:identifier", "dc:title", "dc:creator"];
 
 function readOpf(source: string): OpfFacts {
   const manifest: string[] = [];
@@ -217,6 +224,9 @@ function readOpf(source: string): OpfFacts {
   let mediaMetadata = 0;
   let pendingIdentifier: string | null = null;
   let spineIndex = 0;
+  let collecting: string | null = null;
+  let collected = "";
+  const identity: string[] = [];
 
   const tokens = walk(source);
   for (let i = 0; i < tokens.length; i += 1) {
@@ -225,11 +235,21 @@ function readOpf(source: string): OpfFacts {
       if (pendingIdentifier !== null) {
         identifiers.set(pendingIdentifier, (identifiers.get(pendingIdentifier) ?? "") + token.text);
       }
+      if (collecting !== null) collected += token.text;
       continue;
     }
     if (token.kind === "close") {
       if (token.name === "dc:identifier") pendingIdentifier = null;
+      if (collecting !== null && token.name === collecting) {
+        identity.push(`${collecting}|${collected.trim()}`);
+        collecting = null;
+        collected = "";
+      }
       continue;
+    }
+    if (IDENTITY_ELEMENTS.includes(token.name) && !token.selfClosing) {
+      collecting = token.name;
+      collected = "";
     }
 
     for (const attr of token.attrs) {
@@ -295,6 +315,7 @@ function readOpf(source: string): OpfFacts {
     guide,
     hrefById,
     navHref,
+    identityMetadata: identity.slice().sort().join("\n"),
     mediaAttributes,
     mediaMetadata,
   };
@@ -353,6 +374,7 @@ export function inspect(entries: ZipEntry[]): EpubModel {
   const opf = readOpf(text(entries, opfPath));
 
   const elementIds: Record<string, string[]> = {};
+  const documents: Record<string, string> = {};
   const internalLinks: Array<{ from: string; href: string }> = [];
   const languages: Record<string, string> = {};
   const binaryHashes: Record<string, string> = {};
@@ -368,9 +390,12 @@ export function inspect(entries: ZipEntry[]): EpubModel {
     }
     if (!isDocument(entry.path)) continue;
 
+    const source = entry.bytes.toString("utf8");
+    documents[entry.path] = source;
+
     const ids: string[] = [];
     let root = true;
-    for (const token of walk(entry.bytes.toString("utf8"))) {
+    for (const token of walk(source)) {
       if (token.kind !== "open") continue;
       if (root && token.name === "html") {
         const lang = get(token.attrs, "xml:lang") ?? get(token.attrs, "lang");
@@ -404,12 +429,14 @@ export function inspect(entries: ZipEntry[]): EpubModel {
     manifest: opf.manifest,
     spine: opf.spine,
     elementIds,
+    documents,
     internalLinks,
     nav,
     guide: opf.guide,
     spineToc: opf.spineToc,
     languages,
     uniqueIdentifier: opf.uniqueIdentifier,
+    identityMetadata: opf.identityMetadata,
     opfAttributes: opf.opfAttributes,
     overlays: {
       smil: entries.filter((e) => e.path.toLowerCase().endsWith(".smil")).map((e) => e.path).sort(),
