@@ -18,6 +18,7 @@
   },
   "include": [
     "main",
+    "engine",
     "preload",
     "shared",
     "test",

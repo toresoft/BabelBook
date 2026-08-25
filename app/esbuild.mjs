@@ -1,5 +1,5 @@
 /**
- * Bundles the two Node-side entry points of the application.
+ * Bundles the three Node-side entry points of the application.
  *
  * The renderer is built by the Angular CLI; everything that runs outside the
  * window is bundled here, so that `dist/` holds plain JavaScript and Electron
@@ -34,6 +34,14 @@ const bundles = [
     entryPoints: ["preload/preload.ts"],
     outfile: "dist/preload/preload.js",
     format: "cjs",
+  },
+  {
+    // The utility process is a third process boundary: it receives its work
+    // and store through a MessagePort, never by opening the main database.
+    entryPoints: ["engine/main.ts"],
+    outfile: "dist/engine/main.js",
+    format: "esm",
+    packages: "external",
   },
 ];
 
