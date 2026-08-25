@@ -46,6 +46,10 @@ function isEngineEvent(message: unknown): message is Exclude<EngineMessage, Stor
     case "phase": return typeof message.phase === "string";
     case "progress": return typeof message.done === "number" && typeof message.total === "number";
     case "gate": return message.gate === "terms" || message.gate === "code";
+    case "transition": return message.event === "TERMS_READY"
+      || message.event === "CODE_INDEXED"
+      || message.event === "TRANSLATED"
+      || message.event === "COMPOSED";
     case "done": return isRecord(message.summary);
     case "failed": return typeof message.code === "string";
     default: return false;

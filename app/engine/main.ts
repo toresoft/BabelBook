@@ -1,4 +1,5 @@
 import { StoreClient } from "./store-client.ts";
+import type { ProjectStore } from "../../core/ports.ts";
 import type {
   EngineCommand, EngineMessage, MessagePortLike, RunConfig,
 } from "../shared/run.ts";
@@ -6,7 +7,8 @@ import type {
 export interface EngineRunnerInput {
   projectId: string;
   config: RunConfig;
-  store: StoreClient;
+  machineSnapshot?: unknown;
+  store: ProjectStore;
   emit(message: EngineMessage): void;
   signal: AbortSignal;
 }
@@ -65,6 +67,7 @@ export function startEngineRuntime(port: MessagePortLike, runner?: EngineRunner)
     void runner({
       projectId: command.projectId,
       config: command.config,
+      ...(command.machineSnapshot === undefined ? {} : { machineSnapshot: command.machineSnapshot }),
       store,
       emit: (message) => port.postMessage(message),
       signal,

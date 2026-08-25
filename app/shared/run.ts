@@ -24,9 +24,12 @@ export interface RunSummary {
 }
 
 export type EngineCommand =
-  | { type: "start"; projectId: string; config: RunConfig }
+  | { type: "start"; projectId: string; config: RunConfig; machineSnapshot?: unknown }
   | { type: "pause" }
   | { type: "cancel" };
+
+/** Accepted engine-side phase events that the main-owned machine persists. */
+export type RunTransition = "TERMS_READY" | "CODE_INDEXED" | "TRANSLATED" | "COMPOSED";
 
 export type StoreMethod =
   | "units"
@@ -52,6 +55,7 @@ export type EngineMessage =
   | { type: "phase"; phase: string }
   | { type: "progress"; done: number; total: number }
   | { type: "gate"; gate: "terms" | "code" }
+  | { type: "transition"; event: RunTransition }
   | { type: "done"; summary: RunSummary }
   | { type: "failed"; code: string }
   | StoreRequest;
