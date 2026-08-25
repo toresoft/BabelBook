@@ -30,29 +30,24 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 |---|---|---|
 | 1. Layer EPUB del core | **completo**, 17/17 | `core/epub/` |
 | 2. Layer traduzione del core | **completo**, 14/14 | `core/translate/`, `core/analyze/`, `core/glossary/`, `core/ports.ts` |
-| 3. Shell Electron e database | **task 1-9 su 11** | `app/main/`, `app/shared/`, `app/renderer/` |
+| 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
 | 4. Esecuzione, provider, composizione | **task 1-4 su 9** | `app/main/providers/`, `app/engine/backends/`, `core/workflow/` |
 | 5. Gate, glossari, report | non iniziato | — |
 
-Suite: **359 test verdi** (257 core, 102 app), typecheck pulito.
+Suite: **370 test verdi** (257 core, 113 app) piu' **3 prove end-to-end**
+(`npm run test:e2e -w app`), typecheck pulito.
 
 ## Il prossimo passo
 
-**Piano 3, Task 10** — schermata "Nuovo progetto". Serve:
+**Piano 4, Task 5** — l'engine in un `utilityProcess` e il proxy di
+`ProjectStore`. I task 1-4 del piano 4 sono gia' fatti (provider, chiavi
+cifrate, risoluzione del modello, macchina a stati). Da li' si prosegue con
+l'orchestratore (6), la composizione dell'EPUB (7), tray e ciclo di vita (8) e
+la prova end-to-end di una traduzione intera con backend finto (9).
 
-1. `app/renderer/src/app/new-project/estimate.ts` — `estimate({ words,
-   contextOverhead?, priceIn, priceOut })` che restituisce `{ tokensIn,
-   tokensOut, cost }`, con `cost: null` quando il modello non dichiara prezzi.
-   Mostrare un costo inventato è peggio che non mostrarlo.
-2. Il componente: scegli file → l'applicazione copia e analizza → anteprima con
-   copertina, titolo, lingua dichiarata, documenti, unità, parole e gli avvisi
-   di impaginazione fissa e overlay → lingua di destinazione, descrizione →
-   stima → Crea. L'analisi avviene **prima** della conferma, perché è ciò che
-   rende la stima vera; se l'utente annulla, workspace e righe si cancellano.
-3. Rotta `#/new` in `app/renderer/src/app/app.routes.ts` (la libreria ci
-   rimanda già con un link `data-testid="new-project"`).
-
-Poi **Task 11**, la prova end-to-end con Playwright, e il piano 3 è chiuso.
+Quello che l'applicazione fa oggi: si apre, crea un progetto da un EPUB senza
+alcun provider configurato, lo mostra in libreria con copertina, lingue,
+avanzamento e gli avvisi di impaginazione fissa e overlay. Non traduce ancora.
 
 ## Da fare appena si riprende il piano 4
 
@@ -88,9 +83,18 @@ Non sono nei piani originali. Sono nel codice e nei commit.
   decisione, non un'astensione.
 - **`shared/dto.ts`**: i tipi che attraversano l'IPC non dipendono da niente,
   altrimenti il compilatore Angular tira dentro tutto il processo main.
+- **`packFailure`/`unpackFailure`**: Electron serializza una invocazione
+  rifiutata al solo messaggio, quindi un codice di errore non sopravvive al
+  confine. Ogni fallimento viene impacchettato nel messaggio e spacchettato
+  dall'altra parte; `IpcService` rifiuta con un `IpcFailure`.
+- **`project.update`**: l'analisi scrive prima che l'utente confermi, quindi
+  lingua e descrizione si confermano dopo, e annullare cancella il progetto.
 - **Colonne aggiunte allo schema**: `unit.raw_text` (migrazione 002),
   `term.rule` con `prefer` e `term.sense` (003), `project.cover_file` e
   `project.cache_key` (004).
+- **Ganci per le prove end-to-end**, letti in un punto solo di `main.ts`:
+  `BABELBOOK_USER_DATA` sposta database e workspace, `BABELBOOK_EPUB_FOR_TEST`
+  fa restituire un percorso al posto del dialogo nativo.
 
 ## Cosa nessuna suite dimostra
 
