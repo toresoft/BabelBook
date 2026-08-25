@@ -1,5 +1,10 @@
 # babelBook — Piano 3: shell Electron, database e creazione progetto
 
+**Stato: completo** — 11 task su 11, al 2026-08-25. Il codice vive in `app/`.
+L'applicazione si apre, crea un progetto da un EPUB senza alcun provider
+configurato, e lo mostra in libreria. Tre prove end-to-end pilotano la finestra
+vera: `npm run test:e2e -w app`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** un'applicazione che si apre, mostra la libreria dei progetti, e sa creare un progetto da un EPUB: copia, analisi locale, unità in database, copertina sullo schermo.

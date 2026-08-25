@@ -1,5 +1,13 @@
 # babelBook — Piano 2: il layer di traduzione del core
 
+**Stato: completo** — 14 task su 14, al 2026-08-25. Il codice vive in
+`core/translate/`, `core/analyze/`, `core/glossary/` e `core/ports.ts`.
+Cinque cose sono state decise diversamente da come le descrive questo piano:
+il campo `interleaved` nel contesto, `verifyDeclared` sulla lingua, `none-applies`
+nel voto sul dominio, la terza regola terminologica `prefer`, e il fatto che il
+troncamento non spezza un gruppo perché il ritentativo lo fa da sé.
+Le ragioni stanno nei messaggi di commit.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** costruire la metà del core che parla con un modello — porte, glossari, analisi, protocollo, validazione, motore — senza nominare nessun provider e senza toccare né database né interfaccia.

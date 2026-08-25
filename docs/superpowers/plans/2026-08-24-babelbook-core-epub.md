@@ -1,5 +1,9 @@
 # babelBook — Piano 1: il layer EPUB del core
 
+**Stato: completo** — 17 task su 17, al 2026-08-25. Il codice vive in `core/epub/`.
+Quello che l'esecuzione ha smentito è in fondo, nella sezione *Esito dell'esecuzione*:
+leggila prima di fidarti di un dettaglio scritto qui sopra.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** costruire `core/epub/`, il layer che legge un EPUB, lo scompone in unità di traduzione e lo ricompone, con un corpus di test e le invarianti che dimostrano che la ricomposizione non perde niente.

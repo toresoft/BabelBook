@@ -1,5 +1,12 @@
 # babelBook — Piano 5: i gate, i glossari e il report
 
+**Stato: non iniziato**, al 2026-08-25. Dipende dal piano 4, che è a metà.
+
+Attenzione a due punti che il resto del lavoro ha già cambiato sotto questo piano:
+le regole terminologiche sono **tre** (`dnt`, `prefer`, `must`) e i termini portano
+anche un campo `sense`; e i canali IPC si dichiarano in `app/shared/channels.ts`
+con il gestore nella mappa di `buildHandlers`, che un test confronta con l'elenco.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** dare all'utente il controllo che la spec promette — approvare i termini, rivedere ciò che non verrà tradotto, ispezionare le unità, leggere il report, curare i glossari — e chiudere la localizzazione.

@@ -18,6 +18,10 @@ Node 24.18.x. Il core è ESM con import `.ts` e **solo sintassi cancellabile**
 (niente `enum`, `namespace`, parameter properties). `app/` viene impacchettato
 da esbuild; il renderer dal builder di Angular.
 
+Le caselle `- [ ]` dentro i piani sono rimaste vuote anche dove il task è
+finito: l'esecuzione è passata da commit, uno per task, e lo stato vero è
+quello in testa a ogni piano e qui sotto. Non fidarti delle caselle.
+
 I piani stanno in `docs/superpowers/plans/`, la spec in
 `docs/superpowers/specs/2026-08-24-babelbook-design.md`. **Dove piani e codice
 divergono, vince il codice**: i piani sono stati scritti senza eseguire nulla e
@@ -99,7 +103,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 359 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 370 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è

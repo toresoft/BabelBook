@@ -1,5 +1,14 @@
 # babelBook — Piano 4: esecuzione, provider e composizione
 
+**Stato: task 1-4 su 9 fatti**, al 2026-08-25 — provider e chiavi cifrate,
+risoluzione del modello, verifica, macchina a stati. Il prossimo è il **Task 5**,
+l'engine nell'`utilityProcess`.
+
+Due cose da sapere prima di riprendere. `app/tsconfig.node.json` non elenca
+`engine` in `include`, e va aggiunto. Il cablaggio IPC della verifica provider è
+volutamente non fatto: i canali erano territorio di un altro agente, e vanno
+aggiunti in `app/shared/channels.ts` più i gestori nella mappa di `buildHandlers`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** far tradurre un libro davvero — provider configurabili con chiavi cifrate, motore in un processo dedicato, macchina a stati che decide cosa è lecito, pausa e ripresa, EPUB finale con il suo gate.
