@@ -10,6 +10,14 @@ export interface TermEntry {
   /** Absent for a `dnt` rule: there is nothing to render it as. */
   target?: string;
   rule: "dnt" | "must";
+  /**
+   * Which sense of the word this rule is about.
+   *
+   * A glossary says "signal, the Angular reactive primitive" precisely because
+   * the word has another meaning the rule must not touch. Folding it into the
+   * note would lose the distinction the author drew on purpose.
+   */
+  sense?: string;
   note?: string;
   origin: "glossary" | "extracted" | "manual";
 }
