@@ -25,6 +25,15 @@ async function sources(dir: string): Promise<string[]> {
   return out;
 }
 
+/**
+ * A concrete model must not be nameable from the model-facing core.
+ *
+ * `translate/` and `analyze/` decide how to ask; which model answers is the
+ * adapters' business. A name that slips into a prompt or a comment here is how
+ * a provider-agnostic layer stops being one, and it does not announce itself.
+ */
+const MODEL_NAMES = [/claude-/, /gpt-[0-9]/, /deepseek-/, /gemini-/, /llama-/, /mistral-/];
+
 describe("core boundary", () => {
   it("imports neither Electron, nor node:sqlite, nor a provider package", async () => {
     const offenders: string[] = [];
@@ -39,5 +48,18 @@ describe("core boundary", () => {
 
   it("finds the sources it claims to be scanning", async () => {
     expect((await sources(CORE_ROOT)).length).toBeGreaterThan(0);
+  });
+
+  it("neither translate nor analyze names a concrete model", async () => {
+    const offenders: string[] = [];
+    for (const area of ["translate", "analyze"]) {
+      for (const file of await sources(join(CORE_ROOT, area))) {
+        const text = await readFile(file, "utf8");
+        for (const rule of MODEL_NAMES) {
+          if (rule.test(text)) offenders.push(`${file}: ${rule}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });
