@@ -67,6 +67,23 @@ export interface Settings {
 }
 
 /**
+ * What a verification says, and deliberately all it says.
+ *
+ * There is no `message` field, and that is the point: the provider's own words
+ * are English, change without notice, and sometimes quote the key back.
+ */
+export type VerifyCode =
+  | "missing-key" | "package-missing" | "unauthorized"
+  | "unreachable" | "bad-spec" | "unknown";
+
+export interface VerifyOutcome {
+  ok: boolean;
+  code?: VerifyCode;
+  latencyMs?: number;
+  modelId?: string;
+}
+
+/**
  * A failure, as it crosses the IPC boundary.
  *
  * Electron serialises a rejected invocation down to its message: a custom

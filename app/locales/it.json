@@ -45,6 +45,25 @@
     "warning": "Impaginazione fissa: il testo tradotto non si riadatta, e può traboccare dalla pagina. {{count}} documenti su {{total}}."
   },
   "overlays": { "warning": "Questo libro ha la lettura sincronizzata. L'EPUB tradotto non l'avrà: l'audio resterebbe nella lingua di partenza." },
+  "tray": {
+    "translating": "{{title}} — {{done}} di {{total}} unità",
+    "idle": "babelBook",
+    "open": "Apri",
+    "pause": "Metti in pausa",
+    "quit": "Esci"
+  },
+  "notify": {
+    "done": "«{{title}}» è pronto",
+    "gate": {
+      "terms": "«{{title}}» attende l'approvazione dei termini",
+      "code": "«{{title}}» attende la revisione delle esclusioni"
+    }
+  },
+  "quit": {
+    "confirm": "Una traduzione è in corso. Uscire la mette in pausa: alla riapertura potrà riprendere senza ritradurre ciò che è già fatto.",
+    "pauseAndQuit": "Metti in pausa ed esci",
+    "cancel": "Annulla"
+  },
   "codes": {
     "unit-fell-back": "Un'unità è rimasta nella lingua di partenza dopo i tentativi previsti.",
     "chunk-exhausted": "Un gruppo ha esaurito i tentativi.",

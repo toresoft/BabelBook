@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_SETTINGS, EVENTS, INVOCATIONS,
-  type Events, type Handlers, type Settings,
+  type Events, type Handlers, type Settings, type VerifyOutcome,
 } from "../shared/channels.ts";
 import { packFailure } from "../shared/dto.ts";
 import { createProject } from "./projects/create.ts";
@@ -13,10 +13,16 @@ export interface IpcDeps {
   userDataDir: string;
   /** Opens the native dialog. The main process owns which files exist. */
   chooseEpub(): Promise<{ path: string; name: string } | null>;
+  /** Puts a project in the machine's hands, and the machine's verdict on screen. */
+  startRun(projectId: string): Promise<void>;
+  pauseRun(projectId: string): Promise<void>;
+  approveGate(projectId: string, gate: "terms" | "code"): Promise<void>;
+  /** One minimal call to the provider, reported as an outcome and never as a sentence. */
+  verifyProvider(request: { providerId: string; modelId: string }): Promise<VerifyOutcome>;
   broadcast<K extends keyof Events>(channel: K, payload: Events[K]): void;
 }
 
-function readSettings(db: DatabaseSync): Settings {
+export function readSettings(db: DatabaseSync): Settings {
   const rows = db.prepare("SELECT key, value FROM setting").all() as Array<{ key: string; value: string }>;
   const stored = new Map(rows.map((row) => [row.key, row.value]));
 
@@ -91,6 +97,23 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       deps.db.prepare("DELETE FROM project WHERE id = ?").run(id);
       deps.broadcast("project.changed", { id });
     },
+
+    "run.start": async ({ projectId }) => {
+      await deps.startRun(projectId);
+      deps.broadcast("project.changed", { id: projectId });
+    },
+
+    "run.pause": async ({ projectId }) => {
+      await deps.pauseRun(projectId);
+      deps.broadcast("project.changed", { id: projectId });
+    },
+
+    "run.approve": async ({ projectId, gate }) => {
+      await deps.approveGate(projectId, gate);
+      deps.broadcast("project.changed", { id: projectId });
+    },
+
+    "provider.verify": async (request) => deps.verifyProvider(request),
 
     "settings.get": async () => readSettings(deps.db),
 

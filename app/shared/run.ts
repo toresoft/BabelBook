@@ -6,6 +6,26 @@
  * import engine implementation just to understand a message.
  */
 
+/**
+ * Materials for the engine to build its backend from.
+ *
+ * A backend is behaviour and cannot cross a process boundary; what crosses is
+ * the plain data to build one. The API key travels on this dedicated port and
+ * no other — it never reaches the renderer, not even masked.
+ */
+export type BackendSpec =
+  /** the deterministic backend of the whole-application test */
+  | { kind: "fake" }
+  | {
+    kind: "sdk";
+    /** `route:model-id`, as the resolver reads it */
+    spec: string;
+    apiKey: string | null;
+    baseUrl: string | null;
+    headers: Record<string, string>;
+    options: Record<string, unknown>;
+  };
+
 export interface RunConfig {
   projectId: string;
   cacheKey: string;
@@ -24,7 +44,13 @@ export interface RunSummary {
 }
 
 export type EngineCommand =
-  | { type: "start"; projectId: string; config: RunConfig; machineSnapshot?: unknown }
+  | {
+    type: "start";
+    projectId: string;
+    config: RunConfig;
+    backend: BackendSpec;
+    machineSnapshot?: unknown;
+  }
   | { type: "pause" }
   | { type: "cancel" };
 

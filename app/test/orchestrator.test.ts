@@ -332,7 +332,10 @@ describe("runProject", () => {
     const signal = new AbortController().signal;
     const runner = makeEngineRunner({ backend: scriptedBackend() });
 
-    await runner({ projectId: "p1", config: config(), store, signal, emit: (message) => seen.push(message) });
+    await runner({
+      projectId: "p1", config: config(), backendSpec: { kind: "fake" },
+      store, signal, emit: (message) => seen.push(message),
+    });
 
     expect(seen).toContainEqual({ type: "gate", gate: "terms" });
     expect((await store.translations("k1")).size).toBe(0);

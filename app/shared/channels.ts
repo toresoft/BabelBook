@@ -1,9 +1,11 @@
 import type {
   CreatedProject, CreateProjectRequest, ProjectSummary, Settings, UpdateProjectRequest,
+  VerifyOutcome,
 } from "./dto.ts";
 
 export type {
   CreatedProject, CreateProjectRequest, ProjectSummary, Settings, UpdateProjectRequest,
+  VerifyOutcome,
 } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -30,6 +32,10 @@ export interface Invocations {
   "project.create": { req: CreateProjectRequest; res: CreatedProject };
   "project.update": { req: UpdateProjectRequest; res: void };
   "project.delete": { req: { id: string; keepOutput?: string }; res: void };
+  "run.start": { req: { projectId: string }; res: void };
+  "run.pause": { req: { projectId: string }; res: void };
+  "run.approve": { req: { projectId: string; gate: "terms" | "code" }; res: void };
+  "provider.verify": { req: { providerId: string; modelId: string }; res: VerifyOutcome };
   "settings.get": { req: undefined; res: Settings };
   "settings.set": { req: Partial<Settings>; res: Settings };
 }
@@ -42,6 +48,7 @@ export interface Events {
 
 export const INVOCATIONS = [
   "projects.list", "project.chooseEpub", "project.create", "project.update", "project.delete",
+  "run.start", "run.pause", "run.approve", "provider.verify",
   "settings.get", "settings.set",
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 

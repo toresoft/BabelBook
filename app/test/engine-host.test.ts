@@ -46,6 +46,7 @@ const command = (projectId = "p1"): EngineCommand => ({
     projectId, cacheKey: "k1", sourceLanguage: "en", targetLanguage: "it",
     autoAcceptTerms: false, autoAcceptExclusions: false, concurrency: 1,
   },
+  backend: { kind: "fake" },
 });
 
 describe("store proxy", () => {

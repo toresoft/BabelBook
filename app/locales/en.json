@@ -51,6 +51,25 @@
   "overlays": {
     "warning": "This book has read-aloud. The translated EPUB will not: the audio would stay in the source language."
   },
+  "tray": {
+    "translating": "{{title}} — {{done}} of {{total}} units",
+    "idle": "babelBook",
+    "open": "Open",
+    "pause": "Pause",
+    "quit": "Quit"
+  },
+  "notify": {
+    "done": "“{{title}}” is ready",
+    "gate": {
+      "terms": "“{{title}}” is waiting for the terms to be approved",
+      "code": "“{{title}}” is waiting for the exclusions to be reviewed"
+    }
+  },
+  "quit": {
+    "confirm": "A translation is in flight. Quitting pauses it: when the app reopens it can resume without retranslating what is already done.",
+    "pauseAndQuit": "Pause and quit",
+    "cancel": "Cancel"
+  },
   "codes": {
     "unit-fell-back": "A unit stayed in the source language after the attempts it was given.",
     "chunk-exhausted": "A chunk ran out of attempts.",
