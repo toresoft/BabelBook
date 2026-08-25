@@ -20,6 +20,13 @@ export interface EpubExtraSpec {
   bytes: Buffer;
 }
 
+export interface EpubOverlaySpec {
+  smilPath: string;
+  audioPath: string;
+  forDocument: string;
+  duration: string;
+}
+
 export interface EpubSpec {
   identifier?: string;
   language?: string;
@@ -29,6 +36,7 @@ export interface EpubSpec {
   packageProperties?: string;
   manifestExtra?: string;
   metadataExtra?: string;
+  overlays?: EpubOverlaySpec[];
 }
 
 const DEFAULT_IDENTIFIER = "urn:uuid:11111111-2222-3333-4444-555555555555";
@@ -99,15 +107,49 @@ export function documentId(index: number): string {
   return `d${index}`;
 }
 
+function smilId(index: number): string {
+  return `smil${index}`;
+}
+
+function smilXml(overlay: EpubOverlaySpec): string {
+  const text = `${href(overlay.forDocument)}#p1`;
+  const audio = href(overlay.audioPath);
+  return (
+    `<?xml version="1.0" encoding="utf-8"?>\n`
+    + `<smil xmlns="http://www.w3.org/ns/SMIL" version="3.0">\n`
+    + `  <body><seq><par>`
+    + `<text src="${attrEscape(text)}"/>`
+    + `<audio src="${attrEscape(audio)}" clipBegin="0:00:00" clipEnd="${attrEscape(overlay.duration)}"/>`
+    + `</par></seq></body>\n`
+    + `</smil>\n`
+  );
+}
+
 function packageOpf(spec: EpubSpec, language: string, title: string): string {
   const identifier = spec.identifier ?? DEFAULT_IDENTIFIER;
 
+  const overlays = spec.overlays ?? [];
+  const overlayOf = (path: string): number =>
+    overlays.findIndex((o) => o.forDocument === path);
+
   const manifest = [
     `    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
-    ...spec.documents.map(
-      (d, i) =>
+    ...spec.documents.map((d, i) => {
+      const overlay = overlayOf(d.path);
+      const attached = overlay === -1 ? "" : ` media-overlay="${smilId(overlay)}"`;
+      return (
         `    <item id="${documentId(i)}" href="${attrEscape(href(d.path))}"`
-        + ` media-type="application/xhtml+xml"/>`,
+        + ` media-type="application/xhtml+xml"${attached}/>`
+      );
+    }),
+    ...overlays.map(
+      (o, i) =>
+        `    <item id="${smilId(i)}" href="${attrEscape(href(o.smilPath))}"`
+        + ` media-type="application/smil+xml"/>`,
+    ),
+    ...overlays.map(
+      (o, i) =>
+        `    <item id="audio${i}" href="${attrEscape(href(o.audioPath))}" media-type="audio/mpeg"/>`,
     ),
   ];
   if (spec.manifestExtra) manifest.push(`    ${spec.manifestExtra}`);
@@ -129,6 +171,15 @@ function packageOpf(spec: EpubSpec, language: string, title: string): string {
     `    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>`,
   ];
   if (spec.packageProperties) metadata.push(`    ${spec.packageProperties}`);
+  for (const [i, overlay] of overlays.entries()) {
+    metadata.push(
+      `    <meta property="media:duration" refines="#${smilId(i)}">${xmlEscape(overlay.duration)}</meta>`,
+    );
+  }
+  if (overlays.length > 0) {
+    metadata.push(`    <meta property="media:duration">${xmlEscape(overlays[0].duration)}</meta>`);
+    metadata.push(`    <meta property="media:narrator">Voice</meta>`);
+  }
   if (spec.metadataExtra) metadata.push(`    ${spec.metadataExtra}`);
 
   return (
@@ -196,6 +247,10 @@ export async function buildEpub(spec: EpubSpec): Promise<Buffer> {
       bytes: Buffer.from(wrapDocument(document, language, title), "utf8"),
       compress: true,
     });
+  }
+  for (const overlay of spec.overlays ?? []) {
+    files.push({ path: overlay.smilPath, bytes: Buffer.from(smilXml(overlay), "utf8"), compress: true });
+    files.push({ path: overlay.audioPath, bytes: Buffer.from("fake audio", "utf8"), compress: true });
   }
   for (const extra of spec.extra ?? []) {
     files.push({ path: extra.path, bytes: extra.bytes, compress: true });
