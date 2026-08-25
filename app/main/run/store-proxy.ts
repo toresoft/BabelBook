@@ -6,7 +6,8 @@ export interface StoreProxy {
 }
 
 const METHODS: ReadonlySet<StoreMethod> = new Set([
-  "units", "putUnitState", "translations", "putTranslation", "terms", "putTerms", "event",
+  "units", "putUnitState", "translations", "putTranslation", "terms", "putTerms",
+  "candidateReport", "putCandidateReport", "codeIndex", "commitCodeIndex", "event",
 ]);
 
 function failureCode(error: unknown): string {
@@ -34,6 +35,15 @@ export function makeStoreProxy(store: ProjectStore, send: (response: StoreRespon
       case "putTranslation": return store.putTranslation(args[0] as Parameters<ProjectStore["putTranslation"]>[0]);
       case "terms": return store.terms();
       case "putTerms": return store.putTerms(args[0] as Parameters<ProjectStore["putTerms"]>[0]);
+      case "candidateReport": return store.candidateReport(args[0] as string);
+      case "putCandidateReport": return store.putCandidateReport(
+        args[0] as string,
+        args[1] as Parameters<ProjectStore["putCandidateReport"]>[1],
+      );
+      case "codeIndex": return store.codeIndex(args[0] as string);
+      case "commitCodeIndex": return store.commitCodeIndex(
+        args[0] as Parameters<ProjectStore["commitCodeIndex"]>[0],
+      );
       case "event": return store.event(args[0] as Parameters<ProjectStore["event"]>[0]);
     }
   };

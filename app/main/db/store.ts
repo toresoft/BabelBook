@@ -5,6 +5,8 @@ import type {
 } from "../../../core/ports.ts";
 import type { TermEntry } from "../../../core/glossary/types.ts";
 import type { Placeholder, TranslationUnit, UnitState } from "../../../core/epub/index.ts";
+import type { CandidateReport } from "../../../core/analyze/candidates.ts";
+import type { CodeIndex } from "../../../core/analyze/code.ts";
 
 interface UnitRow {
   id: string;
@@ -158,6 +160,109 @@ export class SqliteProjectStore implements ProjectStore {
     for (const term of terms) {
       statement.run(randomUUID(), this.#projectId, term.source, term.target ?? null,
         term.rule, term.origin, term.sense ?? null, term.note ?? null);
+    }
+  }
+
+  async candidateReport(cacheKey: string): Promise<CandidateReport | null> {
+    const row = this.#db.prepare(`
+      SELECT result_json FROM project_phase_result
+       WHERE project_id = ? AND phase = 'candidates' AND cache_key = ?
+    `).get(this.#projectId, cacheKey) as { result_json: string } | undefined;
+    return row === undefined ? null : JSON.parse(row.result_json) as CandidateReport;
+  }
+
+  /** Persists the review payload and its pending term rows in one transaction. */
+  async putCandidateReport(cacheKey: string, report: CandidateReport): Promise<void> {
+    const upsertResult = this.#db.prepare(`
+      INSERT INTO project_phase_result (project_id, phase, cache_key, result_json)
+      VALUES (?, 'candidates', ?, ?)
+      ON CONFLICT (project_id, phase, cache_key) DO UPDATE
+        SET result_json = excluded.result_json, created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    `);
+    const upsertCandidate = this.#db.prepare(`
+      INSERT INTO term (id, project_id, source, target, rule, origin, approval_state, sense, note)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+      ON CONFLICT (project_id, source) DO UPDATE
+        SET target = excluded.target, rule = excluded.rule,
+            origin = excluded.origin, sense = excluded.sense, note = excluded.note,
+            approval_state = CASE
+              WHEN term.approval_state = 'approved' THEN 'approved' ELSE 'pending' END
+    `);
+
+    this.#db.exec("SAVEPOINT babelbook_candidate_report");
+    try {
+      upsertResult.run(this.#projectId, cacheKey, JSON.stringify(report));
+      for (const candidate of report.candidates) {
+        upsertCandidate.run(
+          randomUUID(), this.#projectId, candidate.source, candidate.target ?? null,
+          candidate.rule, candidate.origin, candidate.sense ?? null, candidate.note ?? null,
+        );
+      }
+      this.#db.exec("RELEASE SAVEPOINT babelbook_candidate_report");
+    } catch (error) {
+      this.#db.exec("ROLLBACK TO SAVEPOINT babelbook_candidate_report");
+      this.#db.exec("RELEASE SAVEPOINT babelbook_candidate_report");
+      throw error;
+    }
+  }
+
+  async codeIndex(sourceHash: string): Promise<CodeIndex | null> {
+    const row = this.#db.prepare(`
+      SELECT result_json FROM project_phase_result
+       WHERE project_id = ? AND phase = 'code-index' AND cache_key = ?
+    `).get(this.#projectId, sourceHash) as { result_json: string } | undefined;
+    return row === undefined ? null : JSON.parse(row.result_json) as CodeIndex;
+  }
+
+  /**
+   * The unit decisions and checkpoint are one commit. An abstention event is
+   * part of that commit too, so a stored checkpoint can never hide a missing
+   * degradation after a crash.
+   */
+  async commitCodeIndex(index: CodeIndex): Promise<void> {
+    if (index.abstained > 0 && this.#runId === null) {
+      throw new Error("this store has no run: a code-index degradation cannot be attributed to one");
+    }
+    const mark = this.#db.prepare(`
+      UPDATE unit SET state = 'maybe-code', reason = 'model-code-suspected'
+       WHERE project_id = ? AND unit_id = ?
+    `);
+    const free = this.#db.prepare(`
+      UPDATE unit SET state = 'translate', reason = NULL
+       WHERE project_id = ? AND unit_id = ?
+    `);
+    const checkpoint = this.#db.prepare(`
+      INSERT INTO project_phase_result (project_id, phase, cache_key, result_json)
+      VALUES (?, 'code-index', ?, ?)
+      ON CONFLICT (project_id, phase, cache_key) DO UPDATE
+        SET result_json = excluded.result_json, created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    `);
+
+    this.#db.exec("SAVEPOINT babelbook_code_index");
+    try {
+      for (const unitId of index.marked) {
+        if (mark.run(this.#projectId, unitId).changes !== 1) {
+          throw new Error(`unit not found in project ${this.#projectId}: ${unitId}`);
+        }
+      }
+      for (const unitId of index.freed) {
+        if (free.run(this.#projectId, unitId).changes !== 1) {
+          throw new Error(`unit not found in project ${this.#projectId}: ${unitId}`);
+        }
+      }
+      checkpoint.run(this.#projectId, index.sourceHash, JSON.stringify(index));
+      if (index.abstained > 0) {
+        this.#db.prepare(`
+          INSERT INTO run_event (id, run_id, at, code, severity, payload_json)
+          VALUES (?, ?, ?, 'code-index-abstained', 'degradation', ?)
+        `).run(randomUUID(), this.#runId!, new Date().toISOString(),
+          JSON.stringify({ batches: index.abstained }));
+      }
+      this.#db.exec("RELEASE SAVEPOINT babelbook_code_index");
+    } catch (error) {
+      this.#db.exec("ROLLBACK TO SAVEPOINT babelbook_code_index");
+      this.#db.exec("RELEASE SAVEPOINT babelbook_code_index");
+      throw error;
     }
   }
 

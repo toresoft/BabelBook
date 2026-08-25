@@ -117,6 +117,64 @@ export function runProjectStoreContract(
       expect(read[0]).toMatchObject({ target: "nanerottolo", origin: "manual" });
     });
 
+    // Production break: candidate extraction is acknowledged without preserving the report behind the manual gate.
+    it("round-trips the full pending candidate report under its cache identity", async () => {
+      const store = await make([]);
+      const report = {
+        candidates: [{
+          source: "Rivendell", rule: "dnt" as const, origin: "extracted" as const,
+          occurrences: 2, context: "They reached Rivendell.", approval: "pending" as const,
+        }],
+        open: [{ source: "Strider", question: "name or title?" }],
+        discarded: 1,
+        abstained: false,
+      };
+
+      await store.putCandidateReport("k1", report);
+
+      expect(await store.candidateReport("k1")).toEqual(report);
+      expect(await store.terms()).toEqual([]);
+      expect(await store.candidateReport("k2")).toBeNull();
+    });
+
+    // Production break: code unit mutations land without a durable zero-change-capable phase checkpoint.
+    it("commits code-index state and its source-keyed result together", async () => {
+      const store = await make([
+        unit(1, "npm install foo"),
+        unit(2, "This is prose", "code"),
+      ]);
+      const result = {
+        marked: ["c1.xhtml#1"],
+        freed: ["c1.xhtml#2"],
+        abstained: 0,
+        sourceHash: "source-config-k1",
+      };
+
+      await store.commitCodeIndex(result);
+
+      expect(await store.codeIndex("source-config-k1")).toEqual(result);
+      expect(await store.codeIndex("source-config-k2")).toBeNull();
+      expect((await store.units()).map(({ id, state }) => ({ id, state }))).toEqual([
+        { id: "c1.xhtml#1", state: "maybe-code" },
+        { id: "c1.xhtml#2", state: "translate" },
+      ]);
+    });
+
+    // Production break: a failed phase commit leaves an early unit mutation without its checkpoint.
+    it("rolls back every code-index effect when one referenced unit is missing", async () => {
+      const store = await make([unit(1, "npm install foo")]);
+
+      await expect(store.commitCodeIndex({
+        marked: ["c1.xhtml#1"],
+        freed: ["ghost.xhtml#1"],
+        abstained: 0,
+        sourceHash: "source-config-k1",
+      })).rejects.toThrow(/not found/);
+
+      expect((await store.units())[0].state).toBe("translate");
+      expect(await store.codeIndex("source-config-k1")).toBeNull();
+    });
+
     it("accepts an event of every severity, payload and all", async () => {
       const store = await make([unit(1, "One")]);
 

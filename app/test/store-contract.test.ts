@@ -79,6 +79,28 @@ describe("SqliteProjectStore, beyond the contract", () => {
     expect(await new SqliteProjectStore(db, "p1", "r1").terms()).toEqual([]);
   });
 
+  it("promotes an auto-accepted candidate in place instead of replacing its row", async () => {
+    const db = seeded([]);
+    const store = new SqliteProjectStore(db, "p1", "r1");
+    await store.putCandidateReport("k1", {
+      candidates: [{
+        source: "Rivendell", rule: "dnt", origin: "extracted",
+        occurrences: 1, context: "Rivendell", approval: "pending",
+      }],
+      open: [], discarded: 0, abstained: false,
+    });
+    const before = db.prepare("SELECT id, approval_state FROM term WHERE source='Rivendell'").get() as {
+      id: string; approval_state: string;
+    };
+
+    await store.putTerms([{ source: "Rivendell", rule: "dnt", origin: "extracted" }]);
+
+    const after = db.prepare("SELECT id, approval_state FROM term WHERE source='Rivendell'").get() as {
+      id: string; approval_state: string;
+    };
+    expect(after).toEqual({ id: before.id, approval_state: "approved" });
+  });
+
   it("refuses an event it cannot attribute to a run", async () => {
     const store = new SqliteProjectStore(seeded([]), "p1");
     await expect(store.event({ code: "unit-fell-back", severity: "degradation", payload: {} }))

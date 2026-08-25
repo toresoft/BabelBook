@@ -5,6 +5,7 @@ import { FakeBackend } from "../../core/test/fake/backend.ts";
 import { FakeStore } from "../../core/test/fake/store.ts";
 import { createProjectActor } from "../../core/workflow/project.machine.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
+import { SqliteProjectStore } from "../main/db/store.ts";
 import {
   makeMachineHost, restoreRunningProjects,
 } from "../main/run/machine-host.ts";
@@ -97,6 +98,35 @@ describe("runProject", () => {
     expect((await store.translations("k1")).size).toBe(0);
   });
 
+  // Production break: a paid non-empty candidate report disappears before the user can review it.
+  it("persists a non-empty candidate report as pending before the manual terms gate", async () => {
+    const store = new FakeStore([{
+      ...unit(1), source: "They reached Rivendell.", raw: "They reached Rivendell.",
+    }]);
+    const backend = new FakeBackend(() => ({
+      text: "TERMS 1\n[t:Rivendell] rule=dnt note=proper name\nOPEN 0\nEND",
+      tokensIn: 10,
+      tokensOut: 5,
+      finishReason: "stop",
+    }));
+
+    await runProject({
+      store,
+      backend,
+      config: config(),
+      emit: collect().emit,
+      signal: new AbortController().signal,
+    });
+
+    expect(await store.candidateReport("k1")).toMatchObject({
+      candidates: [{
+        source: "Rivendell", approval: "pending", occurrences: 1,
+        context: "They reached Rivendell.",
+      }],
+    });
+    expect(await store.terms()).toEqual([]);
+  });
+
   // Production break: either auto-accept guard is ignored, or translation writes no progress/result.
   it("walks both automatic gates, translates, and hands composition off", async () => {
     const store = new FakeStore([unit(1)]);
@@ -162,6 +192,73 @@ describe("runProject", () => {
     });
 
     expect(backend.prompts.some((prompt) => prompt.includes("[u:c1.xhtml#1]"))).toBe(false);
+  });
+
+  // Production break: a persisted zero-change code index is invisible and the model is paid again.
+  it("reuses a durable zero-change code index on a fresh actor", async () => {
+    const store = new FakeStore([unit(1)]);
+    await store.putCandidateReport("k1", {
+      candidates: [], open: [], discarded: 0, abstained: false,
+    });
+    await store.commitCodeIndex({ marked: [], freed: [], abstained: 0, sourceHash: "k1" });
+    const backend = scriptedBackend();
+
+    await runProject({
+      store,
+      backend,
+      config: config({ autoAcceptTerms: true, autoAcceptExclusions: true }),
+      emit: collect().emit,
+      signal: new AbortController().signal,
+    });
+
+    expect(backend.prompts).toHaveLength(1);
+    expect(backend.prompts[0]).toContain("UNITS 1");
+  });
+
+  // Production break: malformed code verdict batches are checkpointed without a degradation declaration.
+  it("records code-index abstention so composition becomes incomplete", async () => {
+    const db = database();
+    insertProject(db);
+    db.prepare("INSERT INTO project_document (id, project_id, zip_path, spine_order) VALUES ('d1','p1','c1.xhtml',1)").run();
+    db.prepare(`
+      INSERT INTO unit (id, project_id, document_id, ordinal, unit_id, kind,
+                        range_start, range_end, state, source_text, raw_text)
+      VALUES ('u1','p1','d1',1,'c1.xhtml#1','block',0,10,'translate','Sentence 1','Sentence 1')
+    `).run();
+    db.prepare("INSERT INTO run (id, project_id, phase, started_at) VALUES ('r1','p1','run','2026-08-24')").run();
+    const store = new SqliteProjectStore(db, "p1", "r1");
+    const backend = new FakeBackend((call) => {
+      if (call.prompt.includes("TERMS")) {
+        return { text: "TERMS 0\nEND", tokensIn: 1, tokensOut: 1, finishReason: "stop" };
+      }
+      if (call.prompt.includes("VERDICTS")) {
+        return { text: "malformed", tokensIn: 1, tokensOut: 1, finishReason: "stop" };
+      }
+      return {
+        text: "UNITS 1\n[u:c1.xhtml#1]\nFrase 1\nEND",
+        tokensIn: 1,
+        tokensOut: 1,
+        finishReason: "stop",
+      };
+    });
+
+    await runProject({
+      store,
+      backend,
+      config: config({ autoAcceptTerms: true, autoAcceptExclusions: true }),
+      emit: collect().emit,
+      signal: new AbortController().signal,
+    });
+    db.prepare("UPDATE project SET state = 'composing', machine_snapshot = NULL WHERE id = 'p1'").run();
+    const host = makeMachineHost(db, "p1", { hasLanguage: true });
+    expect(host.send({ type: "COMPOSED" })).toBe(true);
+
+    expect((db.prepare("SELECT state FROM project WHERE id='p1'").get() as { state: string }).state)
+      .toBe("incomplete");
+    expect((db.prepare(`
+      SELECT count(*) AS total FROM run_event
+       WHERE run_id='r1' AND code='code-index-abstained' AND severity='degradation'
+    `).get() as { total: number }).total).toBe(1);
   });
 
   // Production break: resume discards the persisted waiting-code snapshot and re-spends on completed phases.
@@ -326,6 +423,23 @@ describe("restoreRunningProjects", () => {
     const row = db.prepare(
       "SELECT state, machine_snapshot FROM project WHERE id='p1'",
     ).get() as { state: string; machine_snapshot: string };
+    expect(row.state).toBe("paused");
+    expect((JSON.parse(row.machine_snapshot) as { value: string }).value).toBe("paused");
+  });
+
+  // Production break: recovery filters on a stale paused column and misses an authoritative running snapshot.
+  it("pauses a snapshot-running project even when its denormalized state is stale", () => {
+    const db = database();
+    insertProject(db);
+    const host = makeMachineHost(db, "p1", { hasLanguage: true });
+    expect(host.send({ type: "START" })).toBe(true);
+    db.prepare("UPDATE project SET state = 'paused' WHERE id='p1'").run();
+
+    expect(restoreRunningProjects(db)).toEqual(["p1"]);
+
+    const row = db.prepare("SELECT state, machine_snapshot FROM project WHERE id='p1'").get() as {
+      state: string; machine_snapshot: string;
+    };
     expect(row.state).toBe("paused");
     expect((JSON.parse(row.machine_snapshot) as { value: string }).value).toBe("paused");
   });

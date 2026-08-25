@@ -135,13 +135,13 @@ export function makeMachineHost(
  */
 export function restoreRunningProjects(db: DatabaseSync): string[] {
   const rows = db.prepare(
-    "SELECT id FROM project WHERE state = 'running' ORDER BY id",
+    "SELECT id FROM project ORDER BY id",
   ).all() as Array<{ id: string }>;
 
   const paused: string[] = [];
   for (const row of rows) {
     const host = makeMachineHost(db, row.id);
-    if (host.send({ type: "PAUSE" })) paused.push(row.id);
+    if (host.state === "running" && host.send({ type: "PAUSE" })) paused.push(row.id);
   }
   return paused;
 }

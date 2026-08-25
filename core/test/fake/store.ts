@@ -1,6 +1,8 @@
 import type { ProjectStore, RunEvent, StoredTranslation, UnitFilter } from "../../ports.ts";
 import type { TranslationUnit, UnitState } from "../../epub/index.ts";
 import type { TermEntry } from "../../glossary/types.ts";
+import type { CandidateReport } from "../../analyze/candidates.ts";
+import type { CodeIndex } from "../../analyze/code.ts";
 
 /** A `ProjectStore` that keeps everything in memory, for tests that must not touch a database. */
 export class FakeStore implements ProjectStore {
@@ -9,6 +11,8 @@ export class FakeStore implements ProjectStore {
   #units: TranslationUnit[];
   #translations = new Map<string, Map<string, StoredTranslation>>();
   #terms: TermEntry[] = [];
+  #candidateReports = new Map<string, CandidateReport>();
+  #codeIndexes = new Map<string, CodeIndex>();
 
   constructor(units: TranslationUnit[] = []) {
     this.#units = [...units];
@@ -45,6 +49,41 @@ export class FakeStore implements ProjectStore {
       const at = this.#terms.findIndex((held) => held.source === term.source);
       if (at === -1) this.#terms.push(term);
       else this.#terms[at] = term;
+    }
+  }
+
+  async candidateReport(cacheKey: string): Promise<CandidateReport | null> {
+    const report = this.#candidateReports.get(cacheKey);
+    return report === undefined ? null : structuredClone(report);
+  }
+
+  async putCandidateReport(cacheKey: string, report: CandidateReport): Promise<void> {
+    this.#candidateReports.set(cacheKey, structuredClone(report));
+  }
+
+  async codeIndex(sourceHash: string): Promise<CodeIndex | null> {
+    const index = this.#codeIndexes.get(sourceHash);
+    return index === undefined ? null : structuredClone(index);
+  }
+
+  async commitCodeIndex(index: CodeIndex): Promise<void> {
+    const held = new Set(this.#units.map((unit) => unit.id));
+    const missing = [...index.marked, ...index.freed].find((unitId) => !held.has(unitId));
+    if (missing !== undefined) throw new Error(`unit not found: ${missing}`);
+
+    for (const unitId of index.marked) {
+      await this.putUnitState(unitId, "maybe-code", "model-code-suspected");
+    }
+    for (const unitId of index.freed) {
+      await this.putUnitState(unitId, "translate");
+    }
+    this.#codeIndexes.set(index.sourceHash, structuredClone(index));
+    if (index.abstained > 0) {
+      this.events.push({
+        code: "code-index-abstained",
+        severity: "degradation",
+        payload: { batches: index.abstained },
+      });
     }
   }
 

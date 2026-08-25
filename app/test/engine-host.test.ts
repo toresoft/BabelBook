@@ -99,6 +99,31 @@ describe("store proxy", () => {
     expect(await store.terms()).toEqual([{ source: "Rivendell", rule: "dnt", origin: "manual" }]);
     expect(sent).toEqual([{ type: "store-result", id: 3, ok: true, value: undefined }]);
   });
+
+  // Production break: new durable phase methods are omitted from the RPC allowlist/switch.
+  it("carries candidate reports and code checkpoints over the store proxy", async () => {
+    const store = new FakeStore([{ id: "u1", kind: "block", doc: "c1", ordinal: 1,
+      range: [0, 1], source: "x", raw: "x", state: "translate" }]);
+    const sent: unknown[] = [];
+    const proxy = makeStoreProxy(store, (message) => sent.push(message));
+    const report = { candidates: [], open: [], discarded: 0, abstained: false };
+
+    await proxy.handle({ type: "store", id: 20, method: "putCandidateReport", args: ["k1", report] });
+    await proxy.handle({ type: "store", id: 21, method: "candidateReport", args: ["k1"] });
+    await proxy.handle({ type: "store", id: 22, method: "commitCodeIndex", args: [{
+      marked: [], freed: [], abstained: 0, sourceHash: "k1",
+    }] });
+    await proxy.handle({ type: "store", id: 23, method: "codeIndex", args: ["k1"] });
+
+    expect(sent).toEqual([
+      { type: "store-result", id: 20, ok: true, value: undefined },
+      { type: "store-result", id: 21, ok: true, value: report },
+      { type: "store-result", id: 22, ok: true, value: undefined },
+      { type: "store-result", id: 23, ok: true, value: {
+        marked: [], freed: [], abstained: 0, sourceHash: "k1",
+      } },
+    ]);
+  });
 });
 
 describe("store client", () => {
@@ -156,6 +181,28 @@ describe("store client", () => {
     store.close();
 
     await expect(pending).rejects.toMatchObject({ code: "STORE_DISCONNECTED" });
+  });
+
+  // Production break: the client implements the interface locally but emits the wrong RPC method or arguments.
+  it("sends candidate and code-index durability calls through the typed RPC client", async () => {
+    const port = new TestPort();
+    const store = new StoreClient(port);
+    const report = store.candidateReport("k1");
+    const [readRequest] = port.sent as StoreRequest[];
+    expect(readRequest).toMatchObject({ method: "candidateReport", args: ["k1"] });
+    port.send({
+      type: "store-result", id: readRequest.id, ok: true,
+      value: { candidates: [], open: [], discarded: 0, abstained: false },
+    });
+    await expect(report).resolves.toEqual({ candidates: [], open: [], discarded: 0, abstained: false });
+
+    port.sent.length = 0;
+    const checkpoint = { marked: [], freed: [], abstained: 0, sourceHash: "k1" };
+    const write = store.commitCodeIndex(checkpoint);
+    const [writeRequest] = port.sent as StoreRequest[];
+    expect(writeRequest).toMatchObject({ method: "commitCodeIndex", args: [checkpoint] });
+    port.send({ type: "store-result", id: writeRequest.id, ok: true, value: undefined });
+    await expect(write).resolves.toBeUndefined();
   });
 });
 

@@ -38,6 +38,10 @@ export type StoreMethod =
   | "putTranslation"
   | "terms"
   | "putTerms"
+  | "candidateReport"
+  | "putCandidateReport"
+  | "codeIndex"
+  | "commitCodeIndex"
   | "event";
 
 export interface StoreRequest {

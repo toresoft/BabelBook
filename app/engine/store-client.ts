@@ -1,6 +1,8 @@
 import type { ProjectStore, RunEvent, StoredTranslation, UnitFilter } from "../../core/ports.ts";
 import type { TermEntry } from "../../core/glossary/types.ts";
 import type { TranslationUnit, UnitState } from "../../core/epub/index.ts";
+import type { CandidateReport } from "../../core/analyze/candidates.ts";
+import type { CodeIndex } from "../../core/analyze/code.ts";
 import type { MessagePortLike, StoreMethod, StoreRequest, StoreResponse } from "../shared/run.ts";
 
 export type { MessagePortLike } from "../shared/run.ts";
@@ -61,6 +63,22 @@ export class StoreClient implements ProjectStore {
 
   async putTerms(terms: TermEntry[]): Promise<void> {
     await this.#call("putTerms", [terms]);
+  }
+
+  async candidateReport(cacheKey: string): Promise<CandidateReport | null> {
+    return this.#call("candidateReport", [cacheKey]) as Promise<CandidateReport | null>;
+  }
+
+  async putCandidateReport(cacheKey: string, report: CandidateReport): Promise<void> {
+    await this.#call("putCandidateReport", [cacheKey, report]);
+  }
+
+  async codeIndex(sourceHash: string): Promise<CodeIndex | null> {
+    return this.#call("codeIndex", [sourceHash]) as Promise<CodeIndex | null>;
+  }
+
+  async commitCodeIndex(index: CodeIndex): Promise<void> {
+    await this.#call("commitCodeIndex", [index]);
   }
 
   async event(event: RunEvent): Promise<void> {

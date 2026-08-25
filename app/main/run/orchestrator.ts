@@ -89,14 +89,18 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
 
   if (!actor.getSnapshot().context.hasApprovedTerms) {
     emit({ type: "phase", phase: "candidates" });
-    const unitsBeforeTerms = await store.units();
-    const report = await extractCandidates({
-      units: unitsBeforeTerms,
-      backend,
-      sourceLanguage: config.sourceLanguage,
-      targetLanguage: config.targetLanguage,
-      signal,
-    });
+    let report = await store.candidateReport(config.cacheKey);
+    if (report === null) {
+      const unitsBeforeTerms = await store.units();
+      report = await extractCandidates({
+        units: unitsBeforeTerms,
+        backend,
+        sourceLanguage: config.sourceLanguage,
+        targetLanguage: config.targetLanguage,
+        signal,
+      });
+      await store.putCandidateReport(config.cacheKey, report);
+    }
     if (config.autoAcceptTerms && report.candidates.length > 0) {
       await store.putTerms(report.candidates.map((candidate) => ({
         source: candidate.source,
@@ -118,18 +122,16 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
 
   if (!actor.getSnapshot().context.hasReviewedExclusions) {
     emit({ type: "phase", phase: "code-index" });
-    const unitsBeforeCode = await store.units();
-    const code = await indexCodeBlocks({
-      units: unitsBeforeCode,
-      backend,
-      sourceHash: config.cacheKey,
-      signal,
-    });
-    for (const unitId of code.marked) {
-      await store.putUnitState(unitId, "maybe-code", "model-code-suspected");
-    }
-    for (const unitId of code.freed) {
-      await store.putUnitState(unitId, "translate");
+    let code = await store.codeIndex(config.cacheKey);
+    if (code === null) {
+      const unitsBeforeCode = await store.units();
+      code = await indexCodeBlocks({
+        units: unitsBeforeCode,
+        backend,
+        sourceHash: config.cacheKey,
+        signal,
+      });
+      await store.commitCodeIndex(code);
     }
     signal.throwIfAborted();
     actor.send({ type: "CODE_INDEXED" });

@@ -9,6 +9,8 @@
 
 import type { TranslationUnit, UnitState } from "./epub/index.ts";
 import type { TermEntry } from "./glossary/types.ts";
+import type { CandidateReport } from "./analyze/candidates.ts";
+import type { CodeIndex } from "./analyze/code.ts";
 
 export interface StoredTranslation {
   unitId: string;
@@ -45,6 +47,11 @@ export interface ProjectStore {
   putTranslation(translation: StoredTranslation): Promise<void>;
   terms(): Promise<TermEntry[]>;
   putTerms(terms: TermEntry[]): Promise<void>;
+  candidateReport(cacheKey: string): Promise<CandidateReport | null>;
+  putCandidateReport(cacheKey: string, report: CandidateReport): Promise<void>;
+  codeIndex(sourceHash: string): Promise<CodeIndex | null>;
+  /** Atomically applies unit decisions, stores the checkpoint, and declares abstention. */
+  commitCodeIndex(index: CodeIndex): Promise<void>;
   event(event: RunEvent): Promise<void>;
 }
 
