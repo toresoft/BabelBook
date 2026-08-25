@@ -136,6 +136,9 @@ function toTree(events: ScanEvent[]): Node[] {
       push(node);
       if (!node.selfClosing) stack.push(node);
     } else if (event.kind === "closetag") {
+      // A self-closing element reports a close of its own; it was never pushed,
+      // and popping here would close its parent instead.
+      if (event.selfClosing === true) continue;
       const node = stack.pop();
       if (node) {
         node.closeStart = event.rawStart;
@@ -177,8 +180,34 @@ interface Frame {
   translateNo: boolean;
 }
 
+/**
+ * The line is metadata against content: `alt`, `aria-label`, navigation and
+ * NCX labels and SVG text are content and get translated; the package's
+ * titles, descriptions and subjects are metadata and stay untouched.
+ */
+export const TRANSLATABLE_ATTRIBUTES: Record<string, string[]> = {
+  "*": ["title", "aria-label"],
+  img: ["alt"],
+  area: ["alt"],
+  input: ["alt", "placeholder"],
+};
+
+function translatableAttributes(name: string): string[] {
+  return [...TRANSLATABLE_ATTRIBUTES["*"], ...(TRANSLATABLE_ATTRIBUTES[name] ?? [])];
+}
+
+/** An attribute value waiting for the unit id it will be given. */
+interface PendingAttr {
+  slot: PlaceholderAttr;
+  range: [number, number];
+  value: string;
+}
+
 interface Content {
   source: string;
+  placeholders: Placeholder[];
+  pending: PendingAttr[];
+  hasText: boolean;
   reliable: boolean;
   supported: boolean;
 }
@@ -220,24 +249,87 @@ class Extractor {
     return { id: `${this.input.doc}#${this.ordinal}`, ordinal: this.ordinal };
   }
 
-  content(children: Node[]): Content {
-    let source = "";
-    let reliable = true;
-    let supported = true;
+  /**
+   * Masks every inline element as a numbered placeholder. The markers use
+   * digits only — `<0>`, `</0>`, `<0/>` — so they cannot collide with real
+   * markup, and they are numbered in the order the elements open.
+   */
+  content(children: Node[], into?: Content): Content {
+    const out: Content = into ?? {
+      source: "",
+      placeholders: [],
+      pending: [],
+      hasText: false,
+      reliable: true,
+      supported: true,
+    };
+
     for (const child of children) {
       if (child.kind === "text") {
-        source += child.text;
-        if (!child.reliable) reliable = false;
-      } else if (child.kind === "element") {
-        const inner = this.content(child.children);
-        source += inner.source;
-        if (!child.reliable || !inner.reliable) reliable = false;
-        if (!inner.supported) supported = false;
-      } else {
-        supported = false;
+        out.source += child.text;
+        if (child.text.trim().length > 0) out.hasText = true;
+        if (!child.reliable) out.reliable = false;
+        continue;
       }
+      if (child.kind !== "element") {
+        out.supported = false;
+        continue;
+      }
+      if (!child.reliable) out.reliable = false;
+
+      const index = out.placeholders.length;
+      const open = this.input.source.slice(child.openStart, child.openEnd);
+      const opaque = OPAQUE.has(child.name);
+      const placeholder: Placeholder = {
+        index,
+        open,
+        close: child.selfClosing ? "" : this.input.source.slice(child.closeStart, child.closeEnd),
+        opaque,
+      };
+      out.placeholders.push(placeholder);
+
+      for (const name of translatableAttributes(child.name)) {
+        const attr = child.attrs.find((a) => a.name === name);
+        if (!attr || attr.value.trim().length === 0) continue;
+        const slot: PlaceholderAttr = { unitId: "", start: attr.start, end: attr.end };
+        (placeholder.attrs ??= []).push(slot);
+        out.pending.push({
+          slot,
+          range: [child.openStart + attr.start, child.openStart + attr.end],
+          value: attr.value,
+        });
+      }
+
+      if (child.selfClosing) {
+        out.source += `<${index}/>`;
+        continue;
+      }
+      if (opaque) {
+        // Two copies. `content` carries the markers of anything nested inside;
+        // `rawContent` is what the source wrote, and re-emitting it is what
+        // keeps `&#8230;` from coming back as three literal dots.
+        const inner = this.content(child.children, {
+          source: "",
+          placeholders: out.placeholders,
+          pending: out.pending,
+          hasText: false,
+          reliable: out.reliable,
+          supported: out.supported,
+        });
+        placeholder.content = inner.source;
+        placeholder.rawContent = this.input.source.slice(child.openEnd, child.closeStart);
+        out.reliable = inner.reliable;
+        out.supported = inner.supported;
+        if (inner.hasText) out.hasText = true;
+        out.source += `<${index}></${index}>`;
+        continue;
+      }
+
+      out.source += `<${index}>`;
+      this.content(child.children, out);
+      out.source += `</${index}>`;
     }
-    return { source, reliable, supported };
+    return out;
   }
 
   stateOf(
@@ -267,7 +359,8 @@ class Extractor {
     frame: Frame,
   ): void {
     const content = this.content(children);
-    if (content.source.trim().length === 0) return;
+    if (!content.hasText && content.pending.length === 0) return;
+
     const { id, ordinal } = this.nextId();
     const { state, reason } = this.stateOf(node, frame, content);
     this.units.push({
@@ -280,7 +373,27 @@ class Extractor {
       raw: this.input.source.slice(range[0], range[1]),
       state,
       ...(reason === undefined ? {} : { reason }),
+      placeholders: content.placeholders,
     });
+
+    // The attribute units come after the block that owns them, so an id is
+    // never referenced before it exists.
+    for (const attr of content.pending) {
+      const next = this.nextId();
+      attr.slot.unitId = next.id;
+      this.units.push({
+        id: next.id,
+        kind: "attribute",
+        doc: this.input.doc,
+        ordinal: next.ordinal,
+        range: attr.range,
+        source: attr.value,
+        raw: this.input.source.slice(attr.range[0], attr.range[1]),
+        state: state === "translate" ? "translate" : state,
+        ...(reason === undefined ? {} : { reason }),
+        owner: id,
+      });
+    }
   }
 
   /**
