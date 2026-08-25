@@ -4,6 +4,7 @@ import {
   type Events, type Handlers, type Settings,
 } from "../shared/channels.ts";
 import { createProject } from "./projects/create.ts";
+import { listProjects } from "./projects/query.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
 export interface IpcDeps {
@@ -51,6 +52,8 @@ function workspaceOf(db: DatabaseSync, id: string): Workspace {
  */
 export function buildHandlers(deps: IpcDeps): Handlers {
   return {
+    "projects.list": async ({ filter }) => listProjects(deps.db, filter),
+
     "project.chooseEpub": async () => deps.chooseEpub(),
 
     "project.create": async (request) => {

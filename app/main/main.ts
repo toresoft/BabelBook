@@ -59,7 +59,7 @@ app.whenReady().then(() => {
     },
   });
 
-  if (devServerUrl === undefined) handleRendererProtocol(RENDERER_ROOT);
+  handleRendererProtocol(devServerUrl === undefined ? RENDERER_ROOT : "", join(userDataDir, "projects"));
   openWindow();
 
   app.on("activate", () => {

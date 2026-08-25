@@ -1,6 +1,6 @@
-import type { CreatedProject, CreateProjectRequest, Settings } from "./dto.ts";
+import type { CreatedProject, CreateProjectRequest, ProjectSummary, Settings } from "./dto.ts";
 
-export type { CreatedProject, CreateProjectRequest, Settings } from "./dto.ts";
+export type { CreatedProject, CreateProjectRequest, ProjectSummary, Settings } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
   uiLanguage: "it",
@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
  * silently does nothing.
  */
 export interface Invocations {
+  "projects.list": { req: { filter?: string }; res: ProjectSummary[] };
   "project.chooseEpub": { req: undefined; res: { path: string; name: string } | null };
   "project.create": { req: CreateProjectRequest; res: CreatedProject };
   "project.delete": { req: { id: string; keepOutput?: string }; res: void };
@@ -35,7 +36,7 @@ export interface Events {
 }
 
 export const INVOCATIONS = [
-  "project.chooseEpub", "project.create", "project.delete",
+  "projects.list", "project.chooseEpub", "project.create", "project.delete",
   "settings.get", "settings.set",
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 

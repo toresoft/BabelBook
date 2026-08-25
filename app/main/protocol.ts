@@ -14,6 +14,19 @@ export const RENDERER_SCHEME = "app";
 export const RENDERER_HOST = "bundle";
 export const RENDERER_ORIGIN = `${RENDERER_SCHEME}://${RENDERER_HOST}`;
 
+/**
+ * Covers are served from a second host on the same scheme.
+ *
+ * The window cannot read files, and a cover is the one project artefact it has
+ * to show. A separate host keeps them out of the renderer's own tree, so a
+ * book called `index.html` cannot shadow the application.
+ */
+export const COVER_HOST = "cover";
+
+export function coverUrl(projectId: string, file: string): string {
+  return `${RENDERER_SCHEME}://${COVER_HOST}/${encodeURIComponent(projectId)}/${encodeURIComponent(file)}`;
+}
+
 /** Must run before the app is ready, or the privileges are ignored. */
 export function registerRendererScheme(): void {
   protocol.registerSchemesAsPrivileged([
@@ -43,11 +56,19 @@ export function resolveWithinRoot(root: string, pathname: string): string | null
 }
 
 /** Serves the built renderer over the app:// scheme. Call once, after ready. */
-export function handleRendererProtocol(rendererRoot: string): void {
+export function handleRendererProtocol(rendererRoot: string, projectsRoot?: string): void {
   const indexPath = join(rendererRoot, "index.html");
 
   protocol.handle(RENDERER_SCHEME, async (request) => {
-    const { pathname } = new URL(request.url);
+    const { host, pathname } = new URL(request.url);
+
+    if (host === COVER_HOST) {
+      if (projectsRoot === undefined) return new Response("Not found", { status: 404 });
+      const cover = resolveWithinRoot(projectsRoot, pathname);
+      if (cover === null || !existsSync(cover)) return new Response("Not found", { status: 404 });
+      return net.fetch(pathToFileURL(cover).toString());
+    }
+
     const resolved = resolveWithinRoot(rendererRoot, pathname === "/" ? "/index.html" : pathname);
     if (resolved === null) return new Response("Forbidden", { status: 403 });
 

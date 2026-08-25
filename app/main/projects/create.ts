@@ -149,13 +149,14 @@ export async function createProject(
         INSERT INTO project (
           id, filename, title, author, workspace_path, source_sha256, created_at,
           description, source_language, target_language, provider_id, model_id,
-          state, layout, has_overlays
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          state, layout, has_overlays, cover_file
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).run(
         projectId, input.epubPath.split("/").pop() ?? "book.epub", pkg.title, pkg.author ?? null,
         workspace.root, sha256, new Date().toISOString(), input.description ?? null,
         sourceLanguage, input.targetLanguage, input.providerId ?? null, input.modelId ?? null,
         sourceLanguage === null ? "needs-language" : "ready", layout.book, overlays ? 1 : 0,
+        coverPath === null ? null : coverPath.split("/").pop()!,
       );
 
       const insertDocument = db.prepare(

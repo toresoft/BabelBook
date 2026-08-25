@@ -1,0 +1,19 @@
+.library { padding: 1.5rem; }
+.library__bar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.library__bar h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
+.library__search { flex: 1; max-width: 22rem; padding: 0.45rem 0.7rem; }
+.library__empty { color: #6b7280; }
+.library__grid {
+  display: grid; gap: 1.25rem; list-style: none; margin: 0; padding: 0;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+}
+.tile__cover { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
+.tile__cover--none {
+  display: grid; place-items: center; background: #e5e7eb; color: #6b7280; font-size: 0.8rem;
+}
+.tile__title { font-size: 0.95rem; margin: 0.6rem 0 0.2rem; }
+.tile__meta { display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.75rem; color: #6b7280; margin: 0; }
+.tile__layout { color: #b45309; }
+.tile__progress { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 0.5rem; }
+.tile__bar { display: block; height: 100%; background: #2563eb; border-radius: 2px; }
+.tile__counts { font-size: 0.72rem; color: #6b7280; margin: 0.3rem 0 0; }

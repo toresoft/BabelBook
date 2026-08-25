@@ -67,6 +67,14 @@ describe("catalogues", () => {
       }
     }
 
-    expect([...used].filter((key) => !defined.has(key))).toEqual([]);
+    // A key ending in a dot is a prefix the template completes at runtime —
+    // `t('state.' + project.state)`. The exact key cannot be known here, but
+    // the namespace can: a prefix nothing is defined under is a typo that
+    // would render as raw text for every value it takes.
+    const missing = [...used].filter((key) => key.endsWith(".")
+      ? ![...defined].some((known) => known.startsWith(key))
+      : !defined.has(key));
+
+    expect(missing).toEqual([]);
   });
 });

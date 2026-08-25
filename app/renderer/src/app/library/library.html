@@ -1,0 +1,47 @@
+<section class="library" data-testid="library" *transloco="let t">
+  <header class="library__bar">
+    <h1>{{ t('app.library') }}</h1>
+    <input
+      class="library__search"
+      type="search"
+      data-testid="library-search"
+      [placeholder]="t('library.search')"
+      [ngModel]="filter()"
+      (ngModelChange)="onFilter($event)" />
+    <a class="library__new" data-testid="new-project" href="#/new">{{ t('library.newProject') }}</a>
+  </header>
+
+  @if (projects().length === 0 && !loading()) {
+    <p class="library__empty">{{ t('library.empty') }}</p>
+  }
+
+  <ul class="library__grid">
+    @for (project of projects(); track project.id) {
+      <li class="tile" [attr.data-testid]="'project-' + project.id">
+        @if (project.coverPath) {
+          <img class="tile__cover" [src]="project.coverPath" [alt]="project.title" />
+        } @else {
+          <div class="tile__cover tile__cover--none">{{ t('library.noCover') }}</div>
+        }
+
+        <h2 class="tile__title">{{ project.title }}</h2>
+        <p class="tile__meta">
+          <span>{{ project.sourceLanguage ?? '—' }} → {{ project.targetLanguage }}</span>
+          <span class="tile__state">{{ t('state.' + project.state) }}</span>
+          @if (project.layout !== 'reflowable') {
+            <span class="tile__layout" title="{{ t('layout.' + project.layout) }}">
+              {{ t('layout.' + project.layout) }}
+            </span>
+          }
+        </p>
+
+        <div class="tile__progress" role="progressbar" [attr.aria-valuenow]="percent(project)">
+          <span class="tile__bar" [style.width.%]="percent(project)"></span>
+        </div>
+        <p class="tile__counts">
+          {{ t('library.progress', { done: project.progress.done, total: project.progress.total }) }}
+        </p>
+      </li>
+    }
+  </ul>
+</section>
