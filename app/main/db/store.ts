@@ -126,12 +126,13 @@ export class SqliteProjectStore implements ProjectStore {
    */
   async terms(): Promise<TermEntry[]> {
     const rows = this.#db.prepare(`
-      SELECT source, target, rule, origin, note
+      SELECT source, target, rule, origin, sense, note
         FROM term
        WHERE project_id = ? AND approval_state = 'approved'
        ORDER BY source
     `).all(this.#projectId) as unknown as Array<{
-      source: string; target: string | null; rule: string; origin: string | null; note: string | null;
+      source: string; target: string | null; rule: string;
+      origin: string | null; sense: string | null; note: string | null;
     }>;
 
     return rows.map((row) => ({
@@ -139,6 +140,7 @@ export class SqliteProjectStore implements ProjectStore {
       ...(row.target === null ? {} : { target: row.target }),
       rule: row.rule as TermEntry["rule"],
       origin: (row.origin ?? "manual") as TermEntry["origin"],
+      ...(row.sense === null ? {} : { sense: row.sense }),
       ...(row.note === null ? {} : { note: row.note }),
     }));
   }
@@ -146,16 +148,16 @@ export class SqliteProjectStore implements ProjectStore {
   /** Terms handed through this port are the active ones, so they land approved. */
   async putTerms(terms: TermEntry[]): Promise<void> {
     const statement = this.#db.prepare(`
-      INSERT INTO term (id, project_id, source, target, rule, origin, approval_state, note)
-      VALUES (?, ?, ?, ?, ?, ?, 'approved', ?)
+      INSERT INTO term (id, project_id, source, target, rule, origin, approval_state, sense, note)
+      VALUES (?, ?, ?, ?, ?, ?, 'approved', ?, ?)
       ON CONFLICT (project_id, source) DO UPDATE
         SET target = excluded.target, rule = excluded.rule,
-            origin = excluded.origin, note = excluded.note,
+            origin = excluded.origin, sense = excluded.sense, note = excluded.note,
             approval_state = 'approved'
     `);
     for (const term of terms) {
       statement.run(randomUUID(), this.#projectId, term.source, term.target ?? null,
-        term.rule, term.origin, term.note ?? null);
+        term.rule, term.origin, term.sense ?? null, term.note ?? null);
     }
   }
 

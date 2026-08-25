@@ -293,7 +293,7 @@ fine il progetto è `ready`.
 4. **Analisi ed estrazione termini** — campionamento di blocchi indipendenti,
    sintesi del libro, voto a maggioranza sul glossario di dominio applicabile
    con astensione facile, estrazione dei candidati con la loro regola: `dnt`
-   (non tradurre) o `must` (resa obbligata). La descrizione scritta dall'utente
+   (non tradurre), `prefer` (resa consigliata) o `must` (resa obbligata). La descrizione scritta dall'utente
    entra in questo prompt e in quello di traduzione.
 5. **Gate termini** — il run si ferma. La UI mostra i candidati con il contesto,
    il glossario proposto e la possibilità di correggerlo, e permette di
@@ -400,7 +400,7 @@ minima e riporta l'esito.
 ### Glossari
 
 Nome, descrizione, coppia di lingue, versione, e termini con sorgente, resa,
-regola e nota. La descrizione conta: è ciò che il voto di dominio legge per
+regola, senso e nota. La descrizione conta: è ciò che il voto di dominio legge per
 decidere se il glossario si applica.
 
 Import ed export in markdown con frontmatter, nello stesso formato del

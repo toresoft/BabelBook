@@ -22,7 +22,7 @@ export class GlossaryError extends Error {
 }
 
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---/;
-const RULES = new Set(["dnt", "must"]);
+const RULES = new Set(["dnt", "prefer", "must"]);
 
 /**
  * A cell may contain a pipe, escaped. Splitting on every pipe would cut a note
@@ -187,8 +187,10 @@ export function parseGlossary(markdown: string): Glossary {
     }
 
     const target = at("target");
-    if (rule === "must" && target === "") {
-      throw new GlossaryError(`"${source}" is a must rule with no rendering`, "MISSING_TARGET");
+    // `dnt` needs no rendering — leaving the term alone is the rendering. The
+    // other two are about how to render it, so an empty target says nothing.
+    if (rule !== "dnt" && target === "") {
+      throw new GlossaryError(`"${source}" is a ${rule} rule with no rendering`, "MISSING_TARGET");
     }
 
     const sense = at("sense");

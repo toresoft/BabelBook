@@ -9,7 +9,13 @@ export interface TermEntry {
   source: string;
   /** Absent for a `dnt` rule: there is nothing to render it as. */
   target?: string;
-  rule: "dnt" | "must";
+  /**
+   * `dnt` leaves the term alone, `must` fixes its rendering, `prefer`
+   * recommends one. The three are not a scale: disregarding a preference is a
+   * choice the context can justify, while disregarding a `must` is a defect,
+   * and the adherence report counts them apart for that reason.
+   */
+  rule: "dnt" | "prefer" | "must";
   /**
    * Which sense of the word this rule is about.
    *

@@ -120,8 +120,21 @@ license: CC-BY-4.0
     });
   });
 
+  it("reads a preferred rendering as its own rule, not as an obligation", () => {
+    const withPrefer = real.replace(
+      "| standalone | standalone | dnt | the component flag | |",
+      "| component | componente | prefer | an Angular component | |");
+    const [, component] = parseGlossary(withPrefer).terms;
+    expect(component).toMatchObject({ source: "component", target: "componente", rule: "prefer" });
+  });
+
   it("names the rule it does not know instead of guessing at it", () => {
-    expect(() => parseGlossary(real.replace("| dnt | the component flag", "| prefer | the component flag")))
-      .toThrow(/UNKNOWN_RULE.*prefer/s);
+    expect(() => parseGlossary(real.replace("| dnt | the component flag", "| maybe | the component flag")))
+      .toThrow(/UNKNOWN_RULE.*maybe/s);
+  });
+
+  it("refuses a preferred rendering with nothing to render as", () => {
+    expect(() => parseGlossary(real.replace("| standalone | standalone | dnt |", "| standalone |  | prefer |")))
+      .toThrow(/MISSING_TARGET/);
   });
 });
