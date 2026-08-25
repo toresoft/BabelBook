@@ -1867,3 +1867,42 @@ Il piano 1 è completo quando:
 ## Verifica manuale consigliata a fine piano
 
 Prima di passare al piano 2, provare l'identità su un EPUB vero — per esempio uno dei libri già presenti in `~/Development/OWN/Translator/`. Estrazione più riempimento nullo deve restituire ogni documento identico. Nel prototipo questo esercizio, su tre libri reali, ha trovato due difetti veri che nessuna fixture generata aveva mostrato: le entità HTML (`&copy;`, `&eacute;`) che saxes rifiuta nei file EPUB 2, e il confronto delle lingue come stringhe esatte, che lascia intatto un documento `en` sotto un package `en-us`.
+
+---
+
+## Esito dell'esecuzione (2026-08-25)
+
+Il piano è stato eseguito per intero: 16 commit, 83 test verdi, typecheck pulito. Quanto segue è ciò che il piano diceva e la realtà ha smentito. Vale come storia, non come istruzione: **dove il piano e il codice divergono, vince il codice**.
+
+### Il piano sbagliava
+
+- **`yauzl-promise.open()` pretende un percorso, non un Buffer.** Un archivio in memoria passa da `fromBuffer()`. Il test del Task 2 chiamava `open(bytes)` e lanciava. (`validateFilename` invece era come diceva il piano, non come dice il README del pacchetto.)
+- **`yazl` rifiuta un nome di entry che esce dall'archivio**, quindi la fixture `../escape.txt` del Task 3 non è costruibile attraverso di lui. Il generatore scrive un alias della stessa lunghezza in byte e corregge l'archivio finito, asserendo esattamente due sostituzioni: intestazione locale e directory centrale.
+- **I due test di `findJar` del Task 16 si contraddicevano**: entrambi nominavano un jar inesistente, uno aspettandosi il percorso e l'altro `null`.
+- **Due test leggevano file relativamente alla directory di lavoro**, che cambia tra `npm test` e `npx vitest`. Ora risolvono dal file di test.
+- **`byDocument` del Task 12** è indicizzato per percorso nell'archivio, non per href del manifest — come già faceva il test del piano stesso.
+
+### Interfacce che non hanno retto
+
+- `SkeletonError` estende `EpubError` e porta un `code`: altrimenti sarebbe l'unico errore del layer di cui l'interfaccia non può parlare.
+- `EpubModel` ha guadagnato `documents` e `identityMetadata`: I12, I17, I18 e I20 devono rileggere i documenti, e `CheckInput` non offriva altra via.
+- **I17 confronta il conteggio degli elementi per documento**, non gli intervalli delle unità: gli intervalli sono offset nel documento *prima*, e ogni unità riscritta sposta ciò che segue.
+- **I6 è differenziale**: un link già rotto in partenza non si imputa alla traduzione.
+- `resolveHref` è entrato nella superficie pubblica (vedi sotto).
+
+### Tre rivendicazioni dei sabotaggi erano irraggiungibili
+
+`renumber-ids`→I6, `drop-attributed-tag`→I5 e `swap-block-range`→I17 non potevano scattare con la fixture del piano. Le rivendicazioni sono state ristrette **e il test rafforzato**: da "almeno una invariante rivendicata fallisce" a **"ognuna deve fallire"**. Una rivendicazione che il corpus non può raggiungere è un desiderio, non un controllo. Il rafforzamento ha scoperto che I18 cercava una sottostringa e quindi non vedeva `<code>ls</code>` diventare `<code>tools</code>`.
+
+### Due bug veri
+
+- **Elementi vuoti**: `saxes` emette `closetag` per `<br/>` alla stessa posizione dell'apertura. Chiudere lo stack lì chiudeva il **genitore**, e ogni fratello dopo un `<br/>` usciva dall'unità. L'ha preso un test del piano.
+- **Href percent-encoded**: gli href del manifest sono URL, non nomi di file. "The Dig" scrive `The%20Dig%20-01.htm` per una entry salvata con spazi letterali, e leggere l'href come percorso perdeva **tutti i 24 capitoli, in silenzio**. L'ha trovato la verifica manuale su libri veri che il piano raccomanda in fondo, non una fixture generata. È la ragione per cui quella verifica c'era.
+
+### Verifica su libri reali
+
+Quattro EPUB: **137 documenti, 20.778 unità, ogni documento restituito byte per byte** da un riempimento vuoto. Le invarianti hanno inoltre segnalato due incoerenze vere **dei libri stessi** — un documento di navigazione che dichiara `en` sotto un package `it`, e un package che dichiara `UND` — cioè I19 che fa esattamente il lavoro per cui è stata scritta.
+
+### Un limite noto, non risolto
+
+**Un attributo traducibile sull'elemento di blocco stesso** (`<p title="…">`) non viene tradotto: le unità attributo si estraggono solo dai segnaposto inline, e un attributo del blocco sta fuori dall'intervallo dell'unità. La spec lo vorrebbe tradotto. Va affrontato prima che l'applicazione traduca libri veri.

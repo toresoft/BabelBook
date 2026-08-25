@@ -25,6 +25,17 @@ Valgono le stesse del piano 1, che qui si ripetono perché chi esegue questo pia
 - **Nessuna chiamata di rete nei test.** Il backend è sempre finto.
 - **Commit a ogni task.**
 
+## Fatti accertati eseguendo il piano 1
+
+Non sono opinioni: sono stati misurati, e alcuni contraddicono quello che il piano 1 scriveva.
+
+- **Semantica delle posizioni di `saxes`, misurata.** Il testo finisce a `position - 1`, tranne a fine documento dove nessun `<` è stato consumato; un **commento è riportato un carattere prima**, fermo sul proprio `>` (`rawEnd = position + 1`); CDATA, istruzioni di elaborazione e tag finiscono esattamente a `position`.
+- **Gli href del manifest sono URL, non percorsi.** Si risolvono solo con `resolveHref(base, href)`, che restituisce `{ path, fragment }` e decodifica il percent-encoding con tolleranza. Leggere un href come nome di file perde interi capitoli in silenzio: è successo su un libro vero.
+- **Esiste uno stato che il piano 1 non enumerava**: un blocco foglia che contiene un commento, CDATA o un'istruzione di elaborazione diventa `uncomposable` con `reason: "unsupported-content"`.
+- **`extract` forma una sequenza di testo nudo solo dentro un contenitore di blocco.** Una sequenza formata dentro `html` inghiottirebbe `<head>`, e il titolo del documento è metadato.
+- **`writeEpub` usa un mtime fisso**, così entry identiche producono byte identici.
+- **Un attributo traducibile sull'elemento di blocco stesso** (`<p title="…">`) oggi **non** viene tradotto: le unità attributo nascono solo dai segnaposto inline. È un limite noto del piano 1, non una scelta.
+
 ## Struttura dei file
 
 ```
