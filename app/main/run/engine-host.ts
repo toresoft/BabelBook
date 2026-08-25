@@ -64,7 +64,9 @@ interface ElectronRuntime {
 function electronDeps(): Pick<EngineHostDeps, "enginePath" | "fork" | "makeChannel"> {
   const electron = require("electron") as ElectronRuntime;
   return {
-    enginePath: join(import.meta.dirname, "..", "..", "engine", "main.js"),
+    // The bundle flattens the source tree: this file lands in dist/main, next
+    // to dist/engine — one level up, not the two the source layout suggests.
+    enginePath: join(import.meta.dirname, "..", "engine", "main.js"),
     fork: (path) => {
       const child = electron.utilityProcess.fork(path);
       return {

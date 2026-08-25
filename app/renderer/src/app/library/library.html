@@ -41,6 +41,35 @@
         <p class="tile__counts">
           {{ t('library.progress', { done: project.progress.done, total: project.progress.total }) }}
         </p>
+
+        <div class="tile__actions">
+          @switch (project.state) {
+            @case ("ready") {
+              <button class="tile__run" data-testid="start" (click)="onStart(project)">
+                {{ t('library.translate') }}
+              </button>
+            }
+            @case ("running") {
+              <button class="tile__run" data-testid="pause" (click)="onPause(project)">
+                {{ t('library.pause') }}
+              </button>
+            }
+            @case ("paused") {
+              <button class="tile__run" data-testid="resume" (click)="onStart(project)">
+                {{ t('library.resume') }}
+              </button>
+            }
+            @case ("composing") {
+              <span class="tile__busy">{{ t('state.composing') }}</span>
+            }
+            @case ("waiting-terms") {
+              <span class="tile__busy">{{ t('state.waiting-terms') }}</span>
+            }
+            @case ("waiting-code") {
+              <span class="tile__busy">{{ t('state.waiting-code') }}</span>
+            }
+          }
+        </div>
       </li>
     }
   </ul>

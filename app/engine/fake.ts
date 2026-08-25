@@ -1,3 +1,4 @@
+import { appendFileSync } from "node:fs";
 import type { LlmBackend, LlmCall, LlmResult } from "../../core/ports.ts";
 
 /**
@@ -17,8 +18,27 @@ import type { LlmBackend, LlmCall, LlmResult } from "../../core/ports.ts";
 /** Prepended to every fake translation, and to nothing else. */
 export const FAKE_MARKER = "[FAKE]";
 
-function translationAnswer(lines: string[], headerAt: number): string {
+/**
+ * Test knobs, read here and nowhere else.
+ *
+ * `BABELBOOK_FAKE_DELAY_MS` paces the calls so a test can pause a run while it
+ * is genuinely in flight; `BABELBOOK_FAKE_LOG` names a file that receives one
+ * JSON line per call with the ids it was asked for, so a test can prove the
+ * resume asked for nothing it already had. Without them the fake is instant
+ * and silent, which is what every other consumer wants.
+ */
+const DELAY_MS = Number(process.env["BABELBOOK_FAKE_DELAY_MS"] ?? "0");
+const CALL_LOG = process.env["BABELBOOK_FAKE_LOG"];
+
+interface Response {
+  text: string;
+  ids: string[];
+  kind: "units" | "verdicts" | "terms" | "sample";
+}
+
+function translationAnswer(lines: string[], headerAt: number): Response {
   const out: string[] = [];
+  const ids: string[] = [];
   let current: string | null = null;
   const collected: string[] = [];
 
@@ -32,6 +52,7 @@ function translationAnswer(lines: string[], headerAt: number): string {
     if (marker !== null) {
       flush();
       current = marker[1]!;
+      ids.push(current);
       collected.length = 0;
       continue;
     }
@@ -40,10 +61,10 @@ function translationAnswer(lines: string[], headerAt: number): string {
   flush();
 
   const declared = Number(/^UNITS\s+(\d+)$/.exec(lines[headerAt]!.trim())![1]);
-  return [`UNITS ${declared}`, ...out, "END"].join("\n");
+  return { text: [`UNITS ${declared}`, ...out, "END"].join("\n"), ids, kind: "units" };
 }
 
-function verdictAnswer(lines: string[], headerAt: number): string {
+function verdictAnswer(lines: string[], headerAt: number): Response {
   const ids: string[] = [];
   for (const line of lines.slice(headerAt + 1)) {
     if (line.trim() === "END") break;
@@ -52,29 +73,40 @@ function verdictAnswer(lines: string[], headerAt: number): string {
   }
   // Everything is prose: the run has nothing to exclude and no degradation to
   // declare, which is what keeps the expected end state assertable.
-  return [`VERDICTS ${ids.length}`, ...ids.map((id) => `[v:${id}] prose`), "END"].join("\n");
+  return {
+    text: [`VERDICTS ${ids.length}`, ...ids.map((id) => `[v:${id}] prose`), "END"].join("\n"),
+    ids,
+    kind: "verdicts",
+  };
 }
 
-function answer(prompt: string): string {
+function respond(prompt: string): Response {
   const lines = prompt.split(/\r?\n/);
 
   const verdictsAt = lines.findIndex((line) => /^VERDICTS\s+\d+$/.test(line.trim()));
   if (verdictsAt !== -1) return verdictAnswer(lines, verdictsAt);
 
   // Term extraction: the instruction block names the format verbatim.
-  if (prompt.includes("TERMS <count>")) return "TERMS 0\nEND";
+  if (prompt.includes("TERMS <count>")) return { text: "TERMS 0\nEND", ids: [], kind: "terms" };
 
   const unitsAt = lines.findIndex((line) => /^UNITS\s+\d+$/.test(line.trim()));
   if (unitsAt !== -1) return translationAnswer(lines, unitsAt);
 
   // Sampled prose for the book summary: a single line is all the caller keeps.
-  return "A book being translated for a test.";
+  return { text: "A book being translated for a test.", ids: [], kind: "sample" };
+}
+
+function logCall(kind: "units" | "verdicts" | "terms" | "sample", ids: string[]): void {
+  if (CALL_LOG === undefined) return;
+  appendFileSync(CALL_LOG, `${JSON.stringify({ kind, ids })}\n`);
 }
 
 export function fakeBackend(): LlmBackend {
   return {
     async call(input: LlmCall): Promise<LlmResult> {
-      const text = answer(input.prompt);
+      const { text, ids, kind } = respond(input.prompt);
+      logCall(kind, ids);
+      if (DELAY_MS > 0) await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
       return {
         text,
         tokensIn: input.prompt.length,

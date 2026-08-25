@@ -9,7 +9,10 @@
     "newProject": "New project",
     "search": "Search by title",
     "noCover": "No cover",
-    "progress": "{{done}} of {{total}} units"
+    "progress": "{{done}} of {{total}} units",
+    "translate": "Translate",
+    "pause": "Pause",
+    "resume": "Resume"
   },
   "newProject": {
     "title": "New project",

@@ -19,18 +19,24 @@ export class Library implements OnDestroy {
   readonly loading = signal(true);
 
   #ipc = inject(IpcService);
-  #unsubscribe: (() => void) | null = null;
+  #unsubscribe: Array<() => void> = [];
 
   constructor() {
     void this.reload();
     // The main process is the one that knows a project changed — a translation
     // finished, a project was deleted from another window. Polling would show
     // a stale library between ticks.
-    this.#unsubscribe = this.#ipc.on("project.changed", () => void this.reload());
+    this.#unsubscribe.push(this.#ipc.on("project.changed", () => void this.reload()));
+    this.#unsubscribe.push(this.#ipc.on("run.progress", (progress) => {
+      this.projects.update((projects) => projects.map((project) =>
+        project.id === progress.projectId
+          ? { ...project, progress: { done: progress.done, total: progress.total } }
+          : project));
+    }));
   }
 
   ngOnDestroy(): void {
-    this.#unsubscribe?.();
+    for (const off of this.#unsubscribe) off();
   }
 
   async reload(): Promise<void> {
@@ -48,5 +54,16 @@ export class Library implements OnDestroy {
     return project.progress.total === 0
       ? 0
       : Math.round((project.progress.done / project.progress.total) * 100);
+  }
+
+  /** Start and resume are the same command: the machine decides which is lawful. */
+  onStart(project: ProjectSummary): void {
+    // A refusal (an open gate, a busy engine) leaves the tile in the state it
+    // shows; the screens that explain why are the next plan's work.
+    void this.#ipc.invoke("run.start", { projectId: project.id }).catch(() => {});
+  }
+
+  onPause(project: ProjectSummary): void {
+    void this.#ipc.invoke("run.pause", { projectId: project.id }).catch(() => {});
   }
 }

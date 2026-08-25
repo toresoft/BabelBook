@@ -1,11 +1,18 @@
 {
-  "app": { "name": "babelBook", "library": "Libreria", "settings": "Impostazioni" },
+  "app": {
+    "name": "babelBook",
+    "library": "Libreria",
+    "settings": "Impostazioni"
+  },
   "library": {
     "empty": "Nessun progetto. Comincia da un EPUB.",
     "newProject": "Nuovo progetto",
     "search": "Cerca per titolo",
     "noCover": "Senza copertina",
-    "progress": "{{done}} di {{total}} unità"
+    "progress": "{{done}} di {{total}} unità",
+    "translate": "Traduci",
+    "pause": "Pausa",
+    "resume": "Riprendi"
   },
   "newProject": {
     "title": "Nuovo progetto",
@@ -44,7 +51,9 @@
     "mixed": "Impaginazione mista",
     "warning": "Impaginazione fissa: il testo tradotto non si riadatta, e può traboccare dalla pagina. {{count}} documenti su {{total}}."
   },
-  "overlays": { "warning": "Questo libro ha la lettura sincronizzata. L'EPUB tradotto non l'avrà: l'audio resterebbe nella lingua di partenza." },
+  "overlays": {
+    "warning": "Questo libro ha la lettura sincronizzata. L'EPUB tradotto non l'avrà: l'audio resterebbe nella lingua di partenza."
+  },
   "tray": {
     "translating": "{{title}} — {{done}} di {{total}} unità",
     "idle": "babelBook",
@@ -75,5 +84,7 @@
     "abstained": "La classificazione si è astenuta.",
     "unsupported-format": "Questo è un {{format}}: babelBook tratta solo EPUB."
   },
-  "errors": { "noBridge": "L'interfaccia non riesce a parlare con l'applicazione." }
+  "errors": {
+    "noBridge": "L'interfaccia non riesce a parlare con l'applicazione."
+  }
 }
