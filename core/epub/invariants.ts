@@ -310,7 +310,10 @@ export function checkInvariants(input: CheckInput): InvariantResult[] {
       for (const placeholder of unit.placeholders ?? []) {
         if (!placeholder.opaque) continue;
         const content = placeholder.rawContent ?? "";
-        if (content !== "" && !now.includes(content)) {
+        if (content === "") continue;
+        // The whole element, not just its text: a bare substring search would
+        // still find "ls" after `<code>ls</code>` became `<code>tools</code>`.
+        if (!now.includes(`${placeholder.open}${content}${placeholder.close}`)) {
           details.push(`${unit.id} lost the content of placeholder ${placeholder.index}`);
         }
       }
