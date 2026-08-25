@@ -5,6 +5,7 @@
  * window is bundled here, so that `dist/` holds plain JavaScript and Electron
  * never has to resolve TypeScript or workspace packages at runtime.
  */
+import { cp } from "node:fs/promises";
 import { build } from "esbuild";
 
 /** Electron ships its own copy; bundling it would produce a second, broken one. */
@@ -20,6 +21,11 @@ const bundles = [
     entryPoints: ["main/main.ts"],
     outfile: "dist/main/main.js",
     format: "esm",
+    // The main process reaches the core, which reaches yauzl-promise, which
+    // loads a native .node binding esbuild cannot inline. Everything under
+    // node_modules is therefore required at runtime rather than bundled;
+    // only our own sources are inlined.
+    packages: "external",
   },
   {
     // The preload runs with sandbox: true, and Electron loads a sandboxed
@@ -44,3 +50,10 @@ await Promise.all(
     }),
   ),
 );
+
+/**
+ * The migrations are read from disk at startup, not imported, so the bundler
+ * does not see them. Without this copy the packaged app opens a database it
+ * has no schema for — and only on a machine where nobody ran the tests.
+ */
+await cp("main/db/migrations", "dist/main/migrations", { recursive: true });
