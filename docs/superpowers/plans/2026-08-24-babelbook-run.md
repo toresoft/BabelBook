@@ -1,15 +1,13 @@
 # babelBook — Piano 4: esecuzione, provider e composizione
 
-**Stato: task 1-6 su 9 fatti**, al 2026-08-25 — provider e chiavi cifrate,
-risoluzione del modello, verifica, macchina a stati, engine nell'`utilityProcess`
-e orchestratore persistente. Il prossimo è il **Task 7**, la composizione
-dell'EPUB con il suo gate.
+**Stato: completo, task 9 su 9**, al 2026-08-25 — provider e chiavi cifrate,
+risoluzione del modello, verifica, macchina a stati, engine nell'`utilityProcess`,
+orchestratore persistente, composizione con gate, ciclo di vita con tray e
+notifiche, e la prova end-to-end con backend finto: un libro intero tradotto,
+messo in pausa, riavviato e ripreso senza ritradurre.
 
-Due cose da sapere prima di riprendere. Il Task 7 deve consumare l'handoff
-`compose` dell'orchestratore e mandare `COMPOSED` solo dopo aver scritto e
-validato l'EPUB. Il cablaggio IPC della verifica provider è volutamente non
-fatto: i canali erano territorio di un altro agente, e vanno aggiunti in
-`app/shared/channels.ts` più i gestori nella mappa di `buildHandlers` col Task 8.
+Resta fuori dalla suite, com'è giusto che sia: la traduzione di un libro vero
+con un provider vero (in fondo al piano).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -782,7 +780,7 @@ export function composeEpub(input: {
 }): Promise<ComposeResult>;
 ```
 
-- [ ] **Step 1: Scrivere i test che falliscono**
+- [x] **Step 1: Scrivere i test che falliscono**
 
 `app/test/compose.test.ts`:
 
@@ -876,12 +874,12 @@ describe("composeEpub", () => {
 });
 ```
 
-- [ ] **Step 2: Eseguirli e verificare che falliscano**
+- [x] **Step 2: Eseguirli e verificare che falliscano**
 
 Run: `npx vitest run app/test/compose.test.ts`
 Atteso: FAIL, `Cannot find module '../main/compose.ts'`.
 
-- [ ] **Step 3: Implementare**
+- [x] **Step 3: Implementare**
 
 Per ogni documento: si rileggono le unità dal database, si rende ognuna con `render` (piano 1), si costruisce lo scheletro e lo si riempie. Poi `writeRootLang` sui documenti, `writeLanguage` sull'OPF, `removeOverlays` se il libro ne ha, e `writeEpub`.
 
@@ -893,12 +891,12 @@ Tre regole:
 - **Le unità senza traduzione riemettono `raw`.** È ciò che rende identico un libro non tradotto, e quindi rende il gate un'asserzione vera.
 - **EPUBCheck assente non è EPUBCheck passato.** Il risultato lo dichiara, e l'interfaccia lo mostra come "non eseguito".
 
-- [ ] **Step 4: Eseguire i test**
+- [x] **Step 4: Eseguire i test**
 
 Run: `npx vitest run app/test/compose.test.ts`
 Atteso: PASS, cinque test.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/main/compose.ts app/test/compose.test.ts
@@ -924,7 +922,7 @@ export function trayTooltip(state: { title: string; done: number; total: number 
 export function notifyOn(message: EngineMessage): { key: string; params?: unknown } | null;
 ```
 
-- [ ] **Step 1: Scrivere i test che falliscono**
+- [x] **Step 1: Scrivere i test che falliscono**
 
 `app/test/lifecycle.test.ts`:
 
@@ -968,12 +966,12 @@ describe("trayTooltip", () => {
 });
 ```
 
-- [ ] **Step 2: Eseguirli e verificare che falliscano**
+- [x] **Step 2: Eseguirli e verificare che falliscano**
 
 Run: `npx vitest run app/test/lifecycle.test.ts`
 Atteso: FAIL, `Cannot find module '../main/tray.ts'`.
 
-- [ ] **Step 3: Implementare**
+- [x] **Step 3: Implementare**
 
 Le decisioni del ciclo di vita sono funzioni pure, testate a parte da Electron: è il modo per verificarle senza avviare un'applicazione.
 
@@ -983,12 +981,12 @@ Uscire davvero è un comando esplicito: con lavoro in corso chiede conferma, poi
 
 Tooltip, menu e notifiche passano tutti dal catalogo.
 
-- [ ] **Step 4: Eseguire i test**
+- [x] **Step 4: Eseguire i test**
 
 Run: `npx vitest run app/test/lifecycle.test.ts`
 Atteso: PASS, sette test.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/main/tray.ts app/main/main.ts app/test/lifecycle.test.ts
@@ -1006,27 +1004,27 @@ git commit -m "feat(app): closing the window is not quitting when a book is in f
 **Interfaces:**
 - Produces: la prova che tutto il piano regge insieme.
 
-- [ ] **Step 1: Scrivere il test che fallisce**
+- [x] **Step 1: Scrivere il test che fallisce**
 
 `app/e2e/translate.spec.ts` avvia l'applicazione con `BABELBOOK_FAKE_BACKEND=1`, crea un progetto da un EPUB generato, avvia la traduzione con entrambe le auto-accettazioni attive, aspetta lo stato `done`, e verifica che il file `output/*.it.epub` esista e contenga il testo tradotto dal finto.
 
 Poi la seconda metà della prova: avvia una traduzione, la mette in pausa a metà, chiude e riapre l'applicazione, verifica che il progetto sia `paused` e non `running`, riprende, e verifica che il backend finto **non sia stato richiamato per le unità già tradotte**.
 
-- [ ] **Step 2: Eseguirlo e verificare che fallisca**
+- [x] **Step 2: Eseguirlo e verificare che fallisca**
 
 Run: `npm run test:e2e -w app`
 Atteso: FAIL.
 
-- [ ] **Step 3: Implementare il gancio**
+- [x] **Step 3: Implementare il gancio**
 
 `BABELBOOK_FAKE_BACKEND` fa costruire al main un `LlmBackend` deterministico che risponde nel formato del piano 2 anteponendo un marcatore alla traduzione. Come le variabili del piano 3, si legge **in un punto solo** e si documenta lì.
 
-- [ ] **Step 4: Eseguire la prova**
+- [x] **Step 4: Eseguire la prova**
 
 Run: `npm run test:e2e -w app`
 Atteso: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/e2e/translate.spec.ts app/main/main.ts
