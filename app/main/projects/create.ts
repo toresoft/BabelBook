@@ -4,32 +4,12 @@ import type { DatabaseSync } from "node:sqlite";
 import {
   archiveCodeSurfaces, assertUtf8, detectLayout, extract, hasOverlays,
   readEpub, readPackage, resolveHref,
-  type LayoutReport, type TranslationUnit,
+  type TranslationUnit,
 } from "../../../core/epub/index.ts";
+import type { CreatedProject, CreateProjectRequest as CreateInput } from "../../shared/dto.ts";
 import { createWorkspace, copySource, deleteWorkspace, extractCover, type Workspace } from "../workspace.ts";
 
-export interface CreateInput {
-  epubPath: string;
-  targetLanguage: string;
-  sourceLanguage?: string;
-  description?: string;
-  providerId?: string;
-  modelId?: string;
-}
-
-export interface CreatedProject {
-  id: string;
-  title: string;
-  author?: string;
-  coverPath: string | null;
-  /** What the package declared, when it declared something usable. */
-  declaredLanguage: string | null;
-  documents: number;
-  units: { total: number; work: number; byState: Record<string, number> };
-  words: number;
-  layout: LayoutReport;
-  hasOverlays: boolean;
-}
+export type { CreatedProject, CreateProjectRequest as CreateInput } from "../../shared/dto.ts";
 
 /**
  * A file we recognise and do not handle.
@@ -225,7 +205,11 @@ export async function createProject(
       documents: documents.length,
       units: { total: allUnits.length, work: work.length, byState },
       words: countWords(work),
-      layout,
+      layout: {
+        book: layout.book,
+        prePaginated: layout.prePaginated,
+        documents: Object.keys(layout.byDocument).length,
+      },
       hasOverlays: overlays,
     };
   } catch (error) {

@@ -1,12 +1,6 @@
-import type { CreateInput, CreatedProject } from "../main/projects/create.ts";
+import type { CreatedProject, CreateProjectRequest, Settings } from "./dto.ts";
 
-export interface Settings {
-  uiLanguage: string;
-  autoAcceptTerms: boolean;
-  autoAcceptExclusions: boolean;
-  concurrency: number;
-  epubcheckJar: string | null;
-}
+export type { CreatedProject, CreateProjectRequest, Settings } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
   uiLanguage: "it",
@@ -28,7 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
  */
 export interface Invocations {
   "project.chooseEpub": { req: undefined; res: { path: string; name: string } | null };
-  "project.create": { req: CreateInput; res: CreatedProject };
+  "project.create": { req: CreateProjectRequest; res: CreatedProject };
   "project.delete": { req: { id: string; keepOutput?: string }; res: void };
   "settings.get": { req: undefined; res: Settings };
   "settings.set": { req: Partial<Settings>; res: Settings };

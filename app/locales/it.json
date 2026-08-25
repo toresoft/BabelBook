@@ -1,0 +1,60 @@
+{
+  "app": { "name": "babelBook", "library": "Libreria", "settings": "Impostazioni" },
+  "library": {
+    "empty": "Nessun progetto. Comincia da un EPUB.",
+    "newProject": "Nuovo progetto",
+    "search": "Cerca per titolo",
+    "noCover": "Senza copertina",
+    "progress": "{{done}} di {{total}} unità"
+  },
+  "newProject": {
+    "title": "Nuovo progetto",
+    "chooseEpub": "Scegli un EPUB",
+    "chosen": "{{name}}",
+    "analysing": "Lettura del libro in corso…",
+    "targetLanguage": "Lingua di destinazione",
+    "sourceLanguage": "Lingua di partenza",
+    "description": "Cosa c'è da sapere su questo libro",
+    "descriptionHint": "Serie, personaggi, registro: la traduzione lo legge.",
+    "create": "Crea",
+    "cancel": "Annulla",
+    "documents": "{{count}} documenti",
+    "units": "{{count}} unità",
+    "words": "{{count}} parole",
+    "estimate": "Stima: {{tokens}} token",
+    "estimateWithCost": "Stima: {{tokens}} token, circa {{cost}}",
+    "noPrices": "Il modello scelto non dichiara prezzi: mostriamo solo i token."
+  },
+  "state": {
+    "new": "Nuovo",
+    "needs-language": "Lingua da confermare",
+    "ready": "Pronto",
+    "running": "In traduzione",
+    "waiting-terms": "Attende i termini",
+    "waiting-code": "Attende la revisione",
+    "composing": "Composizione",
+    "paused": "In pausa",
+    "done": "Completo",
+    "incomplete": "Incompleto",
+    "failed": "Rifiutato"
+  },
+  "layout": {
+    "reflowable": "Testo scorrevole",
+    "pre-paginated": "Impaginazione fissa",
+    "mixed": "Impaginazione mista",
+    "warning": "Impaginazione fissa: il testo tradotto non si riadatta, e può traboccare dalla pagina. {{count}} documenti su {{total}}."
+  },
+  "overlays": { "warning": "Questo libro ha la lettura sincronizzata. L'EPUB tradotto non l'avrà: l'audio resterebbe nella lingua di partenza." },
+  "codes": {
+    "unit-fell-back": "Un'unità è rimasta nella lingua di partenza dopo i tentativi previsti.",
+    "chunk-exhausted": "Un gruppo ha esaurito i tentativi.",
+    "unsupported-encoding": "Un documento non è in UTF-8 ed è stato saltato.",
+    "unreliable-range": "Un blocco non è ricomponibile e non è stato toccato.",
+    "css-code-surface": "Marcato come codice dal foglio di stile.",
+    "document-skipped": "Un documento non è stato letto.",
+    "author-translate-no": "L'autore ha chiesto di non tradurre questa parte.",
+    "abstained": "La classificazione si è astenuta.",
+    "unsupported-format": "Questo è un {{format}}: babelBook tratta solo EPUB."
+  },
+  "errors": { "noBridge": "L'interfaccia non riesce a parlare con l'applicazione." }
+}
