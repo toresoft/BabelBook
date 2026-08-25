@@ -280,7 +280,11 @@ originale è ancora lì.
    punto della creazione che può chiamare il modello, e solo se serve: se l'OPF
    dichiara una lingua plausibile la fase finisce lì, senza costo e senza
    provider. Se manca o è sospetta, un campione va al modello per un voto; se il
-   voto si astiene o contraddice l'OPF, la UI chiede conferma. Se il provider non
+   voto si astiene, la UI chiede conferma. Contraddire una dichiarazione
+   plausibile non e' possibile finche' nessuno chiede un secondo parere: il
+   modello viene interrogato solo se l'OPF tace, oppure se l'utente chiede
+   esplicitamente di verificare la lingua dichiarata, ed e' da li' che nasce
+   il caso di conflitto. Se il provider non
    è ancora configurato la lingua resta da confermare e la si chiede all'utente:
    la creazione di un progetto non si blocca mai su una chiamata di rete. La
    lingua sorgente è opzionale davvero, non un flag obbligatorio.
