@@ -1,14 +1,12 @@
 {
-  "name": "${PROJECT_NAME}",
-  "version": "1.0.0",
-  "description": "",
-  "main": "dist/index.js",
+  "name": "babelbook",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["core"],
+  "engines": { "node": ">=24" },
   "scripts": {
-    "build": "tsc"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "typescript": "^5.5.3"
-  },
-  "private": true
+    "test": "npm test -w core",
+    "typecheck": "npm run typecheck -w core"
+  }
 }

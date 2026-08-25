@@ -1,0 +1,22 @@
+{
+  "name": "@babelbook/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "saxes": "^6.0.0",
+    "yauzl-promise": "^4.0.0",
+    "yazl": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/yazl": "^3.3.1",
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.10"
+  }
+}
