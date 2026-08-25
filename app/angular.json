@@ -1,0 +1,78 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "cli": {
+    "packageManager": "npm",
+    "analytics": false,
+    "cache": {
+      "path": ".angular/cache"
+    }
+  },
+  "newProjectRoot": "projects",
+  "projects": {
+    "renderer": {
+      "projectType": "application",
+      "schematics": {},
+      "root": "renderer",
+      "sourceRoot": "renderer/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "renderer/src/main.ts",
+            "index": "renderer/src/index.html",
+            "tsConfig": "renderer/tsconfig.app.json",
+            "outputPath": {
+              "base": "dist/renderer",
+              "browser": ""
+            },
+            "baseHref": "./",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "renderer/public"
+              }
+            ],
+            "styles": ["renderer/src/styles.css"]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "renderer:build:production"
+            },
+            "development": {
+              "buildTarget": "renderer:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        }
+      }
+    }
+  }
+}

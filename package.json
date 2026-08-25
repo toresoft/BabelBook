@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": ["core"],
+  "workspaces": ["core", "app"],
   "engines": { "node": ">=24" },
   "scripts": {
     "test": "npm test -w core",
