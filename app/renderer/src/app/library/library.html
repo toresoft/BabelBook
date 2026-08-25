@@ -8,7 +8,7 @@
       [placeholder]="t('library.search')"
       [ngModel]="filter()"
       (ngModelChange)="onFilter($event)" />
-    <a class="library__new" data-testid="new-project" href="#/new">{{ t('library.newProject') }}</a>
+    <a class="library__new" data-testid="new-project" routerLink="/new">{{ t('library.newProject') }}</a>
   </header>
 
   @if (projects().length === 0 && !loading()) {

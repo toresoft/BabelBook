@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { IpcService } from "../renderer/src/app/core/ipc.service.ts";
+import { packFailure } from "../shared/dto.ts";
 
 const withBridge = (bridge: unknown) => {
   (globalThis as { window?: unknown }).window = bridge === undefined ? {} : { babelbook: bridge };
@@ -23,8 +24,32 @@ describe("IpcService", () => {
     expect(off).toHaveBeenCalled();
   });
 
-  it("fails loudly when the bridge is missing instead of pretending to work", () => {
+  it("fails loudly when the bridge is missing instead of pretending to work", async () => {
     withBridge(undefined);
-    expect(() => new IpcService().invoke("settings.get", undefined)).toThrow(/NO_BRIDGE/);
+
+    // An invocation rejects; a subscription throws where it is called. Either
+    // way the fault names itself once, instead of becoming a screen that
+    // renders nothing and explains nothing.
+    await expect(new IpcService().invoke("settings.get", undefined)).rejects.toThrow(/NO_BRIDGE/);
+    expect(() => new IpcService().on("project.changed", () => {})).toThrow(/NO_BRIDGE/);
+  });
+});
+
+describe("failures crossing the boundary", () => {
+  it("hands the caller a code, not a sentence", async () => {
+    const packed = new Error(packFailure(
+      Object.assign(new Error("UNSUPPORTED_FORMAT: MOBI"), { code: "UNSUPPORTED_FORMAT", format: "MOBI" }),
+    ));
+    withBridge({ invoke: vi.fn().mockRejectedValue(packed), on: vi.fn() });
+
+    await expect(new IpcService().invoke("settings.get", undefined))
+      .rejects.toMatchObject({ code: "UNSUPPORTED_FORMAT", format: "MOBI" });
+  });
+
+  it("says UNKNOWN rather than inventing a code it did not receive", async () => {
+    withBridge({ invoke: vi.fn().mockRejectedValue(new Error("something went wrong")), on: vi.fn() });
+
+    await expect(new IpcService().invoke("settings.get", undefined))
+      .rejects.toMatchObject({ code: "UNKNOWN" });
   });
 });

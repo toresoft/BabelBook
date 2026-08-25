@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
+import { RouterLink } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
 import type { ProjectSummary } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
@@ -7,7 +8,7 @@ import { IpcService } from "../core/ipc.service";
 @Component({
   selector: "bb-library",
   standalone: true,
-  imports: [FormsModule, TranslocoDirective],
+  imports: [FormsModule, RouterLink, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./library.html",
   styleUrl: "./library.css",

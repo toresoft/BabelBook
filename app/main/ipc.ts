@@ -3,6 +3,7 @@ import {
   DEFAULT_SETTINGS, EVENTS, INVOCATIONS,
   type Events, type Handlers, type Settings,
 } from "../shared/channels.ts";
+import { packFailure } from "../shared/dto.ts";
 import { createProject } from "./projects/create.ts";
 import { listProjects } from "./projects/query.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
@@ -120,8 +121,15 @@ export interface IpcMainLike {
 export function registerIpc(ipcMain: IpcMainLike, deps: IpcDeps): void {
   const handlers = buildHandlers(deps);
   for (const channel of INVOCATIONS) {
-    ipcMain.handle(channel, (_event, request) =>
-      (handlers[channel] as (request: unknown) => unknown)(request));
+    ipcMain.handle(channel, async (_event, request) => {
+      try {
+        return await (handlers[channel] as (request: unknown) => unknown)(request);
+      } catch (error) {
+        // Repacked, not rethrown: the class and its fields do not cross, and
+        // a code the window cannot read is a code that does not exist.
+        throw new Error(packFailure(error));
+      }
+    });
   }
 }
 

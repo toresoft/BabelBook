@@ -9,7 +9,8 @@
     "build:bundles": "node esbuild.mjs",
     "start": "npm run build && electron .",
     "test": "cd .. && vitest run app/test",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json",
+    "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
     "@babelbook/core": "*"
@@ -31,6 +32,7 @@
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "typescript": "~6.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "@playwright/test": "^1.50.0"
   }
 }

@@ -56,10 +56,10 @@ export class NewProject {
       this.project.set(created);
       this.sourceLanguage.set(created.declaredLanguage ?? "");
     } catch (error) {
-      const failed = error as { format?: string };
-      this.failure.set(failed.format === undefined
-        ? { key: "errors.noBridge" }
-        : { key: "codes.unsupported-format", params: { format: failed.format } });
+      const failed = error as { code?: string; format?: string };
+      this.failure.set(failed.code === "UNSUPPORTED_FORMAT"
+        ? { key: "codes.unsupported-format", params: { format: failed.format ?? "?" } }
+        : { key: "errors.noBridge" });
     } finally {
       this.analysing.set(false);
     }

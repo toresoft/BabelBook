@@ -65,3 +65,51 @@ export interface Settings {
   concurrency: number;
   epubcheckJar: string | null;
 }
+
+/**
+ * A failure, as it crosses the IPC boundary.
+ *
+ * Electron serialises a rejected invocation down to its message: a custom
+ * class and its fields do not survive. Everything this application knows how to
+ * say about a failure is a code plus its details, so both are packed into the
+ * message and unpacked on the other side. Without that, "this is a MOBI"
+ * arrives as a sentence nobody can translate or branch on.
+ */
+export interface IpcFailure {
+  code: string;
+  [detail: string]: unknown;
+}
+
+const MARKER = "babelbook-failure:";
+
+export function packFailure(error: unknown): string {
+  const failure = error as { code?: unknown; message?: unknown };
+  const code = typeof failure.code === "string" ? failure.code : "UNKNOWN";
+
+  const details: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(error as object)) {
+    if (key !== "code" && key !== "stack" && (typeof value === "string" || typeof value === "number")) {
+      details[key] = value;
+    }
+  }
+
+  return MARKER + JSON.stringify({
+    code,
+    message: typeof failure.message === "string" ? failure.message : String(error),
+    ...details,
+  });
+}
+
+export function unpackFailure(error: unknown): IpcFailure {
+  const message = (error as { message?: unknown }).message;
+  if (typeof message !== "string") return { code: "UNKNOWN" };
+
+  const at = message.indexOf(MARKER);
+  if (at === -1) return { code: "UNKNOWN", message };
+
+  try {
+    return JSON.parse(message.slice(at + MARKER.length)) as IpcFailure;
+  } catch {
+    return { code: "UNKNOWN", message };
+  }
+}

@@ -43,6 +43,12 @@ app.whenReady().then(() => {
     db,
     userDataDir,
     chooseEpub: async () => {
+      // The native dialog cannot be driven from a test, so the end-to-end run
+      // names the file it would have chosen. Read here and nowhere else: a
+      // test shortcut scattered through the code becomes a production path.
+      const forTest = process.env["BABELBOOK_EPUB_FOR_TEST"];
+      if (forTest !== undefined) return { path: forTest, name: forTest.split("/").pop() ?? forTest };
+
       const chosen = await dialog.showOpenDialog({
         properties: ["openFile"],
         filters: [{ name: "EPUB", extensions: ["epub"] }],

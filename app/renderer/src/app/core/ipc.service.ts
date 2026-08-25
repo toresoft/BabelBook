@@ -1,4 +1,5 @@
 import type { Events, Invocations } from "../../../../shared/channels.js";
+import { unpackFailure, type IpcFailure } from "../../../../shared/dto.js";
 
 export interface BabelbookBridge {
   invoke<K extends keyof Invocations>(
@@ -24,10 +25,15 @@ export class IpcService {
     return bridge;
   }
 
-  invoke<K extends keyof Invocations>(
+  /** Rejects with an `IpcFailure`, so the caller branches on a code. */
+  async invoke<K extends keyof Invocations>(
     channel: K, payload: Invocations[K]["req"],
   ): Promise<Invocations[K]["res"]> {
-    return this.#bridge().invoke(channel, payload);
+    try {
+      return await this.#bridge().invoke(channel, payload);
+    } catch (error) {
+      throw unpackFailure(error) as IpcFailure;
+    }
   }
 
   on<K extends keyof Events>(channel: K, listener: (payload: Events[K]) => void): () => void {
