@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import {
-  createProvider, deleteProvider, getProvider, listProviders, PRESETS, readKey, updateProvider,
+  createProvider, deleteProvider, getProvider, listProviders, PRESETS, readKey,
+  refreshCatalogMetadata, routeDefaults, updateProvider,
 } from "../main/providers/store.ts";
+import type { Catalog, CatalogProvider } from "../main/catalog/shape.ts";
 
 /**
  * A stand-in for the keyring that actually hides what it is given.
@@ -25,9 +27,24 @@ function db() {
 
 const acme = {
   name: "Acme", route: "acme", baseUrl: "https://api.acme.test/v1",
-  headers: {}, options: {},
-  models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5 }],
+  headers: {}, options: {}, catalogId: null, catalogAt: null,
+  models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
+    capabilities: null }],
 };
+
+/** A catalogue entry for Acme, as a refresh would carry it. */
+const acmeCatalog: CatalogProvider = {
+  id: "acme", name: "Acme", npm: "@ai-sdk/acme", env: ["ACME_API_KEY"],
+  api: "https://api.acme.test/v1",
+  models: [{
+    id: "m1", name: "M1",
+    cost: { input: 1, output: 5, cacheRead: null, cacheWrite: null },
+    limit: { context: 128_000, output: 8_192 },
+    toolCall: true, reasoning: false, structuredOutput: true, attachment: false,
+  }],
+};
+
+const catalogOf = (at: string): Catalog => ({ at, providers: [acmeCatalog] });
 
 describe("providers", () => {
   it("never stores the key in the clear", () => {
@@ -82,8 +99,105 @@ describe("providers", () => {
   });
 
   it("ships a preset that reaches any OpenAI-compatible endpoint", () => {
-    expect(PRESETS.map((p) => p.name)).toContain("OpenAI-compatible");
-    const deepseek = PRESETS.find((p) => p.route === "deepseek")!;
-    expect(deepseek.options).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
+    // The only hand-built case left: the shortcut for what the catalogue does
+    // not know — a corporate gateway, a model served from one's own machine.
+    // Everything else is chosen from the catalogue instead.
+    expect(PRESETS).toHaveLength(1);
+    expect(PRESETS[0]).toMatchObject({ route: "openai-compatible", models: [] });
+    expect(PRESETS[0]!.catalogId).toBeNull();
+  });
+
+  it("keeps the route defaults the hand-written presets used to carry", () => {
+    // Not a preference: DeepSeek's reasoning spends the whole output budget on
+    // reasoning tokens. A fact about how this application must call the route,
+    // which is why it lives here and not in the catalogue.
+    expect(routeDefaults("deepseek")).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
+    expect(routeDefaults("anthropic")).toEqual({});
+  });
+});
+
+describe("the catalogue binding", () => {
+  it("remembers which catalogue entry a provider came from, and when", () => {
+    const d = db();
+    const p = createProvider(d, crypto, { ...acme, catalogId: "acme", catalogAt: "2026-08-01" });
+    expect(getProvider(d, p.id)).toMatchObject({ catalogId: "acme", catalogAt: "2026-08-01" });
+  });
+
+  it("carries price, window and capabilities when known, and null when not", () => {
+    const d = db();
+    const p = createProvider(d, crypto, {
+      ...acme,
+      models: [
+        {
+          id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
+          capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
+        },
+        {
+          id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
+          capabilities: null,
+        },
+      ],
+    });
+    expect(getProvider(d, p.id)!.models).toEqual([
+      {
+        id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
+        capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
+      },
+      {
+        id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
+        capabilities: null,
+      },
+    ]);
+  });
+
+  it("refreshes metadata from the catalogue without touching key or models chosen", () => {
+    const d = db();
+    const p = createProvider(d, crypto, {
+      ...acme, catalogId: "acme", catalogAt: "2026-01-01", apiKey: "sk-secret",
+      // m2 is served by the endpoint but unknown to the catalogue; the choice
+      // of m2 must survive a refresh that cannot price it.
+      models: [
+        { id: "m1", displayName: "m1", contextWindow: null, priceIn: null, priceOut: null, capabilities: null },
+        { id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null, capabilities: null },
+      ],
+    });
+
+    refreshCatalogMetadata(d, catalogOf("2026-08-01"));
+
+    const after = getProvider(d, p.id)!;
+    expect(after.catalogAt).toBe("2026-08-01");
+    expect(after.models).toEqual([
+      {
+        id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
+        capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
+      },
+      { id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null, capabilities: null },
+    ]);
+    expect(readKey(d, crypto, p.id)).toBe("sk-secret");
+  });
+
+  it("leaves a hand-written provider out of a catalogue refresh", () => {
+    const d = db();
+    const p = createProvider(d, crypto, {
+      ...acme, catalogId: null, catalogAt: null,
+      models: [{ id: "m1", displayName: "M1", contextWindow: null, priceIn: null, priceOut: null, capabilities: null }],
+    });
+
+    refreshCatalogMetadata(d, catalogOf("2026-08-01"));
+
+    const after = getProvider(d, p.id)!;
+    expect(after.catalogAt).toBeNull();
+    expect(after.models[0]!.priceIn).toBeNull();
+  });
+
+  it("skips a provider whose catalogue entry has disappeared, rather than emptying it", () => {
+    const d = db();
+    const p = createProvider(d, crypto, { ...acme, catalogId: "gone", catalogAt: "2026-01-01" });
+
+    refreshCatalogMetadata(d, { at: "2026-08-01", providers: [] });
+
+    const after = getProvider(d, p.id)!;
+    expect(after.catalogAt).toBe("2026-01-01");
+    expect(after.models).toHaveLength(1);
   });
 });

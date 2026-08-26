@@ -25,6 +25,8 @@ interface Draft {
   apiKey: string;
   headers: Record<string, string>;
   options: Record<string, unknown>;
+  catalogId: string | null;
+  catalogAt: string | null;
   models: ProviderModel[];
 }
 
@@ -43,7 +45,7 @@ const FAILURE_KEYS: Record<string, string> = {
 
 const BLANK: Draft = {
   id: null, name: "", route: "openai-compatible", baseUrl: "",
-  apiKey: "", headers: {}, options: {}, models: [],
+  apiKey: "", headers: {}, options: {}, catalogId: null, catalogAt: null, models: [],
 };
 
 @Component({
@@ -104,6 +106,8 @@ export class Providers implements OnDestroy {
       apiKey: "",
       headers: { ...preset.headers },
       options: { ...preset.options },
+      catalogId: preset.catalogId,
+      catalogAt: preset.catalogAt,
       // Copied, not shared: editing the draft's models must not edit the
       // preset the next new provider would start from.
       models: preset.models.map((model) => ({ ...model })),
@@ -120,6 +124,8 @@ export class Providers implements OnDestroy {
       apiKey: "",
       headers: { ...provider.headers },
       options: { ...provider.options },
+      catalogId: provider.catalogId,
+      catalogAt: provider.catalogAt,
       models: provider.models.map((model) => ({ ...model })),
     });
   }
@@ -141,7 +147,8 @@ export class Providers implements OnDestroy {
     this.draft.update((draft) => draft === null ? draft : {
       ...draft,
       models: [...draft.models,
-        { id: "", displayName: "", contextWindow: null, priceIn: null, priceOut: null }],
+        { id: "", displayName: "", contextWindow: null, priceIn: null, priceOut: null,
+          capabilities: null }],
     });
   }
 
@@ -184,6 +191,8 @@ export class Providers implements OnDestroy {
         baseUrl: draft.baseUrl.trim() === "" ? null : draft.baseUrl.trim(),
         headers: draft.headers,
         options: draft.options,
+        catalogId: draft.catalogId,
+        catalogAt: draft.catalogAt,
         models: draft.models.map((model) => ({
           ...model, id: model.id.trim(), displayName: model.displayName.trim() || model.id.trim(),
         })),

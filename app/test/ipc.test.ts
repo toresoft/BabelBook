@@ -220,8 +220,9 @@ describe("the provider channels", () => {
     const handlers = buildHandlers(d);
     const created = await handlers["provider.create"]({
       name: "Acme", route: "openai-compatible", baseUrl: "https://api.acme.test/v1",
-      headers: {}, options: {},
-      models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5 }],
+      headers: {}, options: {}, catalogId: null, catalogAt: null,
+      models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
+        capabilities: null }],
       ...(apiKey === null ? {} : { apiKey }),
     });
     return { deps: d, handlers, created };
@@ -269,7 +270,8 @@ describe("the provider channels", () => {
     const { handlers, created } = await withProvider();
     const updated = await handlers["provider.update"]({
       id: created.id,
-      models: [{ id: "m2", displayName: "M2", contextWindow: null, priceIn: null, priceOut: null }],
+      models: [{ id: "m2", displayName: "M2", contextWindow: null, priceIn: null, priceOut: null,
+        capabilities: null }],
     });
 
     expect(updated.models.map((model) => model.id)).toEqual(["m2"]);
@@ -292,7 +294,9 @@ describe("the provider channels", () => {
     const { deps: d } = await deps();
     const presets = await buildHandlers(d)["providers.presets"](undefined);
 
-    expect(presets.map((preset) => preset.route)).toContain("anthropic");
+    // The one hand-built case left: the shortcut for what the catalogue does
+    // not know. Named providers are chosen from the catalogue instead.
+    expect(presets.map((preset) => preset.route)).toEqual(["openai-compatible"]);
     expect(presets.every((preset) => !("apiKey" in preset))).toBe(true);
   });
 

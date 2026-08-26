@@ -5,6 +5,7 @@ import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { pruneCatalog, routeOf, type CatalogProvider } from "../main/catalog/shape.ts";
 import { CATALOG_URL, readCatalog, refreshCatalog } from "../main/catalog/load.ts";
+import { enrichModels } from "../main/catalog/enrich.ts";
 
 /**
  * A slice of the real api.json, with the fields the catalogue actually carries
@@ -170,6 +171,43 @@ describe("reading the catalogue", () => {
 function canned(respond: typeof fetch): typeof fetch {
   return respond;
 }
+
+describe("enriching what the endpoint lists", () => {
+  it("adds what the catalogue knows, and says null for what it does not", () => {
+    // The endpoint is the truth about which models exist; the catalogue is
+    // the truth about what they cost and hold. The second model is served but
+    // unknown to the catalogue, and unknown means absent, never invented.
+    const enriched = enrichModels(["acme-mini", "acme-other"], PRUNED_ACME);
+
+    expect(enriched).toEqual([
+      {
+        id: "acme-mini",
+        displayName: "Acme Mini",
+        contextWindow: 128_000,
+        priceIn: 0.5,
+        priceOut: 2,
+        capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
+      },
+      {
+        id: "acme-other",
+        displayName: "acme-other",
+        contextWindow: null,
+        priceIn: null,
+        priceOut: null,
+        capabilities: null,
+      },
+    ]);
+  });
+
+  it("answers plain ids when there is no catalogue entry to enrich from", () => {
+    expect(enrichModels(["acme-mini"], null)).toEqual([
+      {
+        id: "acme-mini", displayName: "acme-mini", contextWindow: null,
+        priceIn: null, priceOut: null, capabilities: null,
+      },
+    ]);
+  });
+});
 
 describe("refreshing the catalogue", () => {
   it("replaces the cache and changes the date when the network answers", async () => {

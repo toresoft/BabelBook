@@ -267,12 +267,21 @@ export interface TermRow {
   note: string | null;
 }
 
+/** What the catalogue says a model can do. Absent means unknown, never "no". */
+export interface ModelCapabilities {
+  toolCall: boolean;
+  reasoning: boolean;
+  structuredOutput: boolean;
+  attachment: boolean;
+}
+
 /**
  * One model an endpoint serves.
  *
  * Prices are per million tokens and may be null: the estimate then shows
  * tokens only. An invented price is worse than no price, because a wrong
- * number is believed and a missing one is asked about.
+ * number is believed and a missing one is asked about. The same rule holds
+ * for every other field the catalogue fills in.
  */
 export interface ProviderModel {
   id: string;
@@ -280,6 +289,7 @@ export interface ProviderModel {
   contextWindow: number | null;
   priceIn: number | null;
   priceOut: number | null;
+  capabilities: ModelCapabilities | null;
 }
 
 /**
@@ -300,6 +310,10 @@ export interface Provider {
   /** Call options the route requires, keyed by provider as the SDK expects. */
   options: Record<string, unknown>;
   models: ProviderModel[];
+  /** Which catalogue entry this provider was built from, when it was. */
+  catalogId: string | null;
+  /** The catalogue's production date when its metadata was copied. */
+  catalogAt: string | null;
   hasKey: boolean;
 }
 

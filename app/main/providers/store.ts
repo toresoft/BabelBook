@@ -1,8 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type {
-  Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset,
+  ModelCapabilities, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset,
 } from "../../shared/dto.ts";
+import type { Catalog } from "../catalog/shape.ts";
 
 // The shapes live in `shared/dto.ts` because they cross the IPC boundary, and
 // a second definition here would be free to drift from the one the renderer
@@ -41,6 +42,8 @@ interface ProviderRow {
   base_url: string | null;
   headers: string | null;
   options: string | null;
+  catalog_id: string | null;
+  catalog_at: string | null;
   has_key: number;
 }
 
@@ -51,6 +54,7 @@ interface ModelRow {
   context_window: number | null;
   price_in: number | null;
   price_out: number | null;
+  capabilities: string | null;
 }
 
 function parseJson<T>(text: string | null, fallback: T): T {
@@ -62,6 +66,11 @@ function parseJson<T>(text: string | null, fallback: T): T {
     // an unreadable blob of settings is a provider with defaults, not a crash.
     return fallback;
   }
+}
+
+function capabilitiesOf(text: string | null): ModelCapabilities | null {
+  const parsed = parseJson<ModelCapabilities | null>(text, null);
+  return parsed;
 }
 
 /**
@@ -86,13 +95,14 @@ function writeModels(db: DatabaseSync, providerId: string, models: ProviderModel
   db.prepare("DELETE FROM provider_model WHERE provider_id = ?").run(providerId);
   const insert = db.prepare(`
     INSERT INTO provider_model (id, provider_id, model_id, display_name,
-                                context_window, price_in, price_out)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                context_window, price_in, price_out, capabilities)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   for (const model of models) {
     insert.run(
       randomUUID(), providerId, model.id, model.displayName,
       model.contextWindow, model.priceIn, model.priceOut,
+      model.capabilities === null ? null : JSON.stringify(model.capabilities),
     );
   }
 }
@@ -103,7 +113,7 @@ function modelsOf(db: DatabaseSync, providerIds: string[]): Map<string, Provider
   if (providerIds.length === 0) return byProvider;
 
   const rows = db.prepare(`
-    SELECT provider_id, model_id, display_name, context_window, price_in, price_out
+    SELECT provider_id, model_id, display_name, context_window, price_in, price_out, capabilities
       FROM provider_model
      ORDER BY provider_id, rowid
   `).all() as unknown as ModelRow[];
@@ -117,6 +127,7 @@ function modelsOf(db: DatabaseSync, providerIds: string[]): Map<string, Provider
       contextWindow: row.context_window,
       priceIn: row.price_in,
       priceOut: row.price_out,
+      capabilities: capabilitiesOf(row.capabilities),
     });
   }
   return byProvider;
@@ -131,6 +142,8 @@ function toProvider(row: ProviderRow, models: ProviderModel[]): Provider {
     headers: parseJson<Record<string, string>>(row.headers, {}),
     options: parseJson<Record<string, unknown>>(row.options, {}),
     models,
+    catalogId: row.catalog_id,
+    catalogAt: row.catalog_at,
     hasKey: row.has_key === 1,
   };
 }
@@ -142,7 +155,7 @@ function toProvider(row: ProviderRow, models: ProviderModel[]): Provider {
  * row object in this process ever holds the bytes to begin with.
  */
 const SELECT_PROVIDER = `
-  SELECT id, name, route, base_url, headers, options,
+  SELECT id, name, route, base_url, headers, options, catalog_id, catalog_at,
          CASE WHEN api_key_encrypted IS NULL THEN 0 ELSE 1 END AS has_key
     FROM provider
 `;
@@ -170,11 +183,13 @@ export function createProvider(db: DatabaseSync, crypto: Crypto, input: Provider
   db.exec("BEGIN");
   try {
     db.prepare(`
-      INSERT INTO provider (id, name, route, base_url, api_key_encrypted, headers, options)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO provider (id, name, route, base_url, api_key_encrypted, headers, options,
+                            catalog_id, catalog_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, input.name, input.route, input.baseUrl,
       sealed, JSON.stringify(input.headers ?? {}), JSON.stringify(input.options ?? {}),
+      input.catalogId ?? null, input.catalogAt ?? null,
     );
     writeModels(db, id, input.models ?? []);
     db.exec("COMMIT");
@@ -208,7 +223,8 @@ export function updateProvider(
   try {
     db.prepare(`
       UPDATE provider
-         SET name = ?, route = ?, base_url = ?, headers = ?, options = ?
+         SET name = ?, route = ?, base_url = ?, headers = ?, options = ?,
+             catalog_id = ?, catalog_at = ?
        WHERE id = ?
     `).run(
       patch.name ?? current.name,
@@ -216,6 +232,8 @@ export function updateProvider(
       patch.baseUrl === undefined ? current.baseUrl : patch.baseUrl,
       JSON.stringify(patch.headers ?? current.headers),
       JSON.stringify(patch.options ?? current.options),
+      patch.catalogId === undefined ? current.catalogId : patch.catalogId,
+      patch.catalogAt === undefined ? current.catalogAt : patch.catalogAt,
       id,
     );
     if (sealed !== undefined) {
@@ -260,76 +278,95 @@ export function readKey(db: DatabaseSync, crypto: Crypto, id: string): string | 
 }
 
 /**
- * Starting values for the endpoints most people reach for.
+ * Options a route needs to behave, which the hand-written presets used to
+ * carry before the catalogue replaced them.
  *
- * Presets are values, not cages: everything here is editable afterwards, and
- * the model lists are a starting point rather than a catalogue — an id that
- * has moved on is corrected in the form, not in this file.
+ * These are facts about how this application must call the route, not about
+ * what the endpoint serves, which is why they live here and not in anybody's
+ * catalogue. The DeepSeek entry is not a preference: reasoning is on by
+ * default and spends the whole output budget on reasoning tokens, the chunk
+ * comes back empty with `finishReason: "length"`, every unit in it falls back
+ * to the source, and the call is billed in full.
+ */
+export function routeDefaults(route: string): Record<string, unknown> {
+  if (route === "deepseek") {
+    return { deepseek: { thinking: { type: "disabled" } } };
+  }
+  return {};
+}
+
+/**
+ * The one preset that stays hand-built: the shortcut for endpoints the
+ * catalogue does not know — OpenRouter, a corporate gateway, a model served
+ * from the user's own machine. They differ by base URL, not by protocol, and
+ * it ships with no models because only the endpoint knows what it serves.
  *
- * Prices are left null on purpose. They change without notice, and a stale
- * number would be believed: the estimate is better shown in tokens until the
- * user fills in what their contract actually says.
+ * Every other provider is chosen from the catalogue, where the models, the
+ * prices and the windows come from.
  */
 export const PRESETS: ProviderPreset[] = [
   {
-    name: "Anthropic",
-    route: "anthropic",
-    baseUrl: null,
-    headers: {},
-    options: {},
-    models: [
-      { id: "claude-sonnet-4-5", displayName: "Claude Sonnet 4.5", contextWindow: 200_000, priceIn: null, priceOut: null },
-      { id: "claude-haiku-4-5", displayName: "Claude Haiku 4.5", contextWindow: 200_000, priceIn: null, priceOut: null },
-      { id: "claude-opus-4-1", displayName: "Claude Opus 4.1", contextWindow: 200_000, priceIn: null, priceOut: null },
-    ],
-  },
-  {
-    name: "OpenAI",
-    route: "openai",
-    baseUrl: null,
-    headers: {},
-    options: {},
-    models: [
-      { id: "gpt-4.1", displayName: "GPT-4.1", contextWindow: 1_000_000, priceIn: null, priceOut: null },
-      { id: "gpt-4.1-mini", displayName: "GPT-4.1 mini", contextWindow: 1_000_000, priceIn: null, priceOut: null },
-      { id: "gpt-4o", displayName: "GPT-4o", contextWindow: 128_000, priceIn: null, priceOut: null },
-    ],
-  },
-  {
-    name: "DeepSeek",
-    route: "deepseek",
-    baseUrl: null,
-    headers: {},
-    // Not a preference: reasoning is on by default and spends the whole output
-    // budget on reasoning tokens. The chunk comes back empty with
-    // `finishReason: "length"`, every unit in it falls back to the source, and
-    // the call is billed in full. Overridable, but wrong to omit.
-    options: { deepseek: { thinking: { type: "disabled" } } },
-    models: [
-      { id: "deepseek-chat", displayName: "DeepSeek Chat", contextWindow: 128_000, priceIn: null, priceOut: null },
-      { id: "deepseek-reasoner", displayName: "DeepSeek Reasoner", contextWindow: 128_000, priceIn: null, priceOut: null },
-    ],
-  },
-  {
-    name: "Mistral",
-    route: "mistral",
-    baseUrl: null,
-    headers: {},
-    options: {},
-    models: [
-      { id: "mistral-large-latest", displayName: "Mistral Large", contextWindow: 128_000, priceIn: null, priceOut: null },
-      { id: "mistral-medium-latest", displayName: "Mistral Medium", contextWindow: 128_000, priceIn: null, priceOut: null },
-    ],
-  },
-  {
-    // One preset covers OpenRouter, a corporate gateway and a model served
-    // from the user's own machine: they differ by base URL, not by protocol.
-    // It ships with no models, because only the endpoint knows what it serves.
     name: "OpenAI-compatible",
     route: "openai-compatible",
     baseUrl: "",
     headers: {},
     options: {},
+    catalogId: null,
+    catalogAt: null,
     models: [],
   },
 ];
+
+/**
+ * Refreshes the metadata of every provider bound to the catalogue.
+ *
+ * What it touches: prices, windows, capabilities, display names — the things
+ * the catalogue knows. What it never touches: the model list itself (the
+ * endpoint owns that), the key, and any model a project has chosen. A model
+ * the new catalogue no longer mentions keeps what it had: the price of
+ * yesterday stays yesterday's, dated by `catalog_at`, which is what makes an
+ * estimate made last week still explainable.
+ */
+export function refreshCatalogMetadata(db: DatabaseSync, catalog: Catalog): void {
+  const bound = db.prepare(`
+    SELECT id, catalog_id FROM provider WHERE catalog_id IS NOT NULL
+  `).all() as unknown as Array<{ id: string; catalog_id: string }>;
+
+  db.exec("BEGIN");
+  try {
+    const stamp = db.prepare("UPDATE provider SET catalog_at = ? WHERE id = ?");
+    const updateModel = db.prepare(`
+      UPDATE provider_model
+         SET display_name = ?, context_window = ?, price_in = ?, price_out = ?,
+             capabilities = ?
+       WHERE provider_id = ? AND model_id = ?
+    `);
+
+    for (const provider of bound) {
+      const entry = catalog.providers.find((candidate) => candidate.id === provider.catalog_id);
+      // A provider whose entry has disappeared keeps what it has: emptying it
+      // because a catalogue grew smaller would take working models away.
+      if (entry === undefined) continue;
+
+      stamp.run(catalog.at, provider.id);
+      const stored = db.prepare("SELECT model_id FROM provider_model WHERE provider_id = ?")
+        .all(provider.id) as unknown as Array<{ model_id: string }>;
+      for (const row of stored) {
+        const known = entry.models.find((model) => model.id === row.model_id);
+        if (known === undefined) continue;
+        updateModel.run(
+          known.name, known.limit.context, known.cost?.input ?? null, known.cost?.output ?? null,
+          JSON.stringify({
+            toolCall: known.toolCall, reasoning: known.reasoning,
+            structuredOutput: known.structuredOutput, attachment: known.attachment,
+          }),
+          provider.id, row.model_id,
+        );
+      }
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
