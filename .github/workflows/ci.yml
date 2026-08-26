@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# A new push to the same branch makes the previous run pointless: cancel it
+# rather than pay for an answer about code that no longer exists.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# GitHub's default is wider than anything here needs.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: types, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # One place declares the version, so the two workflows cannot drift.
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Never `npm install` here: the lockfile is the definition of the build.
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      # Core, main-process and Angular component suites.
+      - run: npm test
+
+      - run: npm run build -w app
