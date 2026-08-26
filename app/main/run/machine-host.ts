@@ -17,9 +17,24 @@ interface ProjectRow {
 export interface MachineHost {
   readonly state: ProjectState;
   readonly snapshot: unknown;
+  /** The events a user could send right now, asked of the machine itself. */
+  readonly allows: UserEvent[];
   /** Returns false without writing when the machine refuses the event. */
   send(event: ProjectEvent): boolean;
 }
+
+/**
+ * The events a person can cause, as opposed to the ones work causes.
+ *
+ * TERMS_READY, CODE_INDEXED, TRANSLATED, COMPOSED and FAIL are reports of
+ * something that happened; offering them as buttons would let the window
+ * claim a phase finished that never ran.
+ */
+export const USER_EVENTS = [
+  "LANGUAGE_SET", "START", "PAUSE", "RESUME", "TERMS_APPROVED", "CODE_REVIEWED",
+] as const;
+
+export type UserEvent = (typeof USER_EVENTS)[number];
 
 type ProjectActor = Actor<typeof projectMachine>;
 
@@ -106,6 +121,14 @@ export function makeMachineHost(
 
     get snapshot(): unknown {
       return actor.getPersistedSnapshot();
+    },
+
+    // Asked of the machine rather than re-derived from the state name. A
+    // condition rewritten in a template diverges from the machine the day the
+    // machine changes, and nothing fails until a user presses the button.
+    get allows(): UserEvent[] {
+      const snapshot = actor.getSnapshot();
+      return USER_EVENTS.filter((type) => snapshot.can({ type } as ProjectEvent));
     },
 
     send(event): boolean {

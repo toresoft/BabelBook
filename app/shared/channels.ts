@@ -1,14 +1,15 @@
 import type {
   CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView, InvalidationPreview, ProjectSummary,
   Provider, ProviderInput, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
-  Report, UpdateProjectRequest, VerifyOutcome,
+  ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export type {
   CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, GlossaryTerm, GlossaryView,
   InvalidationPreview,
   ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings,
-  Report, ReportLine, TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
+  ProjectDetail, Report, ReportLine, TermRow, TermRule, UnitQuery, UnitRow,
+  UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +36,12 @@ export interface Invocations {
   "project.create": { req: CreateProjectRequest; res: CreatedProject };
   "project.update": { req: UpdateProjectRequest; res: void };
   "project.delete": { req: { id: string; keepOutput?: string }; res: void };
+  /** Null when the project is gone: another window may have deleted it. */
+  "project.get": { req: { id: string }; res: ProjectDetail | null };
+  "units.list": {
+    req: { projectId: string } & UnitQuery;
+    res: { units: UnitRow[]; total: number };
+  };
   "run.start": { req: { projectId: string }; res: void };
   "run.pause": { req: { projectId: string }; res: void };
   "run.approve": { req: { projectId: string; gate: "terms" | "code" }; res: void };
@@ -98,6 +105,7 @@ export interface Events {
 
 export const INVOCATIONS = [
   "projects.list", "project.chooseEpub", "project.create", "project.update", "project.delete",
+  "project.get", "units.list",
   "run.start", "run.pause", "run.approve",
   "terms.list", "terms.decide", "terms.add", "terms.promote",
   "terms.previewInvalidation", "terms.invalidate",

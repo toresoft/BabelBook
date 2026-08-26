@@ -17,7 +17,9 @@ import {
   listGlossaries, saveGlossary,
 } from "./glossaries/store.ts";
 import { buildReport } from "./report/build.ts";
+import { projectDetail } from "./projects/detail.ts";
 import { listProjects } from "./projects/query.ts";
+import { listUnits } from "./units/list.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
 export interface IpcDeps {
@@ -142,6 +144,10 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     },
 
     "provider.verify": async (request) => deps.verifyProvider(request),
+
+    "project.get": async ({ id }) => projectDetail(deps.db, id),
+
+    "units.list": async ({ projectId, ...query }) => listUnits(deps.db, projectId, query),
 
     "terms.list": async ({ projectId }) => listTerms(deps.db, projectId),
 

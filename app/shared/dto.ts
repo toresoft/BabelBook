@@ -58,6 +58,46 @@ export interface ProjectSummary {
   createdAt: string;
 }
 
+/**
+ * A project as its own screen shows it.
+ *
+ * `actions` is the list of events the state machine would accept right now,
+ * asked of the machine itself. The buttons read it instead of re-deriving the
+ * rule from the state name: a condition rewritten in a template diverges from
+ * the machine the day the machine changes, and nothing fails until someone
+ * presses a button that does nothing.
+ */
+export interface ProjectDetail extends ProjectSummary {
+  description: string | null;
+  hasOverlays: boolean;
+  providerId: string | null;
+  modelId: string | null;
+  actions: string[];
+  tokens: { in: number; out: number };
+}
+
+/** One unit, with whatever has been made of it so far. */
+export interface UnitRow {
+  unitId: string;
+  doc: string;
+  ordinal: number;
+  /** The state that acts: what the user forced, or what was deduced. */
+  state: string;
+  forced: boolean;
+  reason: string | null;
+  source: string;
+  /** Null when nothing has been translated yet, which is not an empty string. */
+  translation: string | null;
+  outcome: string | null;
+}
+
+export interface UnitQuery {
+  state?: string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
 export interface Settings {
   uiLanguage: string;
   autoAcceptTerms: boolean;

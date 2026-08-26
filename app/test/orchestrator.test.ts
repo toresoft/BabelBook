@@ -7,7 +7,7 @@ import { createProjectActor } from "../../core/workflow/project.machine.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import { SqliteProjectStore } from "../main/db/store.ts";
 import {
-  makeMachineHost, restoreRunningProjects,
+  makeMachineHost, restoreRunningProjects, USER_EVENTS,
 } from "../main/run/machine-host.ts";
 import { makeEngineRunner, runProject } from "../main/run/orchestrator.ts";
 import type { EngineMessage, RunConfig } from "../shared/run.ts";
@@ -412,6 +412,49 @@ describe("persisted project machine", () => {
 
     const row = db.prepare("SELECT state FROM project WHERE id='p1'").get() as { state: string };
     expect(row.state).toBe("incomplete");
+  });
+});
+
+describe("what the machine allows", () => {
+  it("offers exactly the events the machine would accept, in each state", () => {
+    const db = database();
+    insertProject(db);
+
+    // Asked of the machine, not re-derived from the state name: a condition
+    // rewritten in a template diverges the day the machine changes, and
+    // nothing fails until a user presses the button.
+    expect(makeMachineHost(db, "p1", { hasLanguage: true }).allows).toContain("START");
+
+    db.prepare("UPDATE project SET state = 'paused', machine_snapshot = NULL WHERE id = 'p1'").run();
+    const paused = makeMachineHost(db, "p1", { hasLanguage: true }).allows;
+    expect(paused).toContain("RESUME");
+    expect(paused).not.toContain("PAUSE");
+  });
+
+  it("never offers an event the machine refuses, and never hides one it accepts", () => {
+    // A fresh database per event: `send` persists, so reusing one would only
+    // ever check the events up to the first accepted one.
+    for (const state of ["ready", "running", "paused", "waiting-terms", "waiting-code"]) {
+      for (const type of USER_EVENTS) {
+        const db = database();
+        insertProject(db, state);
+        const offered = makeMachineHost(db, "p1", { hasLanguage: true }).allows.includes(type);
+        const accepted = makeMachineHost(db, "p1", { hasLanguage: true }).send({ type } as never);
+
+        // The two have to agree, or the interface promises something the
+        // machine will silently drop — a button that does nothing.
+        expect({ state, type, offered }).toEqual({ state, type, offered: accepted });
+      }
+    }
+  });
+
+  it("offers nothing that reports work nobody did", () => {
+    const db = database();
+    insertProject(db);
+
+    expect(USER_EVENTS as readonly string[]).not.toContain("TRANSLATED");
+    expect(USER_EVENTS as readonly string[]).not.toContain("COMPOSED");
+    expect(USER_EVENTS as readonly string[]).not.toContain("FAIL");
   });
 });
 
