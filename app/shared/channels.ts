@@ -1,14 +1,14 @@
 import type {
   CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView, InvalidationPreview, ProjectSummary,
   Provider, ProviderInput, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
-  UpdateProjectRequest, VerifyOutcome,
+  Report, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export type {
   CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, GlossaryTerm, GlossaryView,
   InvalidationPreview,
   ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings,
-  TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
+  Report, ReportLine, TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -77,6 +77,8 @@ export interface Invocations {
     req: { projectId: string; glossaryId: string; attached: boolean };
     res: undefined;
   };
+  /** Null when the project has never been run: there is nothing to report on. */
+  "report.get": { req: { projectId: string }; res: Report | null };
   "providers.list": { req: undefined; res: Provider[] };
   "providers.presets": { req: undefined; res: ProviderPreset[] };
   "provider.create": { req: ProviderInput; res: Provider };
@@ -102,6 +104,7 @@ export const INVOCATIONS = [
   "exclusions.list", "exclusions.force", "exclusions.clear",
   "glossaries.list", "glossary.save", "glossary.delete",
   "glossary.import", "glossary.export", "glossary.attach",
+  "report.get",
   "providers.list", "providers.presets",
   "provider.create", "provider.update", "provider.delete", "provider.verify",
   "settings.get", "settings.set",

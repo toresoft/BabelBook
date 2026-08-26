@@ -5,7 +5,9 @@ import { sha256 } from "../../../core/epub/index.ts";
 import { SqliteProjectStore } from "../db/store.ts";
 import { composeEpub } from "../compose.ts";
 import type { Events } from "../../shared/channels.ts";
-import type { BackendSpec, EngineHandle, EngineMessage, RunConfig } from "../../shared/run.ts";
+import type {
+  BackendSpec, EngineHandle, EngineMessage, RunConfig, RunSummary,
+} from "../../shared/run.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
 import type { Workspace } from "../workspace.ts";
@@ -69,6 +71,8 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
   let engine: EngineHandle | null = null;
   let activeId: string | null = null;
   let activeRunId: string | null = null;
+  /** The engine's accounting, held until the book exists to report it against. */
+  let lastSummary: RunSummary | null = null;
 
   const project = (projectId: string): ProjectRow => {
     const row = db.prepare(`
@@ -108,6 +112,18 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       title: row.title,
     });
 
+    // Kept, not just acted on. The invariants, the EPUBCheck verdict and the
+    // path are the only evidence of why a gate refused a book — or of which
+    // checks a published one passed — and the report has nowhere else to read
+    // them from. Written before the transition, so a crash in between leaves
+    // the evidence rather than the claim.
+    db.prepare(`
+      INSERT INTO project_phase_result (project_id, phase, cache_key, result_json)
+      VALUES (?, 'compose', ?, ?)
+      ON CONFLICT (project_id, phase, cache_key) DO UPDATE SET
+        result_json = excluded.result_json, created_at = excluded.created_at
+    `).run(projectId, row.source_sha256, JSON.stringify(result));
+
     // COMPOSED is claimed only after the book was written and validated; a
     // gate that refuses leaves the file behind for inspection and fails the run.
     if (result.status === "failed") host.send({ type: "FAIL", reason: "GATE_REFUSED" });
@@ -118,7 +134,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     if (result.status !== "failed") {
       feed({
         type: "done",
-        summary: {
+        summary: lastSummary ?? {
           units: { total: 0, translated: 0, fellBack: 0, identical: 0 },
           notTranslated: {},
           tokensIn: 0,
@@ -145,7 +161,23 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       deps.broadcast("run.progress", { projectId: activeId, done: message.done, total: message.total });
       return;
     }
-    if (message.type === "gate" || message.type === "done") {
+    if (message.type === "done") {
+      // The engine is the only one that counts tokens, and it says so once.
+      // Without this the run row keeps its default of zero and every report
+      // ever written claims the book cost nothing.
+      lastSummary = message.summary;
+      if (activeRunId !== null) {
+        db.prepare("UPDATE run SET tokens_in = ?, tokens_out = ?, ended_at = ? WHERE id = ?").run(
+          message.summary.tokensIn, message.summary.tokensOut,
+          new Date().toISOString(), activeRunId,
+        );
+      }
+      // Not fed onward: `done` is what tells the user their book is ready, and
+      // the book is not ready until the composer has written and checked it.
+      changed(activeId);
+      return;
+    }
+    if (message.type === "gate") {
       changed(activeId);
       feed(message);
       return;

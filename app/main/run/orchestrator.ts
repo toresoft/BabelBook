@@ -53,9 +53,11 @@ async function stoppedSummary(store: ProjectStore, config: RunConfig): Promise<R
  * Executes model-backed phases in the utility process.
  *
  * This module deliberately depends only on ProjectStore. Snapshot persistence
- * lives in `machine-host.ts`, on the main side of Task 5's store/process
- * boundary. The final `compose` phase message is the Task 7 handoff: until a
- * composer is wired, this function does not claim COMPOSED or emit `done`.
+ * lives in `machine-host.ts`, on the main side of the store/process boundary.
+ * The final `compose` phase message hands over to the main process, which owns
+ * the composer: this function never claims COMPOSED. It returns the summary,
+ * and the summary is the only record of what the run spent — dropping it makes
+ * every report say the book cost nothing.
  */
 export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
   const { backend, config, emit, signal, store } = deps;
@@ -166,10 +168,10 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
   return summary;
 }
 
-/** Narrow production adapter Task 8 can register with the Task 5 runtime. */
+/** Narrow production adapter the runtime registers. */
 export function makeEngineRunner(deps: { backend: LlmBackend }): EngineRunner {
   return async (input) => {
-    await runProject({
+    const summary = await runProject({
       store: input.store,
       backend: deps.backend,
       config: input.config,
@@ -177,5 +179,10 @@ export function makeEngineRunner(deps: { backend: LlmBackend }): EngineRunner {
       emit: input.emit,
       signal: input.signal,
     });
+
+    // The engine's last word, and the only place the token counts exist. It
+    // says the engine is finished, not that the book is: composition belongs
+    // to the main process, and the reader is told when the file is on disk.
+    input.emit({ type: "done", summary });
   };
 }

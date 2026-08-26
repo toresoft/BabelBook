@@ -96,6 +96,75 @@ export interface GlossaryView {
   terms: GlossaryTerm[];
 }
 
+/** One structural check on the composed book, and what differs if it failed. */
+export interface InvariantResult {
+  id: string;
+  name: string;
+  ok: boolean;
+  /** Named, because an invariant that only says "failed" costs an investigation. */
+  details: string[];
+  skipped?: boolean;
+}
+
+export interface EpubcheckMessage {
+  id: string;
+  severity: "fatal" | "error" | "warning" | "usage";
+  message: string;
+  path?: string;
+}
+
+/**
+ * How well the terminology was honoured, counted per rule.
+ *
+ * The rules are not a scale: disregarding a `prefer` can be the right call
+ * when grammar pushes back, while disregarding a `must` is a defect. Adding
+ * them together produces a number nobody can act on.
+ */
+export interface Adherence {
+  checked: number;
+  respected: number;
+  byRule: Record<TermRule, { checked: number; respected: number }>;
+  violations: Array<{ unitId: string; term: string; rule: TermRule }>;
+}
+
+/** One kind of thing that happened during a run, counted. */
+export interface ReportLine {
+  code: string;
+  severity: "info" | "warning" | "degradation";
+  count: number;
+  samples: unknown[];
+}
+
+/**
+ * What happened to a book, as codes rather than as sentences.
+ *
+ * The interface composes the phrases from its catalogue, in the reader's
+ * language. It is also what makes a report worth comparing: two books that
+ * went wrong the same way produce the same codes.
+ */
+export interface Report {
+  status: "complete" | "incomplete" | "failed";
+  units: {
+    total: number;
+    translated: number;
+    fellBack: number;
+    identical: number;
+    notTranslated: Record<string, number>;
+  };
+  /** Above five per cent of translations identical to their source. */
+  identicalWarning: boolean;
+  degradations: ReportLine[];
+  /** What is declared and is not a defect. */
+  declarations: ReportLine[];
+  invariants: InvariantResult[];
+  epubcheck: { ran: boolean; reason?: string; introduced: EpubcheckMessage[] };
+  layout: { book: string; prePaginated: number };
+  overlaysRemoved: { overlays: number; audio: number };
+  terms: { active: number; adherence: Adherence | null };
+  cost: { tokensIn: number; tokensOut: number; amount: number | null };
+  outputPath: string | null;
+}
+
 /** A state that means "this will not be translated", and why. */
 export type ExcludedState =
   | "code" | "translate-no" | "never-translated" | "uncomposable" | "maybe-code";

@@ -87,7 +87,7 @@ async function backendFromSpec(spec: BackendSpec): Promise<LlmBackend> {
 /** The production runner: a backend from the spec, then the phases. */
 const productionRunner: EngineRunner = async (input) => {
   const backend = await backendFromSpec(input.backendSpec);
-  await runProject({
+  const summary = await runProject({
     store: input.store,
     backend,
     config: input.config,
@@ -95,6 +95,11 @@ const productionRunner: EngineRunner = async (input) => {
     emit: input.emit,
     signal: input.signal,
   });
+
+  // The engine's last word, and the only place the token counts exist. It says
+  // the engine is finished, not that the book is: composition belongs to the
+  // main process, and the reader is told once the file is on disk.
+  input.emit({ type: "done", summary });
 };
 
 /**

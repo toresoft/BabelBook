@@ -16,6 +16,7 @@ import {
   attachToProject, deleteGlossary, detachFromProject, exportGlossary, importGlossary,
   listGlossaries, saveGlossary,
 } from "./glossaries/store.ts";
+import { buildReport } from "./report/build.ts";
 import { listProjects } from "./projects/query.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
@@ -182,6 +183,15 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       else detachFromProject(deps.db, projectId, glossaryId);
       deps.broadcast("project.changed", { id: projectId });
       return undefined;
+    },
+
+    "report.get": async ({ projectId }) => {
+      // The latest run, because that is the one the user just watched. Older
+      // runs are still in the table and a future screen can offer them.
+      const row = deps.db.prepare(
+        "SELECT id FROM run WHERE project_id = ? ORDER BY started_at DESC LIMIT 1",
+      ).get(projectId) as { id: string } | undefined;
+      return row === undefined ? null : buildReport(deps.db, projectId, row.id);
     },
 
     "providers.list": async () => listProviders(deps.db),

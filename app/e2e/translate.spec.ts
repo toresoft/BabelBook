@@ -100,6 +100,28 @@ test("a whole book through the app, from the file to the translated EPUB", async
 
   await until(window, (project) => project.state === "done", "the run reaches done");
   await expect(window.getByTestId("library").locator("li.tile").first()).toContainText("Completo");
+
+  // The report is the only place the composition's verdict and the run's cost
+  // survive. Both used to be computed and dropped, so a report would have
+  // claimed every book passed no checks and cost nothing.
+  const listed = await projects(window);
+  const report = await window.evaluate((projectId) =>
+    (window as unknown as { babelbook: Bridge }).babelbook.invoke("report.get", { projectId }),
+    listed[0]!.id) as {
+      status: string;
+      invariants: Array<{ id: string; ok: boolean }>;
+      epubcheck: { ran: boolean };
+      cost: { tokensIn: number; tokensOut: number };
+      outputPath: string | null;
+    };
+
+  expect(report.status).toBe("complete");
+  expect(report.invariants.length).toBeGreaterThan(0);
+  expect(report.invariants.every((invariant) => invariant.ok)).toBe(true);
+  expect(report.outputPath).toContain(".it.epub");
+  expect(report.cost.tokensIn).toBeGreaterThan(0);
+  expect(report.cost.tokensOut).toBeGreaterThan(0);
+
   await app.close();
 
   const { epubPath } = await projectOutput(dir);
