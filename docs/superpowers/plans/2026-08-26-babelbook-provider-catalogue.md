@@ -1,8 +1,42 @@
 # babelBook — Piano 7: il catalogo dei provider, e i modelli locali
 
-**Stato: non iniziato**, al 2026-08-26.
+**Stato: completo, 9 task su 9 — tranne la prova dal vivo del Task 3**, al 2026-08-26.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Nota di chiusura.** Suite ed e2e verdi (11 e2e, 1 skip preesistente: serve un
+pacchetto installato). Ciò che l'esecuzione ha aggiunto a quanto scritto:
+
+- **Task 3, Step 4 resta aperto**: nessun Ollama o LM Studio gira sulla
+  macchina dove il piano è stato eseguito, e i daemon docker/podman sono
+  fermi. La sonda è provata contro server finti in-process e nell'e2e; finché
+  un elenco di modelli veri non arriva da un server vero, quel passo non è
+  fatto. È l'unico punto della "definizione di finito" non certificato.
+- **Le voci senza URL nel catalogo rispondono con la lista del catalogo
+  stesso** (openai, anthropic, google, mistral, groq…): i loro pacchetti
+  portano l'URL dentro, e nessun URL viene inventato per riempire il vuoto.
+  La chiave rifiutata, per quelle, si vede alla verifica — che esiste già.
+- **Un catalogo importato vince sull'istantanea anche quando è più vecchio**
+  (la cache porta `origin: "import"`): è una scelta dell'utente, e la riga
+  della data la dichiara. Un aggiornamento fallito è un codice IPC gentile,
+  non un allarme.
+- **Task 5 ha portato il canale `catalog.state`** (la riga della data) e i
+  nuovi `catalog.search`/`catalog.models`/`provider.discover`; Task 6 vi ha
+  aggiunto refresh e import. Il modulo d'aggiunta è una ricerca, una chiave e
+  un elenco che arriva: `addModel` e i cinque campi per modello non esistono
+  più.
+- **Task 7 ha riempito un vuoto che il piano non nominava**: nessuna schermata
+  permetteva di assegnare un provider a un progetto (le corse vere partivano
+  solo col backend finto). Il nuovo progetto ora sceglie provider e modello,
+  `estimate()` riceve prezzi veri per la prima volta, e `run.cost` si calcola
+  al "done" col prezzo del modello in quel momento. File toccati oltre
+  l'elenco: `runtime.ts`, il template e i locali di new-project, il template
+  del progetto e del report.
+- **Task 8 ha attraversato la catena** `provider_model` → `RunConfig` →
+  `translateUnits` → `planChunks`: la finestra sale al core come numero,
+  mai come provider. Il tetto di qualità (6000 caratteri) resta per tutti.
+- Frasi `estimateWithCost`/`noPrices` esistevano già nei locali da un piano
+  precedente: usate, non reinventate.
 
 **Goal:** aggiungere un provider deve voler dire **sceglierlo e incollare la chiave**. I modelli, i loro prezzi, la finestra di contesto e cosa sanno fare li scopre l'applicazione. Un modello che gira sul tuo computer — Ollama, LM Studio — si aggiunge senza nemmeno la chiave.
 
@@ -79,7 +113,7 @@ app/
 **Files:**
 - Create: `app/main/catalog/shape.ts`, `app/main/catalog/load.ts`, `app/scripts/fetch-catalog.mjs`, `app/catalog/snapshot.json.gz`, `app/test/catalog.test.ts`
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 Contro un'istantanea finta, non contro la rete:
 
@@ -90,16 +124,16 @@ Contro un'istantanea finta, non contro la rete:
 - **senza rete non è un errore**: si risponde con l'istantanea e si dichiara `stale: true`;
 - un `304 Not Modified` non riscrive la cache.
 
-- [ ] **Step 2: Eseguirli e verificare che falliscano**
+- [x] **Step 2: Eseguirli e verificare che falliscano**
 
-- [ ] **Step 3: Implementare**
+- [x] **Step 3: Implementare**
 
 `fetch-catalog.mjs` scarica, sfronda e comprime — come `make-icons.mjs` per le icone: la forma è codice leggibile, non un binario committato senza provenienza.
 
 A runtime: l'istantanea è il pavimento, la cache su disco è ciò che si è scaricato l'ultima volta, la rete si interroga **con ETag e in secondo piano**, mai sulla via critica dell'avvio. Un aggiornamento che fallisce non è un errore da mostrare: è un catalogo un po' vecchio, e lo si dice solo dove serve.
 
-- [ ] **Step 4: Eseguire i test**
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Eseguire i test**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -118,7 +152,7 @@ export function discoverModels(input: {
 }): Promise<Discovered[]>;
 ```
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 Con un server finto in-process, mai la rete vera:
 
@@ -128,7 +162,7 @@ Con un server finto in-process, mai la rete vera:
 - un JSON che non ha la forma attesa diventa `bad-response` e **non** un elenco vuoto: "nessun modello" e "non ho capito la risposta" sono fatti diversi;
 - l'attesa ha un limite, o una porta sbagliata blocca la schermata per sempre.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 I codici sono quelli che `VerifyOutcome` già usa, perché è già la lingua con cui questa applicazione parla dei provider.
 
@@ -154,7 +188,7 @@ export interface LocalRuntime {
 export function probeLocalRuntimes(signal?: AbortSignal): Promise<LocalRuntime[]>;
 ```
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 - due server finti sulle due porte producono due runtime;
 - una porta chiusa **non è un errore**: quel runtime semplicemente non c'è;
@@ -162,9 +196,9 @@ export function probeLocalRuntimes(signal?: AbortSignal): Promise<LocalRuntime[]
 - Ollama riceve `ollama` come chiave, LM Studio nessuna: è la differenza documentata fra i due;
 - i modelli elencati sono quelli del server, **non quelli del catalogo** — `lmstudio` nel catalogo ne ha tre, e non sono i tuoi.
 
-- [ ] **Step 2: Eseguirli e verificare che falliscano**
+- [x] **Step 2: Eseguirli e verificare che falliscano**
 
-- [ ] **Step 3: Implementare**
+- [x] **Step 3: Implementare**
 
 Porte da configurare, con i valori noti come partenza: `11434` e `1234`. Chi ha cambiato porta lo deve poter dire.
 
@@ -172,7 +206,7 @@ Porte da configurare, con i valori noti come partenza: `11434` e `1234`. Chi ha 
 
 **Con un Ollama e un LM Studio davvero in esecuzione.** Le due righe su cui questo task si regge vengono dalla documentazione: nessuno dei due gira sulla macchina dove il piano è stato scritto. Finché non si è visto un elenco di modelli veri arrivare da un server vero, questo task non è fatto.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -182,7 +216,7 @@ Porte da configurare, con i valori noti come partenza: `11434` e `1234`. Chi ha 
 - Modify: `app/main/providers/store.ts`, `app/shared/dto.ts`
 - Create: `app/main/db/migrations/008-provider-catalog.sql`
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 - un provider ricorda **da quale voce di catalogo viene** (`catalogId`), così i suoi metadati si possono riaggiornare;
 - un modello porta prezzo, contesto e capacità quando il catalogo li conosce, e `null` quando no;
@@ -190,7 +224,7 @@ Porte da configurare, con i valori noti come partenza: `11434` e `1234`. Chi ha 
 - un provider scritto a mano, senza `catalogId`, continua a funzionare: i preset esistenti non si rompono;
 - il prezzo salvato è **quello del catalogo al momento**, con la sua data: se cambia, la stima di ieri resta spiegabile.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 `PRESETS` sparisce come elenco scritto a mano. Resta un solo caso costruito a mano — l'endpoint compatibile generico — perché è la scorciatoia per ciò che il catalogo non conosce.
 
@@ -202,7 +236,7 @@ Porte da configurare, con i valori noti come partenza: `11434` e `1234`. Chi ha 
 - Modify: `app/renderer/src/app/settings/providers.ts` e il suo template
 - Create: `app/renderer/src/app/settings/providers.spec.ts` (i casi nuovi)
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 Il flusso, e niente più di quello:
 
@@ -217,13 +251,13 @@ Il flusso, e niente più di quello:
 
 I test verificano anche ciò che **non** c'è più: nessun campo per digitare id di modelli, nomi visibili, contesto o prezzi a mano.
 
-- [ ] **Step 2: Eseguirli e verificare che falliscano**
+- [x] **Step 2: Eseguirli e verificare che falliscano**
 
-- [ ] **Step 3: Implementare**
+- [x] **Step 3: Implementare**
 
 La semplicità qui è sottrazione. Il modulo oggi ha `addModel`, `patchModel`, `removeModel` e cinque campi per modello: **spariscono**. Ciò che resta è una ricerca, una chiave, e un elenco che arriva.
 
-- [ ] **Step 4–5**: come sopra.
+- [x] **Step 4–5**: come sopra.
 
 ---
 
@@ -256,7 +290,7 @@ male: i modelli escono ogni settimana e i prezzi cambiano. E una macchina senza
 rete non deve restare ferma all'istantanea per sempre — il file lo si può
 portare su una chiavetta.
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 - un aggiornamento riuscito **sostituisce la cache e cambia la data**, e lo
   stato riporta quanti provider e quanti modelli sono arrivati;
@@ -272,9 +306,9 @@ portare su una chiavetta.
   ma lo stato lo dichiara: è una scelta dell'utente, non un errore;
 - `bundled` diventa falso appena si usa qualcosa che non è l'istantanea inclusa.
 
-- [ ] **Step 2: Eseguirli e verificare che falliscano**
+- [x] **Step 2: Eseguirli e verificare che falliscano**
 
-- [ ] **Step 3: Implementare**
+- [x] **Step 3: Implementare**
 
 Il file lo legge il processo main, come per i glossari: la finestra chiede, e
 riceve indietro lo stato. Nessun percorso attraversa il confine.
@@ -284,8 +318,8 @@ accanto due azioni: aggiorna, e importa da file. Non un pannello: una riga e due
 pulsanti, perché è informazione di servizio e non il motivo per cui si è aperta
 quella schermata.
 
-- [ ] **Step 4: Eseguire i test**
-- [ ] **Step 5: Commit**
+- [x] **Step 4: Eseguire i test**
+- [x] **Step 5: Commit**
 
 ---
 
@@ -294,13 +328,13 @@ quella schermata.
 **Files:**
 - Modify: `app/renderer/src/app/new-project/new-project.ts`, `app/main/projects/detail.ts`, `app/main/report/build.ts`
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 - con un modello che dichiara i prezzi, la stima di un libro mostra un costo e non solo token;
 - **senza prezzi mostra solo token**, come oggi: la regola non cambia, cambia che ora un prezzo esiste;
 - il report calcola il costo dai token davvero spesi e dal prezzo del modello usato, e `run.cost` smette di essere sempre nullo.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 È la parte che ripaga il piano: `estimate()` esiste dal piano 3, sa calcolare un costo, e **non le è mai arrivato un prezzo**.
 
@@ -311,13 +345,13 @@ quella schermata.
 **Files:**
 - Modify: `core/translate/plan.ts`, `app/main/run/runtime.ts`
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 - un modello con una finestra piccola produce gruppi più piccoli;
 - un modello con una finestra grande **non** produce gruppi illimitati: il tetto resta, perché un gruppo enorme peggiora la traduzione anche quando ci sta;
 - senza un valore noto vale il numero di oggi, che resta il comportamento di riferimento.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 Questo task cambia il comportamento della traduzione, non solo la configurazione. Se il tempo stringe, è il primo da rimandare — e in tal caso va **detto**, non lasciato a metà.
 
@@ -328,7 +362,7 @@ Questo task cambia il comportamento della traduzione, non solo la configurazione
 **Files:**
 - Modify: `app/e2e/providers.spec.ts`
 
-- [ ] **Step 1: Il test che fallisce**
+- [x] **Step 1: Il test che fallisce**
 
 Nella finestra vera, con un catalogo finto servito dal main:
 
@@ -337,7 +371,7 @@ Nella finestra vera, con un catalogo finto servito dal main:
 3. un runtime locale finto sulla sua porta compare fra i locali, **senza campo chiave**, con i modelli che quel server dichiara;
 4. la chiave continua a non arrivare mai alla finestra: la lista risponde `hasKey`, e basta.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 ---
 
