@@ -39,7 +39,7 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 5. Gate, glossari, report | **completo**, 8/8 | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
 | 6. CI e pacchetti | scritto, non iniziato | `.github/`, `app/electron-builder.yml` |
 
-Suite: **568 test verdi** (260 core, 249 app, 59 componenti) piu' **10 prove
+Suite: **574 test verdi** (260 core, 255 app, 59 componenti) piu' **11 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
 ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
 la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
@@ -112,7 +112,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 568 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 574 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è
@@ -120,6 +120,12 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 - **Impaginazione fissa**: rilevata e dichiarata, mai risolta.
 - **Rimozione degli overlay**: specificata e coperta da un'invariante, mai
   eseguita su un audiolibro vero.
+- **L'icona nel tray non compare su KDE/Wayland.** Misurato: `new Tray()` non
+  solleva eccezioni e l'oggetto resta vivo, ma nessun `StatusNotifierItem` si
+  registra su DBus, mentre altri programmi nella stessa sessione si registrano.
+  Un Electron di dieci righe si comporta identicamente, quindi la causa non e'
+  in babelBook. Resta aperto. Nel frattempo, senza tray la finestra non si
+  nasconde piu' alla chiusura, cosi' non diventa irraggiungibile.
 - **Un attributo traducibile sull'elemento di blocco** (`<p title="…">`) non
   viene tradotto: le unità attributo nascono solo dai segnaposto inline. Limite
   noto del piano 1, da chiudere prima di tradurre libri veri.

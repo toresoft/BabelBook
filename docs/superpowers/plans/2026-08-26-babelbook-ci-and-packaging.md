@@ -34,9 +34,10 @@ Non sono supposizioni: le ho misurate sul repository.
 - **`vendor/` è in `.gitignore`**, quindi il jar di EPUBCheck non è nel
   repository. I test lo tollerano già: `composeEpub` dichiara `ran: false` e non
   lo spaccia per un successo.
-- **Non ci sono icone applicative.** C'è solo `renderer/public/favicon.ico`, che
-  non basta: `.deb`, `.rpm` e AppImage vogliono almeno un PNG 512×512 e Windows
-  un `.ico` multi-risoluzione.
+- **Le icone ora ci sono** (`app/build/icon-*.png`, da 16 a 512, generate da
+  `app/scripts/make-icons.mjs`). Per Windows resta da produrre un `.ico`
+  multi-risoluzione: electron-builder lo deriva dal PNG più grande, ma solo se
+  glielo si indica.
 
 ### Il vincolo che decide l'architettura
 
@@ -198,7 +199,7 @@ Rompere un'asserzione end-to-end e controllare che il report caricato dica quale
 ### Task 3: electron-builder, e il primo pacchetto locale
 
 **Files:**
-- Create: `app/electron-builder.yml`, `app/build/icon.png`, `app/build/icon.ico`
+- Create: `app/electron-builder.yml`
 - Modify: `app/package.json`, `.gitignore`
 
 Prima di toccare la CI, il pacchetto deve nascere **in locale**: fare esordire
@@ -206,8 +207,9 @@ electron-builder dentro un workflow significa debuggare a colpi di push.
 
 - [ ] **Step 1: Le icone**
 
-Servono davvero, non sono decorazione: `.deb` e `.rpm` senza icona finiscono nei
-menu come rettangoli grigi. 512×512 PNG e `.ico` multi-risoluzione.
+Già fatte: `app/build/` porta da 16 a 512 pixel, generate da
+`scripts/make-icons.mjs`. Resta da verificare che electron-builder le prenda
+come `buildResources`, e che Windows ottenga il suo `.ico`.
 
 - [ ] **Step 2: La configurazione**
 
