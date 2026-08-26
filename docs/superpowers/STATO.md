@@ -35,44 +35,32 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 1. Layer EPUB del core | **completo**, 17/17 | `core/epub/` |
 | 2. Layer traduzione del core | **completo**, 14/14 | `core/translate/`, `core/analyze/`, `core/glossary/`, `core/ports.ts` |
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
-| 4. Esecuzione, provider, composizione | **task 1-6 su 9** | `app/main/providers/`, `app/engine/`, `app/main/run/`, `core/workflow/` |
+| 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
 | 5. Gate, glossari, report | non iniziato | — |
 
-Suite: **411 test verdi** (260 core, 151 app) piu' **3 prove end-to-end** del
-percorso Electron. Typecheck e build di produzione sono puliti. Il nuovo
-end-to-end di traduzione appartiene al Task 9.
+Suite: **423 test verdi** (260 core, 163 app) piu' **5 prove end-to-end**, di
+cui due portano un libro intero dal file all'EPUB tradotto e ne mettono in pausa
+uno a meta'. Typecheck e build di produzione sono puliti.
 
 ## Il prossimo passo
 
-**Piano 4, Task 7** — composizione dell'EPUB e gate del file prodotto. I task
-1-6 sono fatti: provider e chiavi cifrate, risoluzione/verifica del modello,
-macchina a stati, engine in `utilityProcess` con proxy di `ProjectStore`, e
-orchestratore persistente con gate e ripresa idempotente. Dopo il Task 7 restano
-tray e ciclo di vita (8), quindi la traduzione end-to-end con backend finto (9).
+**Piano 5** — le schermate dei due gate, i glossari, la scheda delle unita' e il
+report. Il piano 4 e' chiuso: provider e chiavi cifrate, risoluzione e verifica
+del modello, macchina a stati, engine nell'`utilityProcess` con proxy dello
+store, orchestratore persistente, composizione con gate, tray e ciclo di vita.
 
-Quello che l'applicazione fa oggi: si apre, crea un progetto da un EPUB senza
-alcun provider configurato, lo mostra in libreria con copertina, lingue,
-avanzamento e gli avvisi di impaginazione fissa e overlay. Il motore e
-l'orchestratore esistono e sono testati, ma il main non li ha ancora cablati ai
-comandi dell'interfaccia: l'applicazione non traduce ancora.
+Quello che l'applicazione fa oggi: si apre, crea un progetto da un EPUB, lo
+mostra in libreria con copertina, lingue, avanzamento e gli avvisi di
+impaginazione fissa e overlay, e **traduce un libro intero** — con pausa,
+chiusura della finestra, riavvio e ripresa che non ritraducono nulla di gia'
+fatto. Chiudere la finestra mentre un libro e' in lavorazione non chiude
+l'applicazione: resta in tray.
 
-## Da fare appena si riprende il piano 4
-
-- **Il Task 7 deve chiudere l'handoff `compose`.** L'orchestratore emette la
-  fase di composizione ma, correttamente, non manda `COMPOSED` o `done` finche'
-  non esiste e non passa il gate un EPUB reale.
-- **Il Task 8 deve cablare il runtime.** Deve registrare store e crash handler
-  con `configureEngineHost`, applicare nel main i messaggi `transition`, e
-  rimettere lo snapshot persistito nel comando `start` alla ripresa.
-- **Il cablaggio IPC della verifica provider non è fatto**, di proposito: i
-  canali erano territorio di un altro agente. Il flusso previsto è
-  `resolveModel` in try/catch, `classifyError(e)` sul fallimento, altrimenti
-  `verifyProvider({ backend: sdkBackend(resolved, generateText), modelId })`.
-  Vanno aggiunti i canali `providers.*` in `app/shared/channels.ts` e i
-  gestori in `app/main/ipc.ts` (la mappa di `buildHandlers`, che un test
-  confronta con l'elenco dichiarato).
-- **`ai` non è una dipendenza**: `sdkBackend(resolved, generate)` riceve
-  `generateText` dall'esterno, e il processo engine lo importa dinamicamente.
+Quello che non puo' ancora fare dall'interfaccia: **aggiungere un provider e la
+sua chiave**. `createProvider`, `updateProvider` e `listProviders` esistono e
+sono testati, ma nessuno li chiama fuori dai test — il canale IPC c'e' solo per
+`provider.verify`. La schermata delle impostazioni e' il piano 5, quindi oggi
+l'unico backend raggiungibile e' quello finto (`BABELBOOK_FAKE_BACKEND=1`).
 
 ## Decisioni prese durante l'esecuzione
 
@@ -120,7 +108,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 411 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 423 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è
