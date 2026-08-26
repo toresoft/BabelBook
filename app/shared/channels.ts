@@ -1,11 +1,12 @@
 import type {
-  CreatedProject, CreateProjectRequest, ExclusionGroup, InvalidationPreview, ProjectSummary,
+  CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView, InvalidationPreview, ProjectSummary,
   Provider, ProviderInput, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
   UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export type {
-  CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, InvalidationPreview,
+  CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, GlossaryTerm, GlossaryView,
+  InvalidationPreview,
   ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings,
   TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
@@ -67,6 +68,15 @@ export interface Invocations {
     res: { toTranslate: number; toCode: number };
   };
   "exclusions.clear": { req: { projectId: string; unitIds: string[] }; res: { cleared: number } };
+  "glossaries.list": { req: undefined; res: GlossaryView[] };
+  "glossary.save": { req: GlossaryView; res: GlossaryView };
+  "glossary.delete": { req: { id: string }; res: { detachedFrom: number } };
+  "glossary.import": { req: { markdown: string }; res: GlossaryView };
+  "glossary.export": { req: { id: string }; res: { markdown: string } };
+  "glossary.attach": {
+    req: { projectId: string; glossaryId: string; attached: boolean };
+    res: undefined;
+  };
   "providers.list": { req: undefined; res: Provider[] };
   "providers.presets": { req: undefined; res: ProviderPreset[] };
   "provider.create": { req: ProviderInput; res: Provider };
@@ -90,6 +100,8 @@ export const INVOCATIONS = [
   "terms.list", "terms.decide", "terms.add", "terms.promote",
   "terms.previewInvalidation", "terms.invalidate",
   "exclusions.list", "exclusions.force", "exclusions.clear",
+  "glossaries.list", "glossary.save", "glossary.delete",
+  "glossary.import", "glossary.export", "glossary.attach",
   "providers.list", "providers.presets",
   "provider.create", "provider.update", "provider.delete", "provider.verify",
   "settings.get", "settings.set",

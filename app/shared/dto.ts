@@ -66,6 +66,36 @@ export interface Settings {
   epubcheckJar: string | null;
 }
 
+/**
+ * A term as a glossary holds it.
+ *
+ * Structurally what the core calls a `TermEntry`, declared here rather than
+ * imported so the renderer does not compile the core to know what a glossary
+ * looks like. The optional fields are optional and not nullable on purpose:
+ * that is what the markdown format round-trips through, and a `target: null`
+ * would come back as an empty cell meaning something else.
+ */
+export interface GlossaryTerm {
+  source: string;
+  target?: string;
+  rule: TermRule;
+  sense?: string;
+  note?: string;
+  origin: "glossary" | "extracted" | "manual";
+}
+
+/** A glossary as the application stores it: the core's shape, plus an identity. */
+export interface GlossaryView {
+  id: string;
+  name: string;
+  /** Part of the cache key: a glossary that grew is a different question. */
+  version: number;
+  description: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  terms: GlossaryTerm[];
+}
+
 /** A state that means "this will not be translated", and why. */
 export type ExcludedState =
   | "code" | "translate-no" | "never-translated" | "uncomposable" | "maybe-code";

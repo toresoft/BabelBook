@@ -12,6 +12,10 @@ import {
 import { addManualTerm, decideTerms, listTerms, promoteToGlossary } from "./terms/approve.ts";
 import { applyInvalidation, previewInvalidation } from "./terms/invalidate.ts";
 import { clearForced, forceState, listExclusions } from "./exclusions/review.ts";
+import {
+  attachToProject, deleteGlossary, detachFromProject, exportGlossary, importGlossary,
+  listGlossaries, saveGlossary,
+} from "./glossaries/store.ts";
 import { listProjects } from "./projects/query.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
@@ -160,6 +164,25 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "exclusions.clear": async ({ projectId, unitIds }) =>
       clearForced(deps.db, projectId, unitIds),
+
+    "glossaries.list": async () => listGlossaries(deps.db),
+
+    "glossary.save": async (glossary) => saveGlossary(deps.db, glossary),
+
+    "glossary.delete": async ({ id }) => deleteGlossary(deps.db, id),
+
+    "glossary.import": async ({ markdown }) => importGlossary(deps.db, markdown),
+
+    "glossary.export": async ({ id }) => ({ markdown: exportGlossary(deps.db, id) }),
+
+    "glossary.attach": async ({ projectId, glossaryId, attached }) => {
+      // One channel for both directions: the screen has a checkbox, not two
+      // buttons, and splitting it would let the two drift apart.
+      if (attached) attachToProject(deps.db, projectId, glossaryId, "user");
+      else detachFromProject(deps.db, projectId, glossaryId);
+      deps.broadcast("project.changed", { id: projectId });
+      return undefined;
+    },
 
     "providers.list": async () => listProviders(deps.db),
 
