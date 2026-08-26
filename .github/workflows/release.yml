@@ -43,6 +43,26 @@ jobs:
       - run: npx electron-builder ${{ matrix.targets }} --publish never
         working-directory: app
 
+      # A package nobody opened is a file, not a package. This launches the
+      # one just built and makes it read a book — the gesture that fails when
+      # the platform's native binding did not make it into the archive, which
+      # is a failure every build above would report as a success.
+      - name: open what was built (linux)
+        if: runner.os == 'Linux'
+        env:
+          BABELBOOK_PACKAGED: app/release/linux-unpacked/babelbook
+        run: |
+          sudo apt-get update && sudo apt-get install -y xvfb
+          xvfb-run --auto-servernum npx playwright test e2e/packaged.spec.ts
+        working-directory: app
+
+      - name: open what was built (windows)
+        if: runner.os == 'Windows'
+        env:
+          BABELBOOK_PACKAGED: app/release/win-unpacked/babelBook.exe
+        run: npx playwright test e2e/packaged.spec.ts
+        working-directory: app
+
       - uses: actions/upload-artifact@v4
         with:
           name: packages-${{ matrix.os }}
