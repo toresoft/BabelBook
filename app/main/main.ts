@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import {
-  app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, safeStorage, Tray,
+  app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, safeStorage, shell, Tray,
 } from "electron";
 import { loadCatalogue, type Translate } from "./catalogue.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
@@ -261,6 +261,12 @@ app.whenReady().then(async () => {
     pauseRun: (projectId) => runtime.pause(projectId),
     approveGate: (projectId, gate) => runtime.approve(projectId, gate),
     verifyProvider: verify,
+    openPath: async (path) => {
+      await shell.openPath(path);
+    },
+    revealPath: async (path) => {
+      shell.showItemInFolder(path);
+    },
     broadcast: (channel, payload) => {
       for (const window of BrowserWindow.getAllWindows()) {
         window.webContents.send(channel, payload);

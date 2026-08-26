@@ -35,6 +35,9 @@ export interface IpcDeps {
   approveGate(projectId: string, gate: "terms" | "code"): Promise<void>;
   /** One minimal call to the provider, reported as an outcome and never as a sentence. */
   verifyProvider(request: { providerId: string; modelId: string }): Promise<VerifyOutcome>;
+  /** Hands a path to the desktop: opens the file, or shows it in its folder. */
+  openPath(path: string): Promise<void>;
+  revealPath(path: string): Promise<void>;
   broadcast<K extends keyof Events>(channel: K, payload: Events[K]): void;
 }
 
@@ -63,6 +66,21 @@ function cacheKeyOf(db: DatabaseSync, projectId: string): string {
     { cache_key: string | null } | undefined;
   if (row === undefined) throw new Error(`no such project: ${projectId}`);
   return row.cache_key ?? "";
+}
+
+/**
+ * Refuses a path that is not inside a project's workspace.
+ *
+ * The renderer only ever receives paths this process produced, so a request
+ * for anything else is either a defect or an attempt; either way the desktop
+ * should not be asked to open it.
+ */
+function assertProduced(db: DatabaseSync, path: string): void {
+  const roots = db.prepare("SELECT workspace_path FROM project").all() as
+    Array<{ workspace_path: string }>;
+  if (!roots.some((row) => path.startsWith(`${row.workspace_path}/`))) {
+    throw new Error(`PATH_NOT_PRODUCED: ${path}`);
+  }
 }
 
 function workspaceOf(db: DatabaseSync, id: string): Workspace {
@@ -198,6 +216,18 @@ export function buildHandlers(deps: IpcDeps): Handlers {
         "SELECT id FROM run WHERE project_id = ? ORDER BY started_at DESC LIMIT 1",
       ).get(projectId) as { id: string } | undefined;
       return row === undefined ? null : buildReport(deps.db, projectId, row.id);
+    },
+
+    // Only a path this process produced. A window free to name any path would
+    // be one defect away from asking the desktop to open anything on disk.
+    "file.open": async ({ path }) => {
+      assertProduced(deps.db, path);
+      await deps.openPath(path);
+    },
+
+    "file.reveal": async ({ path }) => {
+      assertProduced(deps.db, path);
+      await deps.revealPath(path);
     },
 
     "providers.list": async () => listProviders(deps.db),

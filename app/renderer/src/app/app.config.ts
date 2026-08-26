@@ -1,5 +1,5 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from "@angular/core";
-import { provideRouter } from "@angular/router";
+import { provideRouter, withComponentInputBinding } from "@angular/router";
 import { routes } from "./app.routes";
 import { provideI18n } from "./core/i18n";
 import { IpcService } from "./core/ipc.service";
@@ -15,7 +15,9 @@ const initialLanguage = (globalThis as { navigator?: { language?: string } })
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    // Route parameters arrive as component inputs, so a screen declares what
+    // it needs instead of reaching into ActivatedRoute to find it.
+    provideRouter(routes, withComponentInputBinding()),
     ...provideI18n(initialLanguage),
     { provide: IpcService, useFactory: () => new IpcService() },
   ],

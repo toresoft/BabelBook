@@ -1,0 +1,131 @@
+<section class="report" data-testid="report" *transloco="let t">
+  <h2>{{ t('report.title') }}</h2>
+
+  @if (report(); as found) {
+    <p class="report__status" [attr.data-testid]="'status-' + found.status">
+      {{ t('report.status.' + found.status) }}
+    </p>
+
+    <dl class="report__counts">
+      <div>
+        <dt>{{ t('report.units') }}</dt>
+        <dd>{{ t('report.unitCounts', {
+          translated: found.units.translated, total: found.units.total
+        }) }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('report.fellBack') }}</dt>
+        <dd data-testid="fell-back">{{ found.units.fellBack }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('report.identical') }}</dt>
+        <dd>{{ found.units.identical }}</dd>
+      </div>
+      <div>
+        <dt>{{ t('report.cost') }}</dt>
+        <dd>{{ t('report.tokens', {
+          tokensIn: found.cost.tokensIn, tokensOut: found.cost.tokensOut
+        }) }}</dd>
+      </div>
+    </dl>
+
+    @if (found.identicalWarning) {
+      <p class="report__warning" data-testid="identical-warning">{{ t('report.identicalWarning') }}</p>
+    }
+
+    <section class="report__block">
+      <h3>{{ t('report.degradations') }}</h3>
+      @if (found.degradations.length === 0) {
+        <p class="report__none">{{ t('report.noDegradations') }}</p>
+      }
+      <ul>
+        @for (line of found.degradations; track line.code) {
+          <li [attr.data-testid]="'degradation-' + line.code">
+            {{ t('codes.' + line.code) }} — {{ t('report.times', { count: line.count }) }}
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="report__block">
+      <h3>{{ t('report.declarations') }}</h3>
+      <p class="report__none">{{ t('report.declarationsLead') }}</p>
+      <ul>
+        @for (line of found.declarations; track line.code) {
+          <li [attr.data-testid]="'declaration-' + line.code">
+            {{ t('codes.' + line.code) }} — {{ t('report.times', { count: line.count }) }}
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="report__block">
+      <h3>{{ t('report.invariants') }}</h3>
+      @if (found.invariants.length === 0) {
+        <p class="report__none" data-testid="no-invariants">{{ t('report.notComposed') }}</p>
+      } @else {
+        <p class="report__none">{{ t('report.invariantsPassed', { count: passed(found) }) }}</p>
+        <ul>
+          @for (invariant of failed(found); track invariant.id) {
+            <li class="report__failed" [attr.data-testid]="'invariant-' + invariant.id">
+              {{ t('invariants.' + invariant.id) }}
+              <span class="report__details">{{ invariant.details.join(', ') }}</span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section class="report__block">
+      <h3>{{ t('report.epubcheck') }}</h3>
+      @if (!found.epubcheck.ran) {
+        <p class="report__none" data-testid="epubcheck-not-run">
+          {{ t('report.epubcheckNotRun') }}
+          @if (found.epubcheck.reason) {
+            {{ t('epubcheck.' + found.epubcheck.reason) }}
+          }
+        </p>
+      } @else if (found.epubcheck.introduced.length === 0) {
+        <p class="report__none" data-testid="epubcheck-clean">{{ t('report.epubcheckClean') }}</p>
+      } @else {
+        <ul>
+          @for (message of found.epubcheck.introduced; track message.id + message.message) {
+            <li>{{ message.id }} — {{ message.message }}</li>
+          }
+        </ul>
+      }
+    </section>
+
+    @if (found.terms.adherence; as adherence) {
+      <section class="report__block">
+        <h3>{{ t('report.terminology') }}</h3>
+        <p class="report__none" data-testid="adherence">
+          {{ t('report.adherence', {
+            respected: adherence.respected, checked: adherence.checked, active: found.terms.active
+          }) }}
+        </p>
+      </section>
+    }
+
+    @if (found.overlaysRemoved.overlays > 0) {
+      <p class="report__note">
+        {{ t('report.overlaysRemoved', {
+          overlays: found.overlaysRemoved.overlays, audio: found.overlaysRemoved.audio
+        }) }}
+      </p>
+    }
+
+    @if (found.outputPath; as path) {
+      <div class="report__actions">
+        <button type="button" data-testid="open-epub" (click)="open(path)">
+          {{ t('report.openEpub') }}
+        </button>
+        <button type="button" data-testid="reveal-epub" (click)="reveal(path)">
+          {{ t('report.revealEpub') }}
+        </button>
+      </div>
+    }
+  } @else if (!loading()) {
+    <p class="report__none" data-testid="report-empty">{{ t('report.neverRun') }}</p>
+  }
+</section>

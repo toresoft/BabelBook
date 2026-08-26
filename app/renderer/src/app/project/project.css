@@ -1,0 +1,33 @@
+.project { padding: 1.5rem; max-width: 62rem; display: grid; gap: 0.75rem; }
+
+.project__head { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.project__back { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+.project__cover { width: 5rem; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
+.project__identity { flex: 1; min-width: 14rem; }
+.project__identity h1 { margin: 0; font-size: 1.2rem; }
+.project__author, .project__languages, .project__counts, .project__missing {
+  color: #6b7280; font-size: 0.85rem; margin: 0.15rem 0 0;
+}
+.project__state, .project__phase { margin-left: 0.6rem; }
+.project__phase { color: #2563eb; }
+.project__actions { display: flex; gap: 0.5rem; }
+
+.project__progress { height: 0.4rem; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+.project__bar { display: block; height: 100%; background: #2563eb; }
+
+.project__tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; }
+.project__tab {
+  border: none; background: none; padding: 0.45rem 0.7rem; cursor: pointer;
+  font-size: 0.9rem; color: #6b7280; border-bottom: 2px solid transparent;
+}
+.project__tab--on { color: #111827; border-bottom-color: #2563eb; }
+
+.project__panel { padding-top: 0.5rem; }
+
+.overview { display: grid; gap: 0.6rem; }
+.overview__description { margin: 0; font-size: 0.9rem; }
+.overview__none { margin: 0; color: #6b7280; font-size: 0.85rem; }
+.overview__facts { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 0; }
+.overview__facts dt { color: #6b7280; font-size: 0.78rem; }
+.overview__facts dd { margin: 0; font-size: 0.9rem; }
+.overview__warning { color: #b45309; font-size: 0.85rem; margin: 0; }

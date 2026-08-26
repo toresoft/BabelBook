@@ -14,6 +14,26 @@
     "pause": "Pausa",
     "resume": "Riprendi"
   },
+  "project": {
+    "tabs": {
+      "overview": "Panoramica",
+      "terms": "Termini",
+      "exclusions": "Esclusioni",
+      "units": "Unità",
+      "report": "Report"
+    },
+    "noDescription": "Nessuna descrizione. Aggiungerne una aiuta la traduzione.",
+    "cost": "Speso finora",
+    "layout": "Impaginazione",
+    "fixedLayout": "Impaginazione fissa: il testo tradotto non si riadatta e può traboccare dalla pagina.",
+    "gone": "Questo progetto non esiste più."
+  },
+  "phase": {
+    "candidates": "Estrazione dei termini",
+    "code-index": "Riconoscimento del codice",
+    "translate": "Traduzione",
+    "compose": "Composizione dell'EPUB"
+  },
   "newProject": {
     "title": "Nuovo progetto",
     "chooseEpub": "Scegli un EPUB",
@@ -70,6 +90,147 @@
     "failed": "Non è stato possibile salvare il provider.",
     "keyringUnavailable": "Il portachiavi del sistema operativo non è raggiungibile, quindi la chiave non può essere messa al sicuro. Il provider non è stato salvato.",
     "gone": "Questo provider non esiste più: forse è stato eliminato altrove."
+  },
+  "terms": {
+    "title": "Termini",
+    "lead": "{{count}} termini da decidere. La traduzione li rispetterà.",
+    "empty": "Nessun termine estratto per questo libro.",
+    "occurrences": "{{count}} occorrenze",
+    "origin": {
+      "glossary": "dal glossario",
+      "extracted": "estratto",
+      "manual": "tuo"
+    },
+    "approval": {
+      "pending": "da decidere",
+      "approved": "approvato",
+      "rejected": "rifiutato"
+    },
+    "rule": "Regola",
+    "rules": {
+      "dnt": "Non tradurre",
+      "prefer": "Resa preferita",
+      "must": "Resa obbligatoria"
+    },
+    "target": "Resa",
+    "approve": "Approva",
+    "reject": "Rifiuta",
+    "promote": "Promuovi a glossario…",
+    "approveAll": "Approva tutti",
+    "save": "Salva {{count}} decisioni",
+    "approveGate": "Salva e prosegui",
+    "invalidates": "Questa modifica ritraduce {{units}} unità già tradotte.",
+    "invalidationCost": "Circa {{tokensIn}} token in ingresso e {{tokensOut}} in uscita.",
+    "confirmChange": "Applica comunque",
+    "cancel": "Annulla",
+    "failed": "Non è stato possibile salvare le decisioni."
+  },
+  "exclusions": {
+    "title": "Esclusioni",
+    "lead": "{{count}} blocchi non verranno tradotti. Controlla che sia giusto.",
+    "empty": "Nessuna esclusione: tutto il libro verrà tradotto.",
+    "inGroup": "{{count}} blocchi",
+    "noReason": "Deciso da te",
+    "free": "È testo, traducilo",
+    "protect": "È codice, lascialo",
+    "undo": "Annulla",
+    "clearForced": "Torna alla scelta automatica",
+    "save": "Salva {{count}} modifiche",
+    "approveGate": "Salva e prosegui",
+    "failed": "Non è stato possibile salvare le modifiche."
+  },
+  "unitState": {
+    "translate": "Da tradurre",
+    "maybe-code": "Forse codice",
+    "code": "Codice",
+    "never-translated": "Mai tradotto",
+    "translate-no": "L'autore ha detto di no",
+    "uncomposable": "Non ricomponibile"
+  },
+  "reasons": {
+    "css-code-surface": "Il foglio di stile lo presenta come codice.",
+    "translate-no": "L'autore l'ha marcato translate=\"no\".",
+    "unreliable-range": "Non se ne può ricavare un intervallo affidabile.",
+    "unsupported-content": "Contenuto che non sappiamo ricomporre.",
+    "unreadable": "Il documento non si decodifica.",
+    "model-verdict": "Il modello l'ha giudicato codice."
+  },
+  "units": {
+    "title": "Unità",
+    "allStates": "Tutti gli stati",
+    "search": "Cerca nel sorgente e nella traduzione",
+    "count": "{{count}} unità",
+    "empty": "Nessuna unità con questi criteri.",
+    "forced": "deciso da te",
+    "untranslated": "Non ancora tradotta",
+    "outcome": {
+      "translated": "tradotta",
+      "identical": "identica al sorgente",
+      "fell-back": "ricaduta sul sorgente"
+    },
+    "previous": "Precedenti",
+    "next": "Successive"
+  },
+  "report": {
+    "title": "Report",
+    "status": {
+      "complete": "Completo",
+      "incomplete": "Incompleto",
+      "failed": "Rifiutato dal gate"
+    },
+    "units": "Unità",
+    "unitCounts": "{{translated}} tradotte su {{total}}",
+    "fellBack": "Ricadute sul sorgente",
+    "identical": "Identiche al sorgente",
+    "cost": "Costo",
+    "tokens": "{{tokensIn}} token in ingresso, {{tokensOut}} in uscita",
+    "identicalWarning": "Troppe traduzioni sono identiche al sorgente: può darsi che il modello stia restituendo l'input.",
+    "degradations": "Degradazioni",
+    "noDegradations": "Nessuna degradazione.",
+    "declarations": "Dichiarazioni",
+    "declarationsLead": "Comportamenti corretti, dichiarati perché tu li sappia.",
+    "times": "{{count}} volte",
+    "invariants": "Controlli strutturali",
+    "invariantsPassed": "{{count}} controlli superati.",
+    "notComposed": "Il libro non è ancora stato composto: nessun controllo è stato eseguito.",
+    "epubcheck": "EPUBCheck",
+    "epubcheckNotRun": "Non eseguito, quindi non è un esito positivo.",
+    "epubcheckClean": "Nessun errore introdotto da questa traduzione.",
+    "terminology": "Terminologia",
+    "adherence": "{{respected}} rispetti su {{checked}} controlli, per {{active}} termini attivi.",
+    "overlaysRemoved": "Tolti {{overlays}} overlay e {{audio}} file audio.",
+    "openEpub": "Apri l'EPUB",
+    "revealEpub": "Mostra nella cartella",
+    "neverRun": "Questo progetto non è mai stato eseguito."
+  },
+  "invariants": {
+    "I1": "Le risorse sono le stesse",
+    "I2": "Le risorse binarie non sono cambiate",
+    "I3": "Il manifest non è cambiato",
+    "I4": "La spine non è cambiata",
+    "I5": "Gli id degli elementi non sono cambiati",
+    "I6": "I collegamenti interni si risolvono",
+    "I7": "La gerarchia di navigazione regge",
+    "I8": "L'identificatore unico non è cambiato",
+    "I9": "I metadati di identità non sono cambiati",
+    "I10": "Gli attributi opf:* sono conservati",
+    "I11": "La guide di EPUB 2 è conservata",
+    "I12": "I documenti si riparsano",
+    "I13": "Il mimetype è conforme",
+    "I14": "Il percorso dell'OPF non è cambiato",
+    "I15": "Nessuna unità è stata scartata",
+    "I16": "Nessun documento è stato saltato",
+    "I17": "I segnaposto sono conservati",
+    "I18": "Il contenuto opaco non è cambiato",
+    "I19": "La lingua è coerente",
+    "I20": "Le unità sono tutte coperte",
+    "I21": "Lo scheletro torna identico",
+    "I22": "Gli overlay sono stati tolti per intero"
+  },
+  "epubcheck": {
+    "no-jar": "Il jar di EPUBCheck non è stato trovato.",
+    "no-java": "Java non è disponibile su questa macchina.",
+    "crashed": "EPUBCheck si è interrotto."
   },
   "verify": {
     "missing-key": "Manca la chiave: questo provider non ne ha una.",

@@ -1,0 +1,109 @@
+<section class="project" data-testid="project" *transloco="let t">
+  @if (project(); as found) {
+    <header class="project__head">
+      <a class="project__back" routerLink="/">{{ t('app.library') }}</a>
+
+      @if (found.coverPath) {
+        <img class="project__cover" [src]="found.coverPath" [alt]="found.title" />
+      }
+
+      <div class="project__identity">
+        <h1>{{ found.title }}</h1>
+        @if (found.author) {
+          <p class="project__author">{{ found.author }}</p>
+        }
+        <p class="project__languages">
+          {{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}
+          <span class="project__state" [attr.data-testid]="'state-' + found.state">
+            {{ t('state.' + found.state) }}
+          </span>
+          @if (phase(); as running) {
+            <span class="project__phase">{{ t('phase.' + running) }}</span>
+          }
+        </p>
+      </div>
+
+      <div class="project__actions">
+        @if (can('START')) {
+          <button type="button" data-testid="project-start" (click)="start()">
+            {{ t('library.translate') }}
+          </button>
+        }
+        @if (can('RESUME')) {
+          <button type="button" data-testid="project-resume" (click)="start()">
+            {{ t('library.resume') }}
+          </button>
+        }
+        @if (can('PAUSE')) {
+          <button type="button" data-testid="project-pause" (click)="pause()">
+            {{ t('library.pause') }}
+          </button>
+        }
+      </div>
+    </header>
+
+    <div class="project__progress" role="progressbar" [attr.aria-valuenow]="percent(found)">
+      <span class="project__bar" [style.width.%]="percent(found)"></span>
+    </div>
+    <p class="project__counts">
+      {{ t('library.progress', { done: found.progress.done, total: found.progress.total }) }}
+    </p>
+
+    <nav class="project__tabs">
+      @for (name of tabs; track name) {
+        <button
+          type="button"
+          class="project__tab"
+          [class.project__tab--on]="tab() === name"
+          [attr.data-testid]="'tab-' + name"
+          (click)="show(name)">
+          {{ t('project.tabs.' + name) }}
+        </button>
+      }
+    </nav>
+
+    <div class="project__panel">
+      @switch (tab()) {
+        @case ("overview") {
+          <section class="overview" data-testid="overview">
+            @if (found.description) {
+              <p class="overview__description">{{ found.description }}</p>
+            } @else {
+              <p class="overview__none">{{ t('project.noDescription') }}</p>
+            }
+
+            <dl class="overview__facts">
+              <div>
+                <dt>{{ t('project.cost') }}</dt>
+                <dd>{{ t('report.tokens', {
+                  tokensIn: found.tokens.in, tokensOut: found.tokens.out
+                }) }}</dd>
+              </div>
+              <div>
+                <dt>{{ t('project.layout') }}</dt>
+                <dd>{{ t('layout.' + found.layout) }}</dd>
+              </div>
+            </dl>
+
+            @if (found.layout !== 'reflowable') {
+              <p class="overview__warning" data-testid="layout-warning">
+                {{ t('project.fixedLayout') }}
+              </p>
+            }
+            @if (found.hasOverlays) {
+              <p class="overview__warning" data-testid="overlay-warning">
+                {{ t('overlays.warning') }}
+              </p>
+            }
+          </section>
+        }
+        @case ("terms") { <bb-terms [projectId]="found.id" /> }
+        @case ("exclusions") { <bb-exclusions [projectId]="found.id" /> }
+        @case ("units") { <bb-units [projectId]="found.id" /> }
+        @case ("report") { <bb-report [projectId]="found.id" /> }
+      }
+    </div>
+  } @else {
+    <p class="project__missing" data-testid="project-missing">{{ t('project.gone') }}</p>
+  }
+</section>

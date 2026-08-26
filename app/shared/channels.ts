@@ -86,6 +86,9 @@ export interface Invocations {
   };
   /** Null when the project has never been run: there is nothing to report on. */
   "report.get": { req: { projectId: string }; res: Report | null };
+  /** Hands a produced file to the desktop. The window never names a path it was not given. */
+  "file.open": { req: { path: string }; res: void };
+  "file.reveal": { req: { path: string }; res: void };
   "providers.list": { req: undefined; res: Provider[] };
   "providers.presets": { req: undefined; res: ProviderPreset[] };
   "provider.create": { req: ProviderInput; res: Provider };
@@ -112,7 +115,7 @@ export const INVOCATIONS = [
   "exclusions.list", "exclusions.force", "exclusions.clear",
   "glossaries.list", "glossary.save", "glossary.delete",
   "glossary.import", "glossary.export", "glossary.attach",
-  "report.get",
+  "report.get", "file.open", "file.reveal",
   "providers.list", "providers.presets",
   "provider.create", "provider.update", "provider.delete", "provider.verify",
   "settings.get", "settings.set",

@@ -1,0 +1,110 @@
+<section class="terms" data-testid="terms" *transloco="let t">
+  <header class="terms__bar">
+    <h2>{{ t('terms.title') }}</h2>
+    <p class="terms__lead">{{ t('terms.lead', { count: pending().length }) }}</p>
+  </header>
+
+  @if (invalidation(); as affected) {
+    <div class="terms__warning" data-testid="invalidation">
+      <p>{{ t('terms.invalidates', { units: affected.units.length }) }}</p>
+      @if (affected.cost; as cost) {
+        <p class="terms__cost">
+          {{ t('terms.invalidationCost', { tokensIn: cost.tokensIn, tokensOut: cost.tokensOut }) }}
+        </p>
+      }
+      <div class="terms__warningActions">
+        <button type="button" data-testid="confirm-invalidation" (click)="save()">
+          {{ t('terms.confirmChange') }}
+        </button>
+        <button type="button" data-testid="dismiss-invalidation" (click)="dismiss()">
+          {{ t('terms.cancel') }}
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (terms().length === 0) {
+    <p class="terms__empty" data-testid="terms-empty">{{ t('terms.empty') }}</p>
+  }
+
+  <ul class="terms__list">
+    @for (term of terms(); track term.id) {
+      <li class="term" [attr.data-testid]="'term-' + term.id" [class.term--decided]="edits()[term.id]">
+        <div class="term__head">
+          <strong class="term__source">{{ term.source }}</strong>
+          <span class="term__occurrences">{{ t('terms.occurrences', { count: term.occurrences }) }}</span>
+          <span class="term__origin">{{ t('terms.origin.' + term.origin) }}</span>
+          <span class="term__approval">{{ t('terms.approval.' + view(term).approval) }}</span>
+        </div>
+
+        @if (term.context) {
+          <p class="term__context">{{ term.context }}</p>
+        }
+        @if (term.sense) {
+          <p class="term__sense">{{ term.sense }}</p>
+        }
+
+        <div class="term__fields">
+          <label>
+            {{ t('terms.rule') }}
+            <select
+              [attr.data-testid]="'rule-' + term.id"
+              [ngModel]="view(term).rule"
+              (ngModelChange)="edit(term.id, { rule: $event })">
+              <option value="dnt">{{ t('terms.rules.dnt') }}</option>
+              <option value="prefer">{{ t('terms.rules.prefer') }}</option>
+              <option value="must">{{ t('terms.rules.must') }}</option>
+            </select>
+          </label>
+
+          @if (view(term).rule !== 'dnt') {
+            <label>
+              {{ t('terms.target') }}
+              <input
+                type="text"
+                [attr.data-testid]="'target-' + term.id"
+                [ngModel]="view(term).target ?? ''"
+                (ngModelChange)="edit(term.id, { target: $event })" />
+            </label>
+          }
+        </div>
+
+        <div class="term__actions">
+          <button type="button" [attr.data-testid]="'approve-' + term.id" (click)="decide(term.id, 'approved')">
+            {{ t('terms.approve') }}
+          </button>
+          <button type="button" [attr.data-testid]="'reject-' + term.id" (click)="decide(term.id, 'rejected')">
+            {{ t('terms.reject') }}
+          </button>
+
+          @if (glossaries().length > 0 && term.approval === 'approved') {
+            <select
+              [attr.data-testid]="'promote-' + term.id"
+              (change)="promote(term.id, $any($event.target).value)">
+              <option value="">{{ t('terms.promote') }}</option>
+              @for (glossary of glossaries(); track glossary.id) {
+                <option [value]="glossary.id">{{ glossary.name }}</option>
+              }
+            </select>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+
+  @if (failure()) {
+    <p class="terms__failure" data-testid="terms-failure">{{ t('terms.failed') }}</p>
+  }
+
+  <div class="terms__footer">
+    <button type="button" data-testid="approve-all" [disabled]="saving()" (click)="approveAll()">
+      {{ t('terms.approveAll') }}
+    </button>
+    <button type="button" data-testid="save-terms" [disabled]="saving() || decided() === 0" (click)="save()">
+      {{ t('terms.save', { count: decided() }) }}
+    </button>
+    <button type="button" data-testid="approve-gate" [disabled]="saving()" (click)="approveGate()">
+      {{ t('terms.approveGate') }}
+    </button>
+  </div>
+</section>

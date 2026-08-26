@@ -1,0 +1,69 @@
+<section class="units" data-testid="units" *transloco="let t">
+  <header class="units__bar">
+    <h2>{{ t('units.title') }}</h2>
+
+    <select
+      class="units__state"
+      data-testid="unit-state"
+      [ngModel]="state()"
+      (ngModelChange)="onState($event)">
+      <option value="">{{ t('units.allStates') }}</option>
+      @for (name of states; track name) {
+        <option [value]="name">{{ t('unitState.' + name) }}</option>
+      }
+    </select>
+
+    <input
+      class="units__search"
+      type="search"
+      data-testid="unit-search"
+      [placeholder]="t('units.search')"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)" />
+
+    <span class="units__count">{{ t('units.count', { count: total() }) }}</span>
+  </header>
+
+  @if (units().length === 0 && !loading()) {
+    <p class="units__empty" data-testid="units-empty">{{ t('units.empty') }}</p>
+  }
+
+  <ul class="units__list">
+    @for (unit of units(); track unit.unitId) {
+      <li class="row" [attr.data-testid]="'row-' + unit.unitId">
+        <div class="row__head">
+          <span class="row__id">{{ unit.unitId }}</span>
+          <span class="row__state">{{ t('unitState.' + unit.state) }}</span>
+          @if (unit.forced) {
+            <span class="row__forced">{{ t('units.forced') }}</span>
+          }
+          @if (unit.outcome) {
+            <span class="row__outcome">{{ t('units.outcome.' + unit.outcome) }}</span>
+          }
+        </div>
+
+        <div class="row__pair">
+          <p class="row__source">{{ unit.source }}</p>
+          @if (unit.translation) {
+            <p class="row__translation">{{ unit.translation }}</p>
+          } @else {
+            <p class="row__translation row__translation--none">{{ t('units.untranslated') }}</p>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+
+  <div class="units__pager">
+    <button type="button" data-testid="units-back" [disabled]="offset() === 0" (click)="back()">
+      {{ t('units.previous') }}
+    </button>
+    <button
+      type="button"
+      data-testid="units-more"
+      [disabled]="offset() + units().length >= total()"
+      (click)="more()">
+      {{ t('units.next') }}
+    </button>
+  </div>
+</section>

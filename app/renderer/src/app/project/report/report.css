@@ -1,0 +1,15 @@
+.report { display: grid; gap: 0.9rem; }
+.report h2 { margin: 0; font-size: 1rem; }
+.report h3 { margin: 0 0 0.3rem; font-size: 0.9rem; }
+.report__status { margin: 0; font-weight: 600; }
+.report__none, .report__details, .report__note { color: #6b7280; font-size: 0.85rem; margin: 0; }
+.report__warning { color: #b45309; font-size: 0.85rem; margin: 0; }
+
+.report__counts { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 0; }
+.report__counts dt { color: #6b7280; font-size: 0.78rem; }
+.report__counts dd { margin: 0; font-size: 0.95rem; }
+
+.report__block { border-top: 1px solid #e5e7eb; padding-top: 0.6rem; }
+.report__block ul { margin: 0.3rem 0 0; padding-left: 1.1rem; font-size: 0.85rem; }
+.report__failed { color: #b91c1c; }
+.report__actions { display: flex; gap: 0.6rem; }

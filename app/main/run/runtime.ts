@@ -172,9 +172,15 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
           new Date().toISOString(), activeRunId,
         );
       }
+      // The engine's turn is over, whether it finished the book or stopped at
+      // a gate. Leaving `activeId` set would make the next approval refuse
+      // itself with ENGINE_BUSY — a gate that can be opened but never closed.
+      const finished = activeId;
+      activeId = null;
+
       // Not fed onward: `done` is what tells the user their book is ready, and
       // the book is not ready until the composer has written and checked it.
-      changed(activeId);
+      changed(finished);
       return;
     }
     if (message.type === "gate") {

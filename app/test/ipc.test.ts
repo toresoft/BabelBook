@@ -285,3 +285,60 @@ describe("the provider channels", () => {
     await expect(buildHandlers(d)["provider.update"]({ id: "ghost", name: "X" })).rejects.toThrow();
   });
 });
+
+describe("handing a file to the desktop", () => {
+  async function withProject() {
+    const { dir, db, deps: d } = await deps();
+    const opened: string[] = [];
+    const revealed: string[] = [];
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state)
+      VALUES ('p1','a.epub','A',?,'h','2026-08-24','it','done')
+    `).run(`${dir}/projects/p1`);
+
+    return {
+      dir,
+      opened,
+      revealed,
+      handlers: buildHandlers({
+        ...d,
+        openPath: async (path: string) => { opened.push(path); },
+        revealPath: async (path: string) => { revealed.push(path); },
+      }),
+    };
+  }
+
+  it("opens a file the application itself produced", async () => {
+    const { dir, opened, handlers } = await withProject();
+    const produced = `${dir}/projects/p1/output/a.it.epub`;
+
+    await handlers["file.open"]({ path: produced });
+    await handlers["file.reveal"]({ path: produced });
+
+    expect(opened).toEqual([produced]);
+  });
+
+  // Production break: the window can name any path and the desktop obeys.
+  it("refuses a path outside every workspace, and does not call the desktop", async () => {
+    const { opened, revealed, handlers } = await withProject();
+
+    await expect(handlers["file.open"]({ path: "/etc/passwd" }))
+      .rejects.toThrow(/PATH_NOT_PRODUCED/);
+    await expect(handlers["file.reveal"]({ path: "/home/someone/.ssh/id_rsa" }))
+      .rejects.toThrow(/PATH_NOT_PRODUCED/);
+
+    expect(opened).toEqual([]);
+    expect(revealed).toEqual([]);
+  });
+
+  it("refuses a workspace path built by prefix, not by containment", async () => {
+    const { dir, opened, handlers } = await withProject();
+
+    // `<workspace>-evil/x` starts with the workspace path as a string but is
+    // not inside it; requiring the separator is what tells them apart.
+    await expect(handlers["file.open"]({ path: `${dir}/projects/p1-evil/x.epub` }))
+      .rejects.toThrow(/PATH_NOT_PRODUCED/);
+    expect(opened).toEqual([]);
+  });
+});

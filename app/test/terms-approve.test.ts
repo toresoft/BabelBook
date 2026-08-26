@@ -39,6 +39,24 @@ describe("terms", () => {
     });
   });
 
+  // Production break: the gate asks the user to rule on a bare word.
+  it("carries the sentence each candidate came from, when the extraction kept one", () => {
+    const db = seeded();
+    db.prepare(`
+      INSERT INTO project_phase_result (project_id, phase, cache_key, result_json)
+      VALUES ('p1','candidates','k1',?)
+    `).run(JSON.stringify({
+      candidates: [{ source: "Rivendell", context: "The road to Rivendell was long." }],
+      open: [], discarded: 0, abstained: false,
+    }));
+
+    const listed = listTerms(db, "p1");
+    expect(listed.find((term) => term.id === "t1")?.context)
+      .toBe("The road to Rivendell was long.");
+    // A term nobody extracted never had a sentence, and does not pretend to.
+    expect(listed.find((term) => term.id === "t2")?.context).toBeNull();
+  });
+
   it("records a decision and the edited rendering together", () => {
     const db = seeded();
     const counts = decideTerms(db, "p1", [

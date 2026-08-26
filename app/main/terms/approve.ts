@@ -49,7 +49,34 @@ const SELECT_TERMS = `
    ORDER BY t.approval_state = 'pending' DESC, t.source
 `;
 
-function toTerm(row: Row): TermRow {
+/**
+ * The sentence each extracted term came from.
+ *
+ * It lives in the candidate report rather than on the term, because it belongs
+ * to the extraction that proposed it: a term the user typed by hand never had
+ * a sentence, and inventing a column for it would fill with nulls.
+ */
+function contexts(db: DatabaseSync, projectId: string): Map<string, string> {
+  const row = db.prepare(`
+    SELECT result_json FROM project_phase_result
+     WHERE project_id = ? AND phase = 'candidates'
+     ORDER BY created_at DESC LIMIT 1
+  `).get(projectId) as { result_json: string } | undefined;
+  if (row === undefined) return new Map();
+
+  try {
+    const report = JSON.parse(row.result_json) as {
+      candidates?: Array<{ source: string; context?: string }>;
+    };
+    return new Map((report.candidates ?? [])
+      .filter((candidate) => candidate.context !== undefined)
+      .map((candidate) => [candidate.source, candidate.context!]));
+  } catch {
+    return new Map();
+  }
+}
+
+function toTerm(row: Row, context: string | null): TermRow {
   return {
     id: row.id,
     source: row.source,
@@ -59,6 +86,7 @@ function toTerm(row: Row): TermRow {
     approval: row.approval_state,
     occurrences: row.occurrences,
     sense: row.sense,
+    context,
     note: row.note,
   };
 }
@@ -71,7 +99,9 @@ function toTerm(row: Row): TermRow {
  * fills would show it as appearing zero times in a book it appears in.
  */
 export function listTerms(db: DatabaseSync, projectId: string): TermRow[] {
-  return (db.prepare(SELECT_TERMS).all(projectId) as unknown as Row[]).map(toTerm);
+  const context = contexts(db, projectId);
+  return (db.prepare(SELECT_TERMS).all(projectId) as unknown as Row[])
+    .map((row) => toTerm(row, context.get(row.source) ?? null));
 }
 
 /**

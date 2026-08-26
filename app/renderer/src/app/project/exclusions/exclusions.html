@@ -1,0 +1,73 @@
+<section class="exclusions" data-testid="exclusions" *transloco="let t">
+  <header class="exclusions__bar">
+    <h2>{{ t('exclusions.title') }}</h2>
+    <p class="exclusions__lead">{{ t('exclusions.lead', { count: total() }) }}</p>
+  </header>
+
+  @if (groups().length === 0) {
+    <p class="exclusions__empty" data-testid="exclusions-empty">{{ t('exclusions.empty') }}</p>
+  }
+
+  @for (group of groups(); track group.state + '/' + group.reason) {
+    <article class="group" [attr.data-testid]="'group-' + group.state + '-' + (group.reason ?? 'none')">
+      <h3 class="group__head">
+        {{ t('unitState.' + group.state) }}
+        <span class="group__count">{{ t('exclusions.inGroup', { count: group.units.length }) }}</span>
+      </h3>
+      <p class="group__reason">
+        {{ group.reason ? t('reasons.' + group.reason) : t('exclusions.noReason') }}
+      </p>
+
+      <ul class="group__units">
+        @for (unit of group.units; track unit.unitId) {
+          <li class="unit" [attr.data-testid]="'unit-' + unit.unitId">
+            <p class="unit__text">{{ unit.text }}</p>
+            <div class="unit__actions">
+              <span class="unit__verdict">{{ t('unitState.' + verdict(unit.unitId, group.state)) }}</span>
+              <button
+                type="button"
+                [attr.data-testid]="'free-' + unit.unitId"
+                (click)="force(unit.unitId, 'translate')">
+                {{ t('exclusions.free') }}
+              </button>
+              <button
+                type="button"
+                [attr.data-testid]="'protect-' + unit.unitId"
+                (click)="force(unit.unitId, 'code')">
+                {{ t('exclusions.protect') }}
+              </button>
+              @if (staged()[unit.unitId]) {
+                <button
+                  type="button"
+                  [attr.data-testid]="'undo-' + unit.unitId"
+                  (click)="unstage(unit.unitId)">
+                  {{ t('exclusions.undo') }}
+                </button>
+              } @else if (unit.forced) {
+                <button
+                  type="button"
+                  [attr.data-testid]="'clear-' + unit.unitId"
+                  (click)="clear(unit.unitId)">
+                  {{ t('exclusions.clearForced') }}
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    </article>
+  }
+
+  @if (failure()) {
+    <p class="exclusions__failure" data-testid="exclusions-failure">{{ t('exclusions.failed') }}</p>
+  }
+
+  <div class="exclusions__footer">
+    <button type="button" data-testid="save-exclusions" [disabled]="saving() || changes() === 0" (click)="save()">
+      {{ t('exclusions.save', { count: changes() }) }}
+    </button>
+    <button type="button" data-testid="approve-exclusions" [disabled]="saving()" (click)="approveGate()">
+      {{ t('exclusions.approveGate') }}
+    </button>
+  </div>
+</section>

@@ -14,6 +14,26 @@
     "pause": "Pause",
     "resume": "Resume"
   },
+  "project": {
+    "tabs": {
+      "overview": "Overview",
+      "terms": "Terms",
+      "exclusions": "Exclusions",
+      "units": "Units",
+      "report": "Report"
+    },
+    "noDescription": "No description. Adding one helps the translation.",
+    "cost": "Spent so far",
+    "layout": "Layout",
+    "fixedLayout": "Fixed layout: translated text does not reflow and may overflow the page.",
+    "gone": "This project no longer exists."
+  },
+  "phase": {
+    "candidates": "Extracting terms",
+    "code-index": "Recognising code",
+    "translate": "Translating",
+    "compose": "Composing the EPUB"
+  },
   "newProject": {
     "title": "New project",
     "chooseEpub": "Choose an EPUB",
@@ -70,6 +90,147 @@
     "failed": "The provider could not be saved.",
     "keyringUnavailable": "The operating system keyring cannot be reached, so the key cannot be stored safely. The provider was not saved.",
     "gone": "This provider is gone: it may have been deleted elsewhere."
+  },
+  "terms": {
+    "title": "Terms",
+    "lead": "{{count}} terms to decide. The translation will honour them.",
+    "empty": "No terms were extracted for this book.",
+    "occurrences": "{{count}} occurrences",
+    "origin": {
+      "glossary": "from the glossary",
+      "extracted": "extracted",
+      "manual": "yours"
+    },
+    "approval": {
+      "pending": "undecided",
+      "approved": "approved",
+      "rejected": "rejected"
+    },
+    "rule": "Rule",
+    "rules": {
+      "dnt": "Do not translate",
+      "prefer": "Preferred rendering",
+      "must": "Required rendering"
+    },
+    "target": "Rendering",
+    "approve": "Approve",
+    "reject": "Reject",
+    "promote": "Promote to a glossary…",
+    "approveAll": "Approve all",
+    "save": "Save {{count}} decisions",
+    "approveGate": "Save and continue",
+    "invalidates": "This change retranslates {{units}} units that are already done.",
+    "invalidationCost": "About {{tokensIn}} tokens in and {{tokensOut}} out.",
+    "confirmChange": "Apply anyway",
+    "cancel": "Cancel",
+    "failed": "The decisions could not be saved."
+  },
+  "exclusions": {
+    "title": "Exclusions",
+    "lead": "{{count}} blocks will not be translated. Check that this is right.",
+    "empty": "Nothing excluded: the whole book will be translated.",
+    "inGroup": "{{count}} blocks",
+    "noReason": "Your decision",
+    "free": "It is prose, translate it",
+    "protect": "It is code, leave it",
+    "undo": "Undo",
+    "clearForced": "Back to the automatic choice",
+    "save": "Save {{count}} changes",
+    "approveGate": "Save and continue",
+    "failed": "The changes could not be saved."
+  },
+  "unitState": {
+    "translate": "To translate",
+    "maybe-code": "Possibly code",
+    "code": "Code",
+    "never-translated": "Never translated",
+    "translate-no": "The author said no",
+    "uncomposable": "Cannot be recomposed"
+  },
+  "reasons": {
+    "css-code-surface": "The stylesheet presents it as code.",
+    "translate-no": "The author marked it translate=\"no\".",
+    "unreliable-range": "No reliable range can be taken from it.",
+    "unsupported-content": "Content we do not know how to recompose.",
+    "unreadable": "The document does not decode.",
+    "model-verdict": "The model judged it code."
+  },
+  "units": {
+    "title": "Units",
+    "allStates": "All states",
+    "search": "Search the source and the translation",
+    "count": "{{count}} units",
+    "empty": "No units match.",
+    "forced": "your decision",
+    "untranslated": "Not translated yet",
+    "outcome": {
+      "translated": "translated",
+      "identical": "identical to the source",
+      "fell-back": "fell back to the source"
+    },
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "report": {
+    "title": "Report",
+    "status": {
+      "complete": "Complete",
+      "incomplete": "Incomplete",
+      "failed": "Refused by the gate"
+    },
+    "units": "Units",
+    "unitCounts": "{{translated}} translated of {{total}}",
+    "fellBack": "Fell back to the source",
+    "identical": "Identical to the source",
+    "cost": "Cost",
+    "tokens": "{{tokensIn}} tokens in, {{tokensOut}} out",
+    "identicalWarning": "Too many translations are identical to their source: the model may be handing the input back.",
+    "degradations": "Degradations",
+    "noDegradations": "No degradations.",
+    "declarations": "Declarations",
+    "declarationsLead": "Correct behaviour, declared so you know about it.",
+    "times": "{{count}} times",
+    "invariants": "Structural checks",
+    "invariantsPassed": "{{count}} checks passed.",
+    "notComposed": "The book has not been composed yet: no check has run.",
+    "epubcheck": "EPUBCheck",
+    "epubcheckNotRun": "Did not run, so this is not a pass.",
+    "epubcheckClean": "No error introduced by this translation.",
+    "terminology": "Terminology",
+    "adherence": "{{respected}} honoured of {{checked}} checks, across {{active}} active terms.",
+    "overlaysRemoved": "Removed {{overlays}} overlays and {{audio}} audio files.",
+    "openEpub": "Open the EPUB",
+    "revealEpub": "Show in the folder",
+    "neverRun": "This project has never been run."
+  },
+  "invariants": {
+    "I1": "The resources are the same",
+    "I2": "Binary resources are unchanged",
+    "I3": "The manifest is unchanged",
+    "I4": "The spine is unchanged",
+    "I5": "Element ids are unchanged",
+    "I6": "Internal links resolve",
+    "I7": "The navigation hierarchy holds",
+    "I8": "The unique identifier is unchanged",
+    "I9": "Identity metadata is unchanged",
+    "I10": "opf:* attributes are preserved",
+    "I11": "The EPUB 2 guide is preserved",
+    "I12": "The documents reparse",
+    "I13": "The mimetype is conformant",
+    "I14": "The OPF path is unchanged",
+    "I15": "No unit was discarded",
+    "I16": "No document was skipped",
+    "I17": "Placeholders are preserved",
+    "I18": "Opaque content is unchanged",
+    "I19": "The language is consistent",
+    "I20": "Every unit is covered",
+    "I21": "The skeleton round-trips",
+    "I22": "Overlays were removed whole"
+  },
+  "epubcheck": {
+    "no-jar": "The EPUBCheck jar was not found.",
+    "no-java": "Java is not available on this machine.",
+    "crashed": "EPUBCheck crashed."
   },
   "verify": {
     "missing-key": "No key: this provider does not have one.",

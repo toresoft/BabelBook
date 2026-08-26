@@ -256,6 +256,14 @@ export interface TermRow {
   occurrences: number;
   /** Which meaning of the word this entry is about; null when it has only one. */
   sense: string | null;
+  /**
+   * The first sentence the term appears in.
+   *
+   * The gate is unanswerable without it: "Rivendell, do not translate" asks
+   * the user to recall a book they may not have read. It comes from the stored
+   * candidate report, so it is null for a term nobody extracted.
+   */
+  context: string | null;
   note: string | null;
 }
 

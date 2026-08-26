@@ -25,7 +25,9 @@
           <div class="tile__cover tile__cover--none">{{ t('library.noCover') }}</div>
         }
 
-        <h2 class="tile__title">{{ project.title }}</h2>
+        <a class="tile__title" [routerLink]="['/project', project.id]" [attr.data-testid]="'open-' + project.id">
+          <h2>{{ project.title }}</h2>
+        </a>
         <p class="tile__meta">
           <span>{{ project.sourceLanguage ?? '—' }} → {{ project.targetLanguage }}</span>
           <span class="tile__state">{{ t('state.' + project.state) }}</span>

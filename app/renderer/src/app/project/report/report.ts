@@ -1,0 +1,62 @@
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from "@angular/core";
+import { TranslocoDirective } from "@jsverse/transloco";
+import type { Report } from "../../../../../shared/dto.js";
+import { IpcService } from "../../core/ipc.service";
+
+/**
+ * What happened to a book.
+ *
+ * The report carries codes; the sentences are composed here from the
+ * catalogue, in the reader's language. Two things it must never blur: a
+ * degradation is not a declaration, and a check that did not run is not a
+ * check that passed.
+ */
+@Component({
+  selector: "bb-report",
+  standalone: true,
+  imports: [TranslocoDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  templateUrl: "./report.html",
+  styleUrl: "./report.css",
+})
+export class ReportView {
+  readonly projectId = input.required<string>();
+
+  readonly report = signal<Report | null>(null);
+  readonly loading = signal(true);
+
+  #ipc = inject(IpcService);
+
+  constructor() {
+    effect(() => {
+      const id = this.projectId();
+      if (id !== "") void this.reload(id);
+    });
+  }
+
+  async reload(projectId = this.projectId()): Promise<void> {
+    this.loading.set(true);
+    try {
+      this.report.set(await this.#ipc.invoke("report.get", { projectId }));
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /** The invariants that failed, first: a passing list is not what is read. */
+  failed(report: Report): Report["invariants"] {
+    return report.invariants.filter((invariant) => !invariant.ok && !invariant.skipped);
+  }
+
+  passed(report: Report): number {
+    return report.invariants.filter((invariant) => invariant.ok).length;
+  }
+
+  async open(path: string): Promise<void> {
+    await this.#ipc.invoke("file.open", { path });
+  }
+
+  async reveal(path: string): Promise<void> {
+    await this.#ipc.invoke("file.reveal", { path });
+  }
+}
