@@ -75,9 +75,14 @@
             <dl class="overview__facts">
               <div>
                 <dt>{{ t('project.cost') }}</dt>
-                <dd>{{ t('report.tokens', {
-                  tokensIn: found.tokens.in, tokensOut: found.tokens.out
-                }) }}</dd>
+                <dd>
+                  {{ t('report.tokens', {
+                    tokensIn: found.tokens.in, tokensOut: found.tokens.out
+                  }) }}
+                  @if (found.cost !== null) {
+                    · {{ t('report.money', { amount: found.cost.toFixed(2) }) }}
+                  }
+                </dd>
               </div>
               <div>
                 <dt>{{ t('project.layout') }}</dt>

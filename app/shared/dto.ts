@@ -43,6 +43,9 @@ export interface UpdateProjectRequest {
   targetLanguage?: string;
   sourceLanguage?: string | null;
   description?: string;
+  /** The provider and model this book will be translated with. */
+  providerId?: string;
+  modelId?: string;
 }
 
 export interface ProjectSummary {
@@ -74,6 +77,12 @@ export interface ProjectDetail extends ProjectSummary {
   modelId: string | null;
   actions: string[];
   tokens: { in: number; out: number };
+  /**
+   * What the runs have cost, when every one of them could be priced. Null
+   * when any could not: a sum that skipped the unpriced part would name a
+   * number the true total is only the floor of.
+   */
+  cost: number | null;
 }
 
 /** One unit, with whatever has been made of it so far. */

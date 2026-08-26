@@ -49,8 +49,11 @@
     "units": "{{count}} unità",
     "words": "{{count}} parole",
     "estimate": "Stima: {{tokens}} token",
-    "estimateWithCost": "Stima: {{tokens}} token, circa {{cost}}",
-    "noPrices": "Il modello scelto non dichiara prezzi: mostriamo solo i token."
+    "estimateWithCost": "Stima: {{tokens}} token, circa {{cost}} USD",
+    "noPrices": "Nessun modello scelto, o il modello non dichiara prezzi: mostriamo solo i token.",
+    "provider": "Provider",
+    "noProvider": "Nessuno (si può scegliere dopo)",
+    "model": "Modello"
   },
   "providers": {
     "title": "Provider",
@@ -267,7 +270,8 @@
     "overlaysRemoved": "Tolti {{overlays}} overlay e {{audio}} file audio.",
     "openEpub": "Apri l'EPUB",
     "revealEpub": "Mostra nella cartella",
-    "neverRun": "Questo progetto non è mai stato eseguito."
+    "neverRun": "Questo progetto non è mai stato eseguito.",
+    "money": "circa {{amount}} USD"
   },
   "invariants": {
     "I1": "Le risorse sono le stesse",

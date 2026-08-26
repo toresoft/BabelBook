@@ -66,6 +66,29 @@ describe("projectDetail", () => {
     expect(projectDetail(seeded(), "p1")).toMatchObject({ tokens: { in: 700, out: 300 } });
   });
 
+  it("sums what the runs cost, when every one of them could be priced", () => {
+    const db = seeded();
+    db.prepare("UPDATE run SET cost = 0.07 WHERE id = 'r1'").run();
+    db.prepare(`
+      INSERT INTO run (id, project_id, phase, started_at, tokens_in, tokens_out, cost)
+      VALUES ('r2','p1','translate','2026-08-25',100,100,0.15)
+    `).run();
+    expect(projectDetail(db, "p1")).toMatchObject({ cost: 0.22 });
+  });
+
+  it("keeps the cost unsaid when a run had no prices, rather than guessing low", () => {
+    const db = seeded();
+    db.prepare("UPDATE run SET cost = 0.07 WHERE id = 'r1'").run();
+    db.prepare(`
+      INSERT INTO run (id, project_id, phase, started_at, tokens_in, tokens_out)
+      VALUES ('r2','p1','translate','2026-08-25',100,100)
+    `).run();
+    // A sum that quietly skipped the unpriced run would name a number the
+    // true total is only the floor of.
+    expect(projectDetail(db, "p1")).toMatchObject({ cost: null });
+    expect(projectDetail(seeded(), "p1")).toMatchObject({ cost: null });
+  });
+
   it("counts progress against the units that are actually work", () => {
     // Two translatable units, one translated; the code block is not work.
     expect(projectDetail(seeded(), "p1")).toMatchObject({ progress: { done: 1, total: 2 } });

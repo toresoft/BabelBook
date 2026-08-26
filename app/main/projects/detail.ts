@@ -23,6 +23,8 @@ interface DetailRow {
   done: number;
   tokens_in: number;
   tokens_out: number;
+  /** Null when any contributing run was never priced: see `cost` below. */
+  cost: number | null;
 }
 
 /**
@@ -47,7 +49,9 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
                AND coalesce(u.forced_state, u.state) IN ('translate', 'maybe-code')
                AND t.cache_key = coalesce(p.cache_key, t.cache_key)) AS done,
            coalesce((SELECT sum(r.tokens_in) FROM run r WHERE r.project_id = p.id), 0) AS tokens_in,
-           coalesce((SELECT sum(r.tokens_out) FROM run r WHERE r.project_id = p.id), 0) AS tokens_out
+           coalesce((SELECT sum(r.tokens_out) FROM run r WHERE r.project_id = p.id), 0) AS tokens_out,
+           (SELECT sum(r.cost) FROM run r WHERE r.project_id = p.id
+             AND NOT EXISTS (SELECT 1 FROM run r2 WHERE r2.project_id = p.id AND r2.cost IS NULL)) AS cost
       FROM project p
      WHERE p.id = ?
   `).get(projectId) as unknown as DetailRow | undefined;
@@ -73,5 +77,8 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
       hasLanguage: row.source_language !== null,
     }).allows,
     tokens: { in: Number(row.tokens_in), out: Number(row.tokens_out) },
+    // The subquery yields null when any run is unpriced, which is the only
+    // honest thing to show then: not a smaller number that reads like a total.
+    cost: row.cost === null ? null : Number(row.cost),
   };
 }

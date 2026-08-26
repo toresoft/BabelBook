@@ -23,9 +23,14 @@
       </div>
       <div>
         <dt>{{ t('report.cost') }}</dt>
-        <dd>{{ t('report.tokens', {
-          tokensIn: found.cost.tokensIn, tokensOut: found.cost.tokensOut
-        }) }}</dd>
+        <dd>
+          {{ t('report.tokens', {
+            tokensIn: found.cost.tokensIn, tokensOut: found.cost.tokensOut
+          }) }}
+          @if (found.cost.amount !== null) {
+            · {{ t('report.money', { amount: found.cost.amount.toFixed(2) }) }}
+          }
+        </dd>
       </div>
     </dl>
 

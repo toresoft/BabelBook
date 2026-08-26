@@ -52,6 +52,29 @@
     </label>
 
     <label>
+      {{ t('newProject.provider') }}
+      <select data-testid="provider" [ngModel]="providerId()"
+              (ngModelChange)="pickProvider($event)">
+        <option [value]="null">{{ t('newProject.noProvider') }}</option>
+        @for (provider of providers(); track provider.id) {
+          <option [value]="provider.id">{{ provider.name }}</option>
+        }
+      </select>
+    </label>
+
+    @if (chosenProvider(); as provider) {
+      <label>
+        {{ t('newProject.model') }}
+        <select data-testid="model" [ngModel]="modelId()"
+                (ngModelChange)="pickModel($event)">
+          @for (model of provider.models; track model.id) {
+            <option [value]="model.id">{{ model.displayName }}</option>
+          }
+        </select>
+      </label>
+    }
+
+    <label>
       {{ t('newProject.sourceLanguage') }}
       <input data-testid="source-language" [ngModel]="sourceLanguage()"
              (ngModelChange)="sourceLanguage.set($event)" />
@@ -66,7 +89,14 @@
 
     @if (estimated(); as guess) {
       <p class="new__estimate" data-testid="estimate">
-        {{ t('newProject.estimate', { tokens: guess.tokensIn + guess.tokensOut }) }}
+        @if (guess.cost === null) {
+          {{ t('newProject.estimate', { tokens: guess.tokensIn + guess.tokensOut }) }}
+        } @else {
+          {{ t('newProject.estimateWithCost', {
+            tokens: guess.tokensIn + guess.tokensOut,
+            cost: guess.cost.toFixed(2),
+          }) }}
+        }
       </p>
       @if (guess.cost === null) {
         <p class="new__hint">{{ t('newProject.noPrices') }}</p>

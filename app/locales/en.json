@@ -49,8 +49,11 @@
     "units": "{{count}} units",
     "words": "{{count}} words",
     "estimate": "Estimate: {{tokens}} tokens",
-    "estimateWithCost": "Estimate: {{tokens}} tokens, about {{cost}}",
-    "noPrices": "The chosen model declares no prices: tokens only."
+    "estimateWithCost": "Estimate: {{tokens}} tokens, about {{cost}} USD",
+    "noPrices": "No model chosen, or the model declares no prices: tokens only.",
+    "provider": "Provider",
+    "noProvider": "None (can be chosen later)",
+    "model": "Model"
   },
   "providers": {
     "title": "Providers",
@@ -267,7 +270,8 @@
     "overlaysRemoved": "Removed {{overlays}} overlays and {{audio}} audio files.",
     "openEpub": "Open the EPUB",
     "revealEpub": "Show in the folder",
-    "neverRun": "This project has never been run."
+    "neverRun": "This project has never been run.",
+    "money": "about {{amount}} USD"
   },
   "invariants": {
     "I1": "The resources are the same",

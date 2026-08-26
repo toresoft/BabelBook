@@ -10,6 +10,7 @@ import type {
 } from "../../shared/run.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
+import { modelPricesOf } from "../providers/store.ts";
 import type { Workspace } from "../workspace.ts";
 import type { ProjectEvent } from "../../../core/workflow/project.machine.ts";
 
@@ -167,8 +168,23 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       // ever written claims the book cost nothing.
       lastSummary = message.summary;
       if (activeRunId !== null) {
-        db.prepare("UPDATE run SET tokens_in = ?, tokens_out = ?, ended_at = ? WHERE id = ?").run(
-          message.summary.tokensIn, message.summary.tokensOut,
+        // The price is the model's as saved when the run began: whatever the
+        // catalogue says tomorrow, this book was billed at what was known
+        // then, which is what makes yesterday's report still explainable.
+        const configured = db.prepare(
+          "SELECT provider_id, model_id FROM project WHERE id = ?",
+        ).get(activeId) as { provider_id: string | null; model_id: string | null } | undefined;
+        const prices = configured?.provider_id != null && configured.model_id != null
+          ? modelPricesOf(db, configured.provider_id, configured.model_id)
+          : null;
+        const cost = prices === null ? null
+          : (message.summary.tokensIn / 1_000_000) * prices.priceIn
+            + (message.summary.tokensOut / 1_000_000) * prices.priceOut;
+
+        db.prepare(
+          "UPDATE run SET tokens_in = ?, tokens_out = ?, cost = ?, ended_at = ? WHERE id = ?",
+        ).run(
+          message.summary.tokensIn, message.summary.tokensOut, cost,
           new Date().toISOString(), activeRunId,
         );
       }

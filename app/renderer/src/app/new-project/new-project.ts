@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@a
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
-import type { CreatedProject } from "../../../../shared/dto.js";
+import type { CreatedProject, Provider } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
 import { estimate } from "../../../../shared/estimate.js";
 
@@ -28,18 +28,55 @@ export class NewProject {
   readonly sourceLanguage = signal("");
   readonly description = signal("");
 
+  /** The configured providers, with the models their endpoints declared. */
+  readonly providers = signal<Provider[]>([]);
+  readonly providerId = signal<string | null>(null);
+  readonly modelId = signal<string | null>(null);
+
+  readonly chosenProvider = computed(() =>
+    this.providers().find((provider) => provider.id === this.providerId()) ?? null);
+
   /**
    * The estimate is built on the units the analysis actually found, which is
    * why the book is ingested before this screen asks for anything. A guess
    * made from the file size would be a number the user believes and we made up.
+   *
+   * The prices are the chosen model's as the catalogue declared them: absent
+   * when unknown, never invented, so the estimate says tokens only until it
+   * can honestly say money.
    */
   readonly estimated = computed(() => {
     const found = this.project();
-    return found === null ? null : estimate({ words: found.words, priceIn: null, priceOut: null });
+    if (found === null) return null;
+    const model = this.chosenProvider()?.models.find((m) => m.id === this.modelId()) ?? null;
+    return estimate({
+      words: found.words,
+      priceIn: model?.priceIn ?? null,
+      priceOut: model?.priceOut ?? null,
+    });
   });
 
   #ipc = inject(IpcService);
   #router = inject(Router);
+
+  constructor() {
+    void this.loadProviders();
+  }
+
+  async loadProviders(): Promise<void> {
+    this.providers.set(await this.#ipc.invoke("providers.list", undefined));
+  }
+
+  /** Choosing a provider takes its first model along, as the form's best guess. */
+  pickProvider(id: string): void {
+    this.providerId.set(id);
+    const first = this.providers().find((provider) => provider.id === id)?.models[0]?.id ?? null;
+    this.modelId.set(first);
+  }
+
+  pickModel(id: string): void {
+    this.modelId.set(id);
+  }
 
   async choose(): Promise<void> {
     this.failure.set(null);
@@ -74,6 +111,8 @@ export class NewProject {
       targetLanguage: this.targetLanguage(),
       sourceLanguage: this.sourceLanguage() === "" ? null : this.sourceLanguage(),
       description: this.description(),
+      providerId: this.providerId() ?? undefined,
+      modelId: this.modelId() ?? undefined,
     });
     await this.#router.navigateByUrl("/");
   }

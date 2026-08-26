@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import {
-  createProvider, deleteProvider, getProvider, listProviders, PRESETS, readKey,
+  createProvider, deleteProvider, getProvider, listProviders, modelPricesOf, PRESETS, readKey,
   refreshCatalogMetadata, routeDefaults, updateProvider,
 } from "../main/providers/store.ts";
 import type { Catalog, CatalogProvider } from "../main/catalog/shape.ts";
@@ -113,6 +113,20 @@ describe("providers", () => {
     // which is why it lives here and not in the catalogue.
     expect(routeDefaults("deepseek")).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
     expect(routeDefaults("anthropic")).toEqual({});
+  });
+
+  it("tells the run what its model costs, when the catalogue knew", () => {
+    const d = db();
+    createProvider(d, crypto, { ...acme, models: [
+      { id: "m1", displayName: "M1", contextWindow: null, priceIn: 1, priceOut: 5, capabilities: null },
+      { id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null, capabilities: null },
+    ] });
+
+    expect(modelPricesOf(d, "any-provider", "m1")).toBeNull(); // no such provider row
+    const p = listProviders(d)[0]!;
+    expect(modelPricesOf(d, p.id, "m1")).toEqual({ priceIn: 1, priceOut: 5 });
+    // Half a price is no price: the estimate refuses to multiply one side.
+    expect(modelPricesOf(d, p.id, "m2")).toBeNull();
   });
 });
 

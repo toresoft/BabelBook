@@ -195,6 +195,20 @@ describe("project.update", () => {
       .toMatchObject({ target_language: "it", description: "Secondo volume" });
   });
 
+  it("attaches the provider and model the user chose for this book", async () => {
+    const { db, handlers, project } = await created();
+    await handlers["project.update"]({ id: project.id, providerId: "pv1", modelId: "m1" });
+
+    expect(db.prepare("SELECT provider_id, model_id FROM project WHERE id=?").get(project.id))
+      .toMatchObject({ provider_id: "pv1", model_id: "m1" });
+
+    // Not naming them keeps them: the language can be corrected without
+    // silently unconfiguring the book.
+    await handlers["project.update"]({ id: project.id, description: "x" });
+    expect(db.prepare("SELECT provider_id, model_id FROM project WHERE id=?").get(project.id))
+      .toMatchObject({ provider_id: "pv1", model_id: "m1" });
+  });
+
   it("refuses a project that is not there", async () => {
     const { deps: d } = await deps();
     await expect(buildHandlers(d)["project.update"]({ id: "ghost", targetLanguage: "fr" }))

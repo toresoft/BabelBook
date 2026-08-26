@@ -159,6 +159,16 @@ describe("buildReport", () => {
       .toMatchObject({ tokensIn: 1000, tokensOut: 500 });
   });
 
+  it("prices the run from the tokens spent and the model's saved price", () => {
+    const db = seeded();
+    db.prepare("UPDATE run SET cost = 0.02 WHERE id = 'r1'").run();
+    expect(buildReport(db, "p1", "r1").cost)
+      .toMatchObject({ tokensIn: 1000, tokensOut: 500, amount: 0.02 });
+    // Nothing priced, nothing claimed: an unpriced run keeps its tokens and
+    // says no money, which is what it always did.
+    expect(buildReport(seeded(), "p1", "r1").cost).toMatchObject({ amount: null });
+  });
+
   it("measures how well the terminology was honoured, and says when it cannot", () => {
     const respected = buildReport(
       seeded({ terms: [{ source: "Text", target: "Testo", rule: "must" }] }), "p1", "r1",

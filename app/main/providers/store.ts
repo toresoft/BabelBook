@@ -296,6 +296,25 @@ export function routeDefaults(route: string): Record<string, unknown> {
 }
 
 /**
+ * The prices a project's model carries, for pricing a run at its own moment.
+ *
+ * Null when either side is unknown: half a price is no price, and an estimate
+ * that multiplies one side only would understate what a book costs — the one
+ * direction of wrong that reads like a promise.
+ */
+export function modelPricesOf(
+  db: DatabaseSync, providerId: string, modelId: string,
+): { priceIn: number; priceOut: number } | null {
+  const row = db.prepare(`
+    SELECT price_in, price_out FROM provider_model
+     WHERE provider_id = ? AND model_id = ?
+  `).get(providerId, modelId) as
+    { price_in: number | null; price_out: number | null } | undefined;
+  if (row === undefined || row.price_in === null || row.price_out === null) return null;
+  return { priceIn: row.price_in, priceOut: row.price_out };
+}
+
+/**
  * The one preset that stays hand-built: the shortcut for endpoints the
  * catalogue does not know — OpenRouter, a corporate gateway, a model served
  * from the user's own machine. They differ by base URL, not by protocol, and
