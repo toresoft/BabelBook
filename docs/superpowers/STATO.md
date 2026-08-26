@@ -36,12 +36,13 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 2. Layer traduzione del core | **completo**, 14/14 | `core/translate/`, `core/analyze/`, `core/glossary/`, `core/ports.ts` |
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
-| 5. Gate, glossari, report | **task 1-6 su 8** | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
+| 5. Gate, glossari, report | **completo**, 8/8 | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
 | 6. CI e pacchetti | scritto, non iniziato | `.github/`, `app/electron-builder.yml` |
 
-Suite: **538 test verdi** (260 core, 241 app, 37 componenti) piu' **8 prove
+Suite: **568 test verdi** (260 core, 249 app, 59 componenti) piu' **10 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
-ripresa che non ritraduce nulla, e una persona che attraversa a mano i due gate.
+ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
+la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
 Typecheck e build di produzione sono puliti.
 
 I test dei componenti girano col builder `@angular/build:unit-test`
@@ -49,16 +50,21 @@ I test dei componenti girano col builder `@angular/build:unit-test`
 
 ## Il prossimo passo
 
-**Piano 5, Task 7** — la schermata delle impostazioni: glossari, auto-accettazione
-dei due gate, concorrenza, lingua dell'interfaccia, percorso del jar di
-EPUBCheck. La sezione provider esiste gia'. Poi il Task 8, la prova completa dei
-gate.
+**Piano 6** — la CI su GitHub e i pacchetti (AppImage, deb, rpm, exe). Il piano
+e' scritto in `docs/superpowers/plans/2026-08-26-babelbook-ci-and-packaging.md`
+e non e' ancora iniziato.
 
-Quello che l'applicazione fa oggi: crea un progetto da un EPUB, lo mostra in
-libreria, apre la sua scheda con panoramica, termini, esclusioni, unita' e
-report, **traduce un libro intero** con pausa e ripresa che non ritraducono
-nulla, si ferma ai due gate e riparte quando l'utente decide, compone l'EPUB con
-il suo gate, e da `/settings` accetta un provider con la sua chiave.
+I cinque piani del prodotto sono chiusi. Quello che l'applicazione fa oggi:
+crea un progetto da un EPUB, lo mostra in libreria, apre la sua scheda con
+panoramica, termini, esclusioni, unita' e report, **traduce un libro intero**
+con pausa e ripresa che non ritraducono nulla, si ferma ai due gate e riparte
+quando l'utente decide, compone l'EPUB con il suo gate, e dalle impostazioni
+accetta provider con chiave cifrata, glossari, auto-accettazione, concorrenza e
+lingua dell'interfaccia.
+
+**Cio' che manca e' la prova con un provider vero.** E' il rischio numero uno da
+sempre, ed e' l'unica cosa che separa il progetto da un libro tradotto davvero.
+Ora e' finalmente possibile farla dall'interfaccia.
 
 ## Decisioni prese durante l'esecuzione
 
@@ -106,7 +112,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 538 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 568 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è

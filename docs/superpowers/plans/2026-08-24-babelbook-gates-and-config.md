@@ -1,17 +1,19 @@
 # babelBook — Piano 5: i gate, i glossari e il report
 
-**Stato: task 1-6 su 8**, al 2026-08-26. Il piano 4 è completo.
+**Stato: completo, 8 task su 8**, al 2026-08-26.
 
-Fatto: approvazione dei termini, invalidazione selettiva con anteprima,
-revisione delle esclusioni, glossari con import ed export, report, e le cinque
-schede del progetto con i due gate attraversabili a mano. Restano le
-impostazioni (7) e la prova completa dei gate (8).
+Approvazione dei termini, invalidazione selettiva con anteprima, revisione
+delle esclusioni, glossari con import ed export, report, le cinque schede del
+progetto, le quattro sezioni delle impostazioni, e la prova end-to-end che
+attraversa i due gate a mano fino al file su disco.
 
 Correzioni trovate eseguendo, che il piano non sapeva: `glossary_term` non
 accettava la regola `prefer` (migrazione 006); il risultato della composizione
-non veniva conservato (007); i token di una corsa non li scriveva nessuno; e
+non veniva conservato (007); i token di una corsa non li scriveva nessuno;
 `activeId` non veniva azzerato all'apertura di un gate, quindi approvarlo
-rifiutava con `ENGINE_BUSY`.
+rifiutava con `ENGINE_BUSY`; `settings.set` salvava la stringa "null" invece di
+togliere la riga; e la lingua dell'interfaccia non sopravviveva al riavvio,
+perché l'avvio non leggeva mai l'impostazione salvata.
 
 Il task 6 ha richiesto di costruire prima il banco di prova dei componenti:
 i `.spec.ts` che il piano dà per scontati non avevano né jsdom né un modo di
