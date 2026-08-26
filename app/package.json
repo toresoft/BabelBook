@@ -7,6 +7,12 @@
     "email": "toresoft@gmail.com"
   },
   "license": "UNLICENSED",
+  "homepage": "https://github.com/toresoft/BabelBook",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/toresoft/BabelBook.git"
+  },
+  "desktopName": "babelbook.desktop",
   "private": true,
   "type": "module",
   "main": "dist/main/main.js",

@@ -6,6 +6,11 @@ directories:
   output: release
   buildResources: build
 
+# Without this the name comes from the package's, and this package is scoped:
+# the .deb came out called `@babelbook/app_0.1.0_amd64.deb`, with a slash in
+# the middle of a file name.
+artifactName: ${productName}-${version}-${arch}.${ext}
+
 # The main and engine bundles are built with `packages: "external"`, so the
 # production dependencies are required at runtime and have to ship. What is
 # deliberately absent is `release/` itself and anything only the build needs.
@@ -24,6 +29,9 @@ linux:
   # Named here, or it is derived from the package name and ships as
   # `@babelbookapp` — which is what the desktop entry would then have to call.
   executableName: babelbook
+  # Ties the running window to its launcher, which is where a Wayland session
+  # takes the icon from.
+  syncDesktopName: true
   target: [AppImage, deb, rpm]
   category: Office
   synopsis: Translates EPUB books with a language model
