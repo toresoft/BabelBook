@@ -3,11 +3,17 @@ import { notifyOn, onQuitRequested, onWindowClose, trayTooltip } from "../main/t
 
 describe("lifecycle", () => {
   it("hides the window instead of quitting while a book is being translated", () => {
-    expect(onWindowClose(true)).toBe("hide");
+    expect(onWindowClose(true, true)).toBe("hide");
   });
 
   it("quits when there is nothing running", () => {
-    expect(onWindowClose(false)).toBe("quit");
+    expect(onWindowClose(false, true)).toBe("quit");
+  });
+
+  // Production break: the window vanishes, the process lives on, and the only
+  // way back is a kill from a terminal.
+  it("quits rather than hiding when there is no tray to come back from", () => {
+    expect(onWindowClose(true, false)).toBe("quit");
   });
 
   it("asks for confirmation before quitting with work in flight", () => {

@@ -5,6 +5,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { buildEpub } from "../../core/test/corpus/build.ts";
 // Node runs this file as plain ESM, which requires the attribute.
 import it from "../locales/it.json" with { type: "json" };
+import { mainWindow } from "./support.ts";
 
 const label = (catalogue: unknown, path: string): string =>
   path.split(".").reduce<unknown>((at, key) => (at as Record<string, unknown>)[key], catalogue) as string;
@@ -32,7 +33,7 @@ async function launch(userData: string, epub: string): Promise<{ app: ElectronAp
       BABELBOOK_EPUB_FOR_TEST: epub,
     },
   });
-  return { app, window: await app.firstWindow() };
+  return { app, window: await mainWindow(app) };
 }
 
 async function projects(window: Page): Promise<Array<{ id: string; state: string }>> {

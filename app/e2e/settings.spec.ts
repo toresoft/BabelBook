@@ -6,6 +6,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 // renderer's bundler does not, which is why the two differ.
 import en from "../locales/en.json" with { type: "json" };
 import it from "../locales/it.json" with { type: "json" };
+import { mainWindow } from "./support.ts";
 
 /**
  * The settings, through the real window.
@@ -26,7 +27,7 @@ async function launch(userData: string): Promise<{ app: ElectronApplication; win
     cwd: join(import.meta.dirname, ".."),
     env: { ...process.env, BABELBOOK_USER_DATA: userData },
   });
-  return { app, window: await app.firstWindow() };
+  return { app, window: await mainWindow(app) };
 }
 
 const label = (catalogue: unknown, path: string): string =>

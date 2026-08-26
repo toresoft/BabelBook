@@ -8,7 +8,7 @@ import type { EngineMessage } from "../shared/run.ts";
  * starting an application to check it.
  */
 export interface Lifecycle {
-  onWindowClose(hasRunningWork: boolean): "hide" | "quit";
+  onWindowClose(hasRunningWork: boolean, hasTray: boolean): "hide" | "quit";
   onQuitRequested(hasRunningWork: boolean): "confirm" | "quit";
 }
 
@@ -16,9 +16,15 @@ export interface Lifecycle {
  * Closing the window while a book is in flight hides it; the application stays
  * alive in the tray and the work goes on. The user who meant to quit has a
  * menu item for that, one that asks first.
+ *
+ * Without a tray it must not hide. There would be nothing left to click: the
+ * window would be gone, the process alive, and the only way back a kill from a
+ * terminal. A desktop that offers no tray is not rare — GNOME without an
+ * extension, and any session where the icon fails to register — so this is the
+ * ordinary case, not the exotic one.
  */
-export function onWindowClose(hasRunningWork: boolean): "hide" | "quit" {
-  return hasRunningWork ? "hide" : "quit";
+export function onWindowClose(hasRunningWork: boolean, hasTray: boolean): "hide" | "quit" {
+  return hasRunningWork && hasTray ? "hide" : "quit";
 }
 
 /** Quitting with work in flight is a decision, so it is asked for, not assumed. */

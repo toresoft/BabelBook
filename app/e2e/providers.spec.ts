@@ -2,6 +2,7 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication } from "@playwright/test";
+import { mainWindow } from "./support.ts";
 
 /**
  * Adding a provider through the interface, which is the only thing that makes
@@ -30,7 +31,7 @@ async function launch(userData: string): Promise<ElectronApplication> {
 test("adds a provider from a preset and never hands the key back", async () => {
   const userData = await mkdtemp(join(tmpdir(), "babelbook-providers-"));
   const app = await launch(userData);
-  const window = await app.firstWindow();
+  const window = await mainWindow(app);
 
   await window.getByTestId("settings").click();
   await expect(window.getByTestId("providers-empty")).toBeVisible();
@@ -56,7 +57,7 @@ test("adds a provider from a preset and never hands the key back", async () => {
   // And it survives a restart, because a key that has to be retyped at every
   // launch is a key nobody would keep here.
   const again = await launch(userData);
-  const reopened = await again.firstWindow();
+  const reopened = await mainWindow(again);
   await reopened.getByTestId("settings").click();
   await expect(reopened.getByTestId("providers").locator("li.provider").first()
     .getByTestId("key-set")).toBeVisible();
@@ -66,7 +67,7 @@ test("adds a provider from a preset and never hands the key back", async () => {
 test("renaming a provider does not log the user out of it", async () => {
   const userData = await mkdtemp(join(tmpdir(), "babelbook-providers-edit-"));
   const app = await launch(userData);
-  const window = await app.firstWindow();
+  const window = await mainWindow(app);
 
   await window.getByTestId("settings").click();
   await window.getByTestId("preset-openai").click();

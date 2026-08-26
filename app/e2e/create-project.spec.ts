@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { buildEpub } from "../../core/test/corpus/build.ts";
+import { mainWindow } from "./support.ts";
 
 /**
  * The one test that drives the real window.
@@ -18,7 +19,7 @@ async function launch(userData: string, epub: string) {
     cwd: join(import.meta.dirname, ".."),
     env: { ...process.env, BABELBOOK_USER_DATA: userData, BABELBOOK_EPUB_FOR_TEST: epub },
   });
-  return { app, window: await app.firstWindow() };
+  return { app, window: await mainWindow(app) };
 }
 
 async function fixture(dir: string, name: string, spec: Parameters<typeof buildEpub>[0]) {

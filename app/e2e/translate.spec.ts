@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { buildEpub } from "../../core/test/corpus/build.ts";
 import { readEpub } from "../../core/epub/index.ts";
+import { mainWindow } from "./support.ts";
 
 /**
  * The whole application, end to end, with the deterministic backend.
@@ -33,7 +34,7 @@ async function launch(
       ...env,
     },
   });
-  return { app, window: await app.firstWindow() };
+  return { app, window: await mainWindow(app) };
 }
 
 async function createProject(window: Page): Promise<void> {

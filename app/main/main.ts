@@ -19,7 +19,8 @@ import { sdkBackend, type GenerateFn } from "../engine/backends/sdk.ts";
 import type { BackendSpec, EngineMessage } from "../shared/run.ts";
 import type { VerifyOutcome } from "../shared/dto.ts";
 import { notifyOn, onQuitRequested, onWindowClose, trayTooltip } from "./tray.ts";
-import { createMainWindow } from "./window.ts";
+import { TRAY_ICON } from "./icons.ts";
+import { createMainWindow, createSplashWindow } from "./window.ts";
 
 /** dist/main/main.js sits next to dist/preload and dist/renderer. */
 const DIST = join(import.meta.dirname, "..");
@@ -48,9 +49,6 @@ const userDataDir = process.env["BABELBOOK_USER_DATA"] ?? app.getPath("userData"
  */
 const fakeBackend = process.env["BABELBOOK_FAKE_BACKEND"] !== undefined;
 
-/** A 16×16 book-spine square; the tray is a place for a mark, not art. */
-const TRAY_ICON =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAIklEQVR4nGNgoBawD6z4TwqmSDOGIaMGjBowTAygODNRAgD1q4VQZ5V0WgAAAABJRU5ErkJggg==";
 
 registerRendererScheme();
 
@@ -165,7 +163,8 @@ async function askQuit(): Promise<void> {
   app.quit();
 }
 
-function openWindow(): void {  const window = createMainWindow({
+function openWindow(): void {
+  const window = createMainWindow({
     preloadPath: PRELOAD_PATH,
     url: devServerUrl ?? `${RENDERER_ORIGIN}/index.html`,
   });
@@ -173,7 +172,7 @@ function openWindow(): void {  const window = createMainWindow({
   // Closing the window while a book is in flight hides it; the work goes on.
   window.on("close", (event) => {
     if (glue.quitting) return;
-    if (onWindowClose(glue.runtime?.active != null) === "hide") {
+    if (onWindowClose(glue.runtime?.active != null, glue.tray !== null) === "hide") {
       event.preventDefault();
       window.hide();
     }
@@ -183,6 +182,13 @@ function openWindow(): void {  const window = createMainWindow({
 }
 
 app.whenReady().then(async () => {
+  // Raised before the database, the catalogues and the window: everything
+  // below takes time, and until now the user had been looking at nothing.
+  const splash = createSplashWindow();
+  const closeSplash = (): void => {
+    if (!splash.isDestroyed()) splash.destroy();
+  };
+
   const db = openDatabase(join(userDataDir, "babelbook.db"));
   migrate(db, loadMigrations(join(import.meta.dirname, "migrations")));
 
@@ -293,6 +299,11 @@ app.whenReady().then(async () => {
   handleRendererProtocol(devServerUrl === undefined ? RENDERER_ROOT : "", join(userDataDir, "projects"));
   glue.tray = buildTray();
   openWindow();
+
+  // Whichever comes first: the window is ready, or it failed and the splash
+  // must not be left hanging over an application that is not coming.
+  glue.window?.once("ready-to-show", closeSplash);
+  glue.window?.webContents.once("did-fail-load", closeSplash);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) openWindow();
