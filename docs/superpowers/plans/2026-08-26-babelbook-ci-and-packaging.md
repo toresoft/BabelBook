@@ -1,6 +1,18 @@
 # babelBook — Piano 6: integrazione continua e pacchetti
 
-**Stato: non iniziato**, al 2026-08-26.
+**Stato: task 1-3 e 6-8 fatti, 4 a metà, 5 non verificabile qui**, al 2026-08-26.
+
+Fatto e verificato: i due workflow, electron-builder, l'AppImage (aperto, gli è
+stato dato un EPUB vero), la prova che apre il pacchetto — sabotata togliendo il
+binding nativo, e cade.
+
+**Non verificato: nessun workflow è mai girato su GitHub.** Serve un push, che
+non ho fatto. Finché non gira, e finché non la si è vista fallire, è un file
+YAML e non una CI.
+
+Bloccati: `.deb` e `.rpm` vogliono `libxcrypt-compat` su Fedora (fpm porta il
+proprio Ruby, che cerca `libcrypt.so.1`); l'`.exe` va costruito su Windows,
+com'è scritto in testa a questo piano.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

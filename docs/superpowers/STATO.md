@@ -37,7 +37,7 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
 | 5. Gate, glossari, report | **completo**, 8/8 | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
-| 6. CI e pacchetti | scritto, non iniziato | `.github/`, `app/electron-builder.yml` |
+| 6. CI e pacchetti | **6 task su 8**, workflow mai girati | `.github/`, `app/electron-builder.yml` |
 
 Suite: **574 test verdi** (260 core, 255 app, 59 componenti) piu' **11 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
@@ -50,21 +50,18 @@ I test dei componenti girano col builder `@angular/build:unit-test`
 
 ## Il prossimo passo
 
-**Piano 6** — la CI su GitHub e i pacchetti (AppImage, deb, rpm, exe). Il piano
-e' scritto in `docs/superpowers/plans/2026-08-26-babelbook-ci-and-packaging.md`
-e non e' ancora iniziato.
+**Far girare i workflow.** Sono scritti e committati, e non sono mai partiti:
+finché non lo fanno — e finché non li si è visti fallire per un test rotto di
+proposito — restano YAML. Serve un push su GitHub.
 
-I cinque piani del prodotto sono chiusi. Quello che l'applicazione fa oggi:
-crea un progetto da un EPUB, lo mostra in libreria, apre la sua scheda con
-panoramica, termini, esclusioni, unita' e report, **traduce un libro intero**
-con pausa e ripresa che non ritraducono nulla, si ferma ai due gate e riparte
-quando l'utente decide, compone l'EPUB con il suo gate, e dalle impostazioni
-accetta provider con chiave cifrata, glossari, auto-accettazione, concorrenza e
-lingua dell'interfaccia.
+Poi restano due cose, entrambe fuori dalla portata di questa macchina:
+`libxcrypt-compat` per costruire `.deb` e `.rpm` su Fedora, e un runner Windows
+per l'`.exe`.
 
-**Cio' che manca e' la prova con un provider vero.** E' il rischio numero uno da
-sempre, ed e' l'unica cosa che separa il progetto da un libro tradotto davvero.
-Ora e' finalmente possibile farla dall'interfaccia.
+**E resta la prova che nessuna suite può dare**: un libro vero con un provider
+vero. È il rischio numero uno da sempre. Ora si fa tutto dall'interfaccia:
+Impostazioni → Provider → un preset → la chiave → Verifica; poi un libro corto,
+con l'auto-accettazione spenta per vedere i due gate.
 
 ## Decisioni prese durante l'esecuzione
 
