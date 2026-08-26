@@ -72,6 +72,10 @@ export class Providers implements OnDestroy {
   readonly entries = signal<CatalogEntry[]>([]);
   readonly runtimes = signal<LocalRuntime[]>([]);
   readonly catalogState = signal<CatalogState | null>(null);
+  readonly refreshing = signal(false);
+  readonly importing = signal(false);
+  /** What the last catalogue action said: "updated", or why it did not. */
+  readonly catalogOutcome = signal<string | null>(null);
 
   /** The last verification, per provider, so a result stays on the row it belongs to. */
   readonly verified = signal<Record<string, { ok: boolean; code?: VerifyCode; latencyMs?: number }>>({});
@@ -105,6 +109,42 @@ export class Providers implements OnDestroy {
   /** Local runtimes appear before any search is typed: they are already known. */
   async probeLocals(): Promise<void> {
     this.runtimes.set(await this.#ipc.invoke("local.runtimes", undefined));
+  }
+
+  /**
+   * Asks the network for a newer catalogue, on request only. A failed
+   * refresh is answered with a line, never with an alarm: the catalogue that
+   * already works keeps answering, and the date line keeps saying its age.
+   */
+  async refreshCatalog(): Promise<void> {
+    if (this.refreshing()) return;
+    this.refreshing.set(true);
+    this.catalogOutcome.set(null);
+    try {
+      this.catalogState.set(await this.#ipc.invoke("catalog.refresh", undefined));
+      this.catalogOutcome.set("updated");
+    } catch {
+      this.catalogOutcome.set("refreshFailed");
+    } finally {
+      this.refreshing.set(false);
+    }
+  }
+
+  /** Carries a catalogue in from a file, for a machine without a network. */
+  async importCatalog(): Promise<void> {
+    if (this.importing()) return;
+    this.importing.set(true);
+    this.catalogOutcome.set(null);
+    try {
+      this.catalogState.set(await this.#ipc.invoke("catalog.importFile", undefined));
+      this.catalogOutcome.set("updated");
+    } catch (error) {
+      this.catalogOutcome.set((error as { code?: string }).code === "BAD_CATALOG"
+        ? "badImport"
+        : "refreshFailed");
+    } finally {
+      this.importing.set(false);
+    }
   }
 
   /** 203 entries do not scroll: the list arrives only when something is typed. */
@@ -180,6 +220,12 @@ export class Providers implements OnDestroy {
     return code === "unauthorized" || code === "unreachable" || code === "bad-response"
       ? `discover.${code}`
       : "providers.findFailed";
+  }
+
+  catalogOutcomeKey(outcome: string): string {
+    return outcome === "updated" ? "providers.catalogUpdated"
+      : outcome === "badImport" ? "providers.catalogBadImport"
+      : "providers.catalogRefreshFailed";
   }
 
   cancel(): void {

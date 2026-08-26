@@ -119,6 +119,13 @@ export interface Invocations {
   "provider.discover": { req: { baseUrl: string; apiKey: string | null }; res: ProviderModel[] };
   /** How old the catalogue in use is. One line, no alarm. */
   "catalog.state": { req: undefined; res: CatalogState };
+  /**
+   * Asks the network for a newer catalogue, when the user asks. A failed
+   * refresh changes nothing and says so without alarm.
+   */
+  "catalog.refresh": { req: undefined; res: CatalogState };
+  /** Installs a catalogue chosen from a file, for a machine without a network. */
+  "catalog.importFile": { req: undefined; res: CatalogState };
   "settings.get": { req: undefined; res: Settings };
   "settings.set": { req: Partial<Settings>; res: Settings };
   /** Asks for the EPUBCheck jar and stores it. Returns the settings as they now stand. */
@@ -147,6 +154,7 @@ export const INVOCATIONS = [
   "provider.create", "provider.update", "provider.delete", "provider.verify",
   "local.runtimes",
   "catalog.search", "catalog.models", "provider.discover", "catalog.state",
+  "catalog.refresh", "catalog.importFile",
   "settings.get", "settings.set", "settings.chooseJar",
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 

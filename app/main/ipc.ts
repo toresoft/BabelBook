@@ -37,7 +37,7 @@ export interface IpcDeps {
    * The kind, not a filter: the window says what it wants, and the main
    * process — which owns the dialog — decides what that means.
    */
-  chooseOpen(kind: "glossary" | "jar"): Promise<string | null>;
+  chooseOpen(kind: "glossary" | "jar" | "catalog"): Promise<string | null>;
   chooseSave(defaultName: string): Promise<string | null>;
   /** Puts a project in the machine's hands, and the machine's verdict on screen. */
   startRun(projectId: string): Promise<void>;
@@ -57,6 +57,8 @@ export interface IpcDeps {
     modelsFor(entryId: string, apiKey: string | null): Promise<ProviderModel[]>;
     discover(baseUrl: string, apiKey: string | null): Promise<ProviderModel[]>;
     state(): CatalogState;
+    refresh(): Promise<CatalogState>;
+    importFile(): Promise<CatalogState>;
   };
   /** Hands a path to the desktop: opens the file, or shows it in its folder. */
   openPath(path: string): Promise<void>;
@@ -197,6 +199,10 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     "provider.discover": async ({ baseUrl, apiKey }) => deps.catalog.discover(baseUrl, apiKey),
 
     "catalog.state": async () => deps.catalog.state(),
+
+    "catalog.refresh": async () => deps.catalog.refresh(),
+
+    "catalog.importFile": async () => deps.catalog.importFile(),
 
     "project.get": async ({ id }) => projectDetail(deps.db, id),
 

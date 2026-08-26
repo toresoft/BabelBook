@@ -1,11 +1,16 @@
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, safeStorage, shell, Tray,
 } from "electron";
 import { loadCatalogue, type Translate } from "./catalogue.ts";
-import { readCatalog } from "./catalog/load.ts";
+import {
+  CatalogError, installCatalog, parseImportedCatalog, readCatalog, refreshCatalog,
+  type CatalogPaths,
+} from "./catalog/load.ts";
 import { catalogState, discoverFromUrl, modelsForEntry, searchCatalog } from "./catalog/service.ts";
 import { probeLocalRuntimes } from "./catalog/local.ts";
+import { refreshCatalogMetadata } from "./providers/store.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
 import { registerIpc, readSettings } from "./ipc.ts";
 import { restoreRunningProjects } from "./run/machine-host.ts";
@@ -20,6 +25,7 @@ import { classifyError, verifyProvider as runVerification } from "./providers/ve
 import { resolveModel } from "../engine/backends/resolve.ts";
 import { sdkBackend, type GenerateFn } from "../engine/backends/sdk.ts";
 import type { BackendSpec, EngineMessage } from "../shared/run.ts";
+import type { Events } from "../shared/channels.ts";
 import type { VerifyOutcome } from "../shared/dto.ts";
 import { notifyOn, onQuitRequested, onWindowClose, trayTooltip } from "./tray.ts";
 import { TRAY_ICON } from "./icons.ts";
@@ -30,6 +36,12 @@ const DIST = join(import.meta.dirname, "..");
 const PRELOAD_PATH = join(DIST, "preload", "preload.js");
 const RENDERER_ROOT = join(DIST, "renderer");
 const LOCALES_DIR = join(DIST, "..", "locales");
+
+/** The bundled snapshot, and where updates land in the user's data. */
+const catalogPaths = (dataDir: string): CatalogPaths => ({
+  bundled: join(DIST, "catalog", "snapshot.json.gz"),
+  cache: join(dataDir, "catalog.json.gz"),
+});
 
 /** Set by `ng serve`, so that a rebuild reaches the window without a restart. */
 const devServerUrl = process.env["NG_DEV_SERVER"] ?? process.env["VITE_DEV_SERVER"];
@@ -205,10 +217,8 @@ app.whenReady().then(async () => {
   // The provider catalogue is disk work only: the bundled snapshot, or the
   // cache when it is newer. The network is never on this path — it is asked
   // in the background, when there is a spare moment and a network to ask.
-  let loaded = await readCatalog({
-    bundled: join(import.meta.dirname, "..", "catalog", "snapshot.json.gz"),
-    cache: join(userDataDir, "catalog.json.gz"),
-  });
+  const paths = catalogPaths(userDataDir);
+  let loaded = await readCatalog(paths);
 
   glue.db = db;
   glue.t = t;
@@ -255,6 +265,22 @@ app.whenReady().then(async () => {
     }
   });
 
+  const broadcast = (channel: keyof Events, payload: Events[keyof Events]) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.webContents.send(channel, payload);
+    }
+  };
+
+  /**
+   * What a catalogue change does to what is already stored: the providers
+   * bound to an entry take its new prices and dates, their keys and model
+   * lists untouched, and every open list hears about it.
+   */
+  const adoptCatalog = (catalog: import("./catalog/shape.ts").Catalog): void => {
+    refreshCatalogMetadata(db, catalog);
+    broadcast("providers.changed", {});
+  };
+
   registerIpc(ipcMain, {
     db,
     userDataDir,
@@ -280,7 +306,9 @@ app.whenReady().then(async () => {
         properties: ["openFile"],
         filters: kind === "glossary"
           ? [{ name: "Glossary", extensions: ["md", "markdown"] }]
-          : [{ name: "JAR", extensions: ["jar"] }],
+          : kind === "catalog"
+            ? [{ name: "Catalogue", extensions: ["json", "gz"] }]
+            : [{ name: "JAR", extensions: ["jar"] }],
       });
       return chosen.canceled ? null : chosen.filePaths[0] ?? null;
     },
@@ -301,6 +329,32 @@ app.whenReady().then(async () => {
       modelsFor: (entryId, apiKey) => modelsForEntry(loaded.catalog, entryId, apiKey),
       discover: (baseUrl, apiKey) => discoverFromUrl(baseUrl, apiKey),
       state: () => catalogState(loaded.catalog, loaded.bundled),
+      refresh: async () => {
+        const updated = await refreshCatalog(paths);
+        loaded = updated;
+        if (updated.changed) adoptCatalog(updated.catalog);
+        // The failure is said, not shown: the catalogue that already works
+        // keeps answering, and this code is what tells the interface so.
+        if (updated.stale) {
+          throw new CatalogError("REFRESH_FAILED", "the catalogue could not be updated");
+        }
+        return catalogState(updated.catalog, updated.bundled);
+      },
+      importFile: async () => {
+        // The file is read by this process, like the glossaries: no path
+        // crosses the boundary, and the window learns only the new state.
+        const path = await dialog.showOpenDialog({
+          properties: ["openFile"],
+          filters: [{ name: "Catalogue", extensions: ["json", "gz"] }],
+        }).then((chosen) => (chosen.canceled ? null : chosen.filePaths[0] ?? null));
+        if (path === null) return catalogState(loaded.catalog, loaded.bundled);
+
+        const imported = parseImportedCatalog(await readFile(path));
+        await installCatalog(paths, imported);
+        loaded = { catalog: imported, bundled: false, stale: false, changed: true };
+        adoptCatalog(imported);
+        return catalogState(imported, false);
+      },
     },
     openPath: async (path) => {
       await shell.openPath(path);
@@ -309,15 +363,23 @@ app.whenReady().then(async () => {
       shell.showItemInFolder(path);
     },
     broadcast: (channel, payload) => {
-      for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send(channel, payload);
-      }
+      broadcast(channel, payload);
     },
   });
 
   handleRendererProtocol(devServerUrl === undefined ? RENDERER_ROOT : "", join(userDataDir, "projects"));
   glue.tray = buildTray();
   openWindow();
+
+  // The network is asked now, in the background and off every critical path:
+  // a catalogue that got fresher prices is worth having, and a machine with
+  // no network loses nothing by the attempt.
+  void refreshCatalog(paths).then((updated) => {
+    loaded = updated;
+    if (updated.changed) adoptCatalog(updated.catalog);
+  }).catch(() => {
+    /* the catalogue stays as it is; the state line already says its age */
+  });
 
   // Whichever comes first: the window is ready, or it failed and the splash
   // must not be left hanging over an application that is not coming.

@@ -222,6 +222,49 @@ describe("Providers", () => {
     expect(line.textContent).toContain("203");
   });
 
+  it("updates the catalogue on request, and the line moves with it", async () => {
+    const fresher: CatalogState = {
+      at: "2026-08-26T00:00:00.000Z", providers: 204, models: 7500, bundled: false,
+    };
+    const { fixture, invoke } = mount(bridge({ "catalog.refresh": fresher }));
+    await fixture.whenStable();
+
+    await fixture.componentInstance.refreshCatalog();
+    fixture.detectChanges();
+
+    expect(calls(invoke, "catalog.refresh").length).toBe(1);
+    const line = fixture.nativeElement.querySelector("[data-testid=catalog-state]") as HTMLElement;
+    expect(line.textContent).toContain("2026-08-26");
+    expect(fixture.nativeElement.querySelector("[data-testid=catalog-outcome]")!.textContent)
+      .toContain(catalog.providers["catalogUpdated"]!);
+  });
+
+  it("answers a failed refresh with a line, not an alarm", async () => {
+    const { fixture } = mount(bridge({ "catalog.refresh": failureOf("REFRESH_FAILED") }));
+    await fixture.whenStable();
+
+    await fixture.componentInstance.refreshCatalog();
+    fixture.detectChanges();
+
+    // The state line still says what is in use; nothing was pretended.
+    const line = fixture.nativeElement.querySelector("[data-testid=catalog-state]") as HTMLElement;
+    expect(line.textContent).toContain("2026-08-20");
+    expect(fixture.nativeElement.querySelector("[data-testid=catalog-outcome]")!.textContent)
+      .toContain(catalog.providers["catalogRefreshFailed"]!);
+  });
+
+  it("refuses a file that is not a catalogue, and keeps what works", async () => {
+    const { fixture } = mount(bridge({ "catalog.importFile": failureOf("BAD_CATALOG") }));
+    await fixture.whenStable();
+
+    await fixture.componentInstance.importCatalog();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.catalogState()?.at).toBe(state.at);
+    expect(fixture.nativeElement.querySelector("[data-testid=catalog-outcome]")!.textContent)
+      .toContain(catalog.providers["catalogBadImport"]!);
+  });
+
   it("never sends the key back when saving an edit", async () => {
     const saved: Provider = {
       id: "p1", name: "Acme", route: "acme-compatible",

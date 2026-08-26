@@ -261,8 +261,29 @@
   }
 
   @if (catalogState(); as state) {
-    <p class="providers__catalog" data-testid="catalog-state">
-      {{ t('providers.catalogOf', { date: state.at.slice(0, 10), providers: state.providers }) }}
-    </p>
+    <div class="providers__catalog-row">
+      <p class="providers__catalog" data-testid="catalog-state">
+        {{ t('providers.catalogOf', { date: state.at.slice(0, 10), providers: state.providers }) }}
+      </p>
+      <button
+        type="button"
+        data-testid="catalog-refresh"
+        [disabled]="refreshing()"
+        (click)="refreshCatalog()">
+        {{ t('providers.catalogRefresh') }}
+      </button>
+      <button
+        type="button"
+        data-testid="catalog-import"
+        [disabled]="importing()"
+        (click)="importCatalog()">
+        {{ t('providers.catalogImport') }}
+      </button>
+      @if (catalogOutcome(); as outcome) {
+        <span class="providers__catalog-outcome" data-testid="catalog-outcome">
+          {{ t(catalogOutcomeKey(outcome)) }}
+        </span>
+      }
+    </div>
   }
 </section>

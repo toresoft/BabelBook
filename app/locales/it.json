@@ -93,7 +93,12 @@
     "priceUnknown": "prezzo non nel catalogo",
     "contextOf": "{{context}} token di contesto",
     "priceOf": "{{in}} / {{out}} per milione di token",
-    "catalogOf": "Catalogo dei provider del {{date}}: {{providers}} voci."
+    "catalogOf": "Catalogo dei provider del {{date}}: {{providers}} voci.",
+    "catalogRefresh": "Aggiorna",
+    "catalogImport": "Importa da file",
+    "catalogUpdated": "Aggiornato.",
+    "catalogRefreshFailed": "Nessun aggiornamento: il catalogo resta quello che era.",
+    "catalogBadImport": "Il file non è un catalogo: nulla è stato installato."
   },
   "settings": {
     "sections": {

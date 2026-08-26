@@ -26,6 +26,8 @@ export interface LoadedCatalog {
    * this flag says by how much to trust its dates.
    */
   stale: boolean;
+  /** True only when new data was written: the one fact a caller acts on. */
+  changed: boolean;
 }
 
 export interface RefreshDeps {
@@ -33,9 +35,25 @@ export interface RefreshDeps {
   fetch?: typeof fetch;
 }
 
-/** A cache file: a catalogue plus the ETag that produced it. */
+/** Refused rather than installed: a file that is not a catalogue. */
+export class CatalogError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(`${code}: ${message}`);
+    this.name = "CatalogError";
+    this.code = code;
+  }
+}
+
+/**
+ * A cache file: a catalogue, the ETag that produced it, and where it came
+ * from. An import is a user's choice and outranks the bundled snapshot even
+ * when older; a download is only fresher data, and must prove it.
+ */
 interface CacheFile extends Catalog {
   etag: string | null;
+  origin: "download" | "import";
 }
 
 /**
@@ -62,7 +80,11 @@ async function readSnapshot(path: string): Promise<CacheFile | null> {
   if (!isCatalog(parsed)) return null;
 
   const candidate = parsed as CacheFile;
-  return { ...candidate, etag: typeof candidate.etag === "string" ? candidate.etag : null };
+  return {
+    ...candidate,
+    etag: typeof candidate.etag === "string" ? candidate.etag : null,
+    origin: candidate.origin === "import" ? "import" : "download",
+  };
 }
 
 /**
@@ -70,7 +92,9 @@ async function readSnapshot(path: string): Promise<CacheFile | null> {
  *
  * The comparison is by production date, not file time: a cache downloaded last
  * week is older than a snapshot shipped in this morning's update, and after an
- * update the bundled file is the fresher copy on disk.
+ * update the bundled file is the fresher copy on disk. One cache beats that
+ * rule — an import, which a user chose on purpose and which therefore wins
+ * whatever its age, with the date line left to declare how old it is.
  */
 export async function readCatalog(paths: CatalogPaths): Promise<LoadedCatalog> {
   const bundledSnapshot = await readSnapshot(paths.bundled);
@@ -82,10 +106,12 @@ export async function readCatalog(paths: CatalogPaths): Promise<LoadedCatalog> {
   }
 
   const cache = await readSnapshot(paths.cache);
-  if (cache !== null && Date.parse(cache.at) > Date.parse(bundledSnapshot.at)) {
-    return { catalog: cache, bundled: false, stale: false };
+  const cacheWins = cache !== null
+    && (cache.origin === "import" || Date.parse(cache.at) > Date.parse(bundledSnapshot.at));
+  if (cacheWins) {
+    return { catalog: cache!, bundled: false, stale: false, changed: false };
   }
-  return { catalog: bundledSnapshot, bundled: true, stale: false };
+  return { catalog: bundledSnapshot, bundled: true, stale: false, changed: false };
 }
 
 /**
@@ -127,29 +153,82 @@ export async function refreshCatalog(
   try {
     response = await fetcher(CATALOG_URL, { headers });
   } catch {
-    return { ...current, stale: true };
+    return { ...current, stale: true, changed: false };
   }
 
   if (response.status === 304) {
-    // Nothing newer exists; the cache stays exactly as it is.
-    return { ...current, stale: false };
+    // Nothing newer exists; the cache stays exactly as it is, and the moment
+    // of the check is noted beside it rather than inside it.
+    await writeFile(`${paths.cache}.checked`, new Date().toISOString(), "utf8");
+    return { ...current, stale: false, changed: false };
   }
-  if (!response.ok) return { ...current, stale: true };
+  if (!response.ok) return { ...current, stale: true, changed: false };
 
   let providers: CatalogProvider[];
   try {
     providers = pruneCatalog(JSON.parse(await response.text()));
   } catch {
-    return { ...current, stale: true };
+    return { ...current, stale: true, changed: false };
   }
   // A prune that kept nothing is not a catalogue: an empty object, an error
   // page that happened to parse, a shape change upstream. Serving it would
   // empty the provider list, so it is refused like any other bad answer.
-  if (providers.length === 0) return { ...current, stale: true };
+  if (providers.length === 0) return { ...current, stale: true, changed: false };
 
   const at = new Date().toISOString();
   await writeCache(paths.cache, {
-    at, etag: response.headers.get("etag"), providers,
+    at, etag: response.headers.get("etag"), providers, origin: "download",
   });
-  return { catalog: { at, providers }, bundled: false, stale: false };
+  return { catalog: { at, providers }, bundled: false, stale: false, changed: true };
+}
+
+/**
+ * Reads a file chosen by the user as a catalogue.
+ *
+ * Two shapes are accepted: the pruned snapshot this application writes, which
+ * carries its own date, and the raw api.json that a machine with a network
+ * hands out — pruned here, and dated by the import, because a file with no
+ * date has only the moment it was chosen. A gzipped file is accepted as bytes
+ * (utf8-reading it first would mangle it); anything else is refused with a
+ * code, and what already worked stays where it is.
+ */
+export function parseImportedCatalog(
+  file: Buffer | string,
+  now: () => Date = () => new Date(),
+): Catalog {
+  let text: string;
+  if (typeof file !== "string" && file[0] === 0x1f && file[1] === 0x8b) {
+    try {
+      text = gunzipSync(file).toString("utf8");
+    } catch {
+      throw new CatalogError("BAD_CATALOG", "the file is not a catalogue");
+    }
+  } else {
+    text = typeof file === "string" ? file : file.toString("utf8");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new CatalogError("BAD_CATALOG", "the file is not a catalogue");
+  }
+
+  if (isCatalog(parsed)) return parsed;
+
+  const pruned = pruneCatalog(parsed);
+  if (pruned.length > 0) return { at: now().toISOString(), providers: pruned };
+
+  throw new CatalogError("BAD_CATALOG", "the file is not a catalogue");
+}
+
+/**
+ * Installs a catalogue the user chose, atomically, as an import.
+ *
+ * An import wins over the bundled snapshot whatever its age — it is a choice,
+ * not fresh data — so the next start serves it, and the state line is where
+ * its age is declared.
+ */
+export async function installCatalog(paths: CatalogPaths, catalog: Catalog): Promise<void> {
+  await writeCache(paths.cache, { ...catalog, etag: null, origin: "import" });
 }
