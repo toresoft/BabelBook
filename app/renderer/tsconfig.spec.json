@@ -1,0 +1,12 @@
+/* Component tests: the same sources as the app, plus the spec files that
+   `tsconfig.app.json` deliberately excludes. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}

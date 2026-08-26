@@ -34,7 +34,9 @@
                 "input": "renderer/public"
               }
             ],
-            "styles": ["renderer/src/styles.css"]
+            "styles": [
+              "renderer/src/styles.css"
+            ]
           },
           "configurations": {
             "production": {
@@ -71,6 +73,17 @@
             }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "buildTarget": "renderer:build:development",
+            "tsConfig": "renderer/tsconfig.spec.json",
+            "runner": "vitest",
+            "include": [
+              "renderer/src/**/*.spec.ts"
+            ]
+          }
         }
       }
     }
