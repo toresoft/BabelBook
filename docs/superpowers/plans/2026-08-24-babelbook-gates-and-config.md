@@ -1,15 +1,22 @@
 # babelBook — Piano 5: i gate, i glossari e il report
 
-**Stato: task 1-5 su 8**, al 2026-08-26. Il piano 4 è completo.
+**Stato: task 1-6 su 8**, al 2026-08-26. Il piano 4 è completo.
 
 Fatto: approvazione dei termini, invalidazione selettiva con anteprima,
-revisione delle esclusioni, glossari con import ed export, report. Tutto il
-lavoro del main è cablato su canali IPC. Restano le tre schermate: le schede
-del progetto (6), le impostazioni (7), i due gate dall'inizio alla fine (8).
+revisione delle esclusioni, glossari con import ed export, report, e le cinque
+schede del progetto con i due gate attraversabili a mano. Restano le
+impostazioni (7) e la prova completa dei gate (8).
 
 Correzioni trovate eseguendo, che il piano non sapeva: `glossary_term` non
 accettava la regola `prefer` (migrazione 006); il risultato della composizione
-non veniva conservato (007); i token di una corsa non li scriveva nessuno.
+non veniva conservato (007); i token di una corsa non li scriveva nessuno; e
+`activeId` non veniva azzerato all'apertura di un gate, quindi approvarlo
+rifiutava con `ENGINE_BUSY`.
+
+Il task 6 ha richiesto di costruire prima il banco di prova dei componenti:
+i `.spec.ts` che il piano dà per scontati non avevano né jsdom né un modo di
+risolvere i `templateUrl`. Ora c'è il builder `@angular/build:unit-test`,
+agganciato a `npm test`.
 
 Attenzione a due punti che il resto del lavoro ha già cambiato sotto questo piano:
 le regole terminologiche sono **tre** (`dnt`, `prefer`, `must`) e i termini portano

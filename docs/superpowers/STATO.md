@@ -36,25 +36,28 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 2. Layer traduzione del core | **completo**, 14/14 | `core/translate/`, `core/analyze/`, `core/glossary/`, `core/ports.ts` |
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
-| 5. Gate, glossari, report | **task 1-5 su 8** | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/` |
+| 5. Gate, glossari, report | **task 1-6 su 8** | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
 
-Suite: **482 test verdi** (260 core, 222 app) piu' **7 prove end-to-end**, di
-cui due portano un libro intero dal file all'EPUB tradotto e ne mettono in pausa
-uno a meta'. Typecheck e build di produzione sono puliti.
+Suite: **538 test verdi** (260 core, 241 app, 37 componenti) piu' **8 prove
+end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
+ripresa che non ritraduce nulla, e una persona che attraversa a mano i due gate.
+Typecheck e build di produzione sono puliti.
+
+I test dei componenti girano col builder `@angular/build:unit-test`
+(`npm run test:ui -w app`), agganciato a `npm test`.
 
 ## Il prossimo passo
 
-**Piano 5, Task 6** — le schede del progetto. Il lavoro del main e' finito:
-approvazione dei termini, invalidazione con anteprima, revisione delle
-esclusioni, glossari, report, tutto raggiungibile via IPC. Restano tre
-schermate: le schede del progetto (6), le impostazioni (7), i due gate
-dall'inizio alla fine (8).
+**Piano 5, Task 7** — la schermata delle impostazioni: glossari, auto-accettazione
+dei due gate, concorrenza, lingua dell'interfaccia, percorso del jar di
+EPUBCheck. La sezione provider esiste gia'. Poi il Task 8, la prova completa dei
+gate.
 
-Quello che l'applicazione fa oggi: crea un progetto da un EPUB, mostra la
-libreria, **traduce un libro intero** con pausa e ripresa che non ritraducono
-nulla, compone l'EPUB con il suo gate, e da `/settings` si aggiunge un provider
-con la sua chiave. Cio' che manca all'utente e' vedere e decidere: i due gate
-oggi si attraversano solo con l'auto-accettazione.
+Quello che l'applicazione fa oggi: crea un progetto da un EPUB, lo mostra in
+libreria, apre la sua scheda con panoramica, termini, esclusioni, unita' e
+report, **traduce un libro intero** con pausa e ripresa che non ritraducono
+nulla, si ferma ai due gate e riparte quando l'utente decide, compone l'EPUB con
+il suo gate, e da `/settings` accetta un provider con la sua chiave.
 
 ## Decisioni prese durante l'esecuzione
 
@@ -102,7 +105,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 482 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 538 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è
