@@ -37,6 +37,7 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
 | 5. Gate, glossari, report | **task 1-6 su 8** | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
+| 6. CI e pacchetti | scritto, non iniziato | `.github/`, `app/electron-builder.yml` |
 
 Suite: **538 test verdi** (260 core, 241 app, 37 componenti) piu' **8 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
