@@ -10,6 +10,8 @@ import {
   type Crypto,
 } from "./providers/store.ts";
 import { addManualTerm, decideTerms, listTerms, promoteToGlossary } from "./terms/approve.ts";
+import { applyInvalidation, previewInvalidation } from "./terms/invalidate.ts";
+import { clearForced, forceState, listExclusions } from "./exclusions/review.ts";
 import { listProjects } from "./projects/query.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
@@ -40,6 +42,20 @@ export function readSettings(db: DatabaseSync): Settings {
     concurrency: Number(stored.get("concurrency") ?? DEFAULT_SETTINGS.concurrency),
     epubcheckJar: stored.get("epubcheckJar") ?? null,
   };
+}
+
+/**
+ * The cache key a project's translations are stored under.
+ *
+ * The renderer never sends it: it identifies a configuration, not a request,
+ * and letting the window name it would let a bug there delete the wrong
+ * generation of a book's work.
+ */
+function cacheKeyOf(db: DatabaseSync, projectId: string): string {
+  const row = db.prepare("SELECT cache_key FROM project WHERE id = ?").get(projectId) as
+    { cache_key: string | null } | undefined;
+  if (row === undefined) throw new Error(`no such project: ${projectId}`);
+  return row.cache_key ?? "";
 }
 
 function workspaceOf(db: DatabaseSync, id: string): Workspace {
@@ -131,6 +147,19 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "terms.promote": async ({ termId, glossaryId }) =>
       promoteToGlossary(deps.db, termId, glossaryId),
+
+    "terms.previewInvalidation": async ({ projectId, termIds }) =>
+      previewInvalidation(deps.db, projectId, termIds),
+
+    "terms.invalidate": async ({ projectId, unitIds }) =>
+      applyInvalidation(deps.db, projectId, unitIds, cacheKeyOf(deps.db, projectId)),
+
+    "exclusions.list": async ({ projectId }) => listExclusions(deps.db, projectId),
+
+    "exclusions.force": async ({ projectId, changes }) => forceState(deps.db, projectId, changes),
+
+    "exclusions.clear": async ({ projectId, unitIds }) =>
+      clearForced(deps.db, projectId, unitIds),
 
     "providers.list": async () => listProviders(deps.db),
 

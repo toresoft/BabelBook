@@ -66,6 +66,30 @@ export interface Settings {
   epubcheckJar: string | null;
 }
 
+/** A state that means "this will not be translated", and why. */
+export type ExcludedState =
+  | "code" | "translate-no" | "never-translated" | "uncomposable" | "maybe-code";
+
+/**
+ * One reason a set of units is being left alone.
+ *
+ * Grouped because that is how it is read: "forty blocks excluded by the
+ * stylesheet" is one question, not forty. `forced` says the user has already
+ * ruled on that unit, so a freed block stays visible with somewhere to undo it.
+ */
+export interface ExclusionGroup {
+  state: ExcludedState | "translate";
+  reason: string | null;
+  units: Array<{ unitId: string; text: string; forced: boolean }>;
+}
+
+/** What a change in terminology would undo, priced in tokens, before it undoes it. */
+export interface InvalidationPreview {
+  units: string[];
+  /** Null when nothing is affected: no work, so no cost. */
+  cost: { tokensIn: number; tokensOut: number } | null;
+}
+
 /**
  * How strongly a term binds.
  *

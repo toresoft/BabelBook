@@ -1,11 +1,13 @@
 import type {
-  CreatedProject, CreateProjectRequest, ProjectSummary, Provider, ProviderInput, ProviderPatch,
-  ProviderPreset, Settings, TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
+  CreatedProject, CreateProjectRequest, ExclusionGroup, InvalidationPreview, ProjectSummary,
+  Provider, ProviderInput, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
+  UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export type {
-  CreatedProject, CreateProjectRequest, ProjectSummary, Provider, ProviderInput, ProviderModel,
-  ProviderPatch, ProviderPreset, Settings, TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
+  CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, InvalidationPreview,
+  ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings,
+  TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -54,6 +56,17 @@ export interface Invocations {
     res: TermRow;
   };
   "terms.promote": { req: { termId: string; glossaryId: string }; res: { version: number } };
+  "terms.previewInvalidation": {
+    req: { projectId: string; termIds: string[] };
+    res: InvalidationPreview;
+  };
+  "terms.invalidate": { req: { projectId: string; unitIds: string[] }; res: { removed: number } };
+  "exclusions.list": { req: { projectId: string }; res: ExclusionGroup[] };
+  "exclusions.force": {
+    req: { projectId: string; changes: Array<{ unitId: string; state: "translate" | "code" }> };
+    res: { toTranslate: number; toCode: number };
+  };
+  "exclusions.clear": { req: { projectId: string; unitIds: string[] }; res: { cleared: number } };
   "providers.list": { req: undefined; res: Provider[] };
   "providers.presets": { req: undefined; res: ProviderPreset[] };
   "provider.create": { req: ProviderInput; res: Provider };
@@ -75,6 +88,8 @@ export const INVOCATIONS = [
   "projects.list", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "run.start", "run.pause", "run.approve",
   "terms.list", "terms.decide", "terms.add", "terms.promote",
+  "terms.previewInvalidation", "terms.invalidate",
+  "exclusions.list", "exclusions.force", "exclusions.clear",
   "providers.list", "providers.presets",
   "provider.create", "provider.update", "provider.delete", "provider.verify",
   "settings.get", "settings.set",

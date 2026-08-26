@@ -2,14 +2,10 @@ import type { DatabaseSync } from "node:sqlite";
 import { unitsAffectedByTerms } from "../../../core/translate/terms.ts";
 import type { TermEntry } from "../../../core/glossary/index.ts";
 import type { TranslationUnit } from "../../../core/epub/index.ts";
+import type { InvalidationPreview } from "../../shared/dto.ts";
 import { estimate } from "../../shared/estimate.ts";
 
-export interface InvalidationPreview {
-  /** The ids of the units that would lose their translation. */
-  units: string[];
-  /** Null when nothing is affected: there is no work, so there is no cost. */
-  cost: { tokensIn: number; tokensOut: number } | null;
-}
+export type { InvalidationPreview } from "../../shared/dto.ts";
 
 const WORD = /\p{L}[\p{L}\p{M}'’-]*/gu;
 
