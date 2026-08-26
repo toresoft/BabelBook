@@ -37,3 +37,39 @@ jobs:
       - run: npm test
 
       - run: npm run build -w app
+
+  e2e:
+    name: the real window
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # `postinstall` fetches the Electron binary: npm 11 does not run a
+      # dependency's own install script without approval, so the package that
+      # owns this repository runs it instead. Without it there is no Electron
+      # here, and every test below fails for a reason that is not the code's.
+      - run: npm ci
+
+      # Electron opens a real window even when nobody is looking at it, and a
+      # runner has no display to open it on.
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - run: xvfb-run --auto-servernum npm run test:e2e -w app
+
+      # Only on failure: when it passes there is nothing in there to read, and
+      # uploading anyway fills the storage with empty folders.
+      - name: the report, when there is something to report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            app/test-results/
+            app/playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
