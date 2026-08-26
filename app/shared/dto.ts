@@ -320,6 +320,22 @@ export type ProviderPatch = Partial<Omit<Provider, "id" | "hasKey">> & { apiKey?
 export type ProviderPreset = Omit<Provider, "id" | "hasKey">;
 
 /**
+ * A model runtime on the user's own machine, found by asking it.
+ *
+ * The models come from the running server, never from the catalogue: a local
+ * runtime serves what its owner pulled, and the catalogue cannot know that.
+ * `apiKey` carries the documented difference between the two — Ollama wants a
+ * key sent and ignores it, LM Studio wants none.
+ */
+export interface LocalRuntime {
+  id: "ollama" | "lmstudio";
+  name: string;
+  baseUrl: string;
+  apiKey: string | null;
+  models: string[];
+}
+
+/**
  * What a verification says, and deliberately all it says.
  *
  * There is no `message` field, and that is the point: the provider's own words

@@ -1,7 +1,7 @@
 import type {
   CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView, InvalidationPreview, ProjectSummary,
   Provider, ProviderInput, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
-  ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome,
+  ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome, LocalRuntime,
 } from "./dto.ts";
 
 export type {
@@ -9,7 +9,7 @@ export type {
   InvalidationPreview,
   ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings,
   ProjectDetail, Report, ReportLine, TermRow, TermRule, UnitQuery, UnitRow,
-  UpdateProjectRequest, VerifyOutcome,
+  UpdateProjectRequest, VerifyOutcome, LocalRuntime,
 } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -99,6 +99,8 @@ export interface Invocations {
   "provider.update": { req: ProviderPatch & { id: string }; res: Provider };
   "provider.delete": { req: { id: string }; res: void };
   "provider.verify": { req: { providerId: string; modelId: string }; res: VerifyOutcome };
+  /** Asks the machine itself which local runtimes are running right now. */
+  "local.runtimes": { req: undefined; res: LocalRuntime[] };
   "settings.get": { req: undefined; res: Settings };
   "settings.set": { req: Partial<Settings>; res: Settings };
   /** Asks for the EPUBCheck jar and stores it. Returns the settings as they now stand. */
@@ -125,6 +127,7 @@ export const INVOCATIONS = [
   "report.get", "file.open", "file.reveal",
   "providers.list", "providers.presets",
   "provider.create", "provider.update", "provider.delete", "provider.verify",
+  "local.runtimes",
   "settings.get", "settings.set", "settings.chooseJar",
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 

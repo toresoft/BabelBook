@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { buildEpub } from "../../core/test/corpus/build.ts";
-import { EVENTS, INVOCATIONS } from "../shared/channels.ts";
+import { EVENTS, INVOCATIONS, type LocalRuntime } from "../shared/channels.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import { buildHandlers, type IpcDeps } from "../main/ipc.ts";
 import { readKey } from "../main/providers/store.ts";
@@ -146,6 +146,22 @@ describe("settings", () => {
   it("refuses a concurrency that would make no sense", async () => {
     const { deps: d } = await deps();
     await expect(buildHandlers(d)["settings.set"]({ concurrency: 0 })).rejects.toThrow();
+  });
+});
+
+describe("local.runtimes", () => {
+  it("answers with whatever the probe found, and nothing else", async () => {
+    // The probe itself is tested against fake servers in local.test.ts; what
+    // this checks is the plumbing: one call, no request, runtimes as they are.
+    const found: LocalRuntime[] = [
+      {
+        id: "ollama", name: "Ollama", baseUrl: "http://127.0.0.1:11434/v1",
+        apiKey: "ollama", models: ["gemma3:12b"],
+      },
+    ];
+    const { deps: d } = await deps({ probeLocalRuntimes: async () => found });
+
+    expect(await buildHandlers(d)["local.runtimes"](undefined)).toEqual(found);
   });
 });
 

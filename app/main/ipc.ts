@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_SETTINGS, EVENTS, INVOCATIONS,
-  type Events, type Handlers, type Settings, type VerifyOutcome,
+  type Events, type Handlers, type LocalRuntime, type Settings, type VerifyOutcome,
 } from "../shared/channels.ts";
 import { packFailure } from "../shared/dto.ts";
 import { createProject } from "./projects/create.ts";
@@ -44,6 +44,12 @@ export interface IpcDeps {
   approveGate(projectId: string, gate: "terms" | "code"): Promise<void>;
   /** One minimal call to the provider, reported as an outcome and never as a sentence. */
   verifyProvider(request: { providerId: string; modelId: string }): Promise<VerifyOutcome>;
+  /**
+   * Asks the machine which local runtimes answer. Injected like the dialog:
+   * the probe is a network act, and the map that holds it must be testable
+   * without one.
+   */
+  probeLocalRuntimes(): Promise<LocalRuntime[]>;
   /** Hands a path to the desktop: opens the file, or shows it in its folder. */
   openPath(path: string): Promise<void>;
   revealPath(path: string): Promise<void>;
@@ -171,6 +177,10 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     },
 
     "provider.verify": async (request) => deps.verifyProvider(request),
+
+    // A closed port is an absent runtime, not an error: the answer is simply
+    // the list of whatever answered, possibly nothing.
+    "local.runtimes": async () => deps.probeLocalRuntimes(),
 
     "project.get": async ({ id }) => projectDetail(deps.db, id),
 
