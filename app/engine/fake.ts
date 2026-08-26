@@ -80,6 +80,32 @@ function verdictAnswer(lines: string[], headerAt: number): Response {
   };
 }
 
+/**
+ * Proposes terms the passage actually contains.
+ *
+ * Answering `TERMS 0` was simpler and made the gate a screen that never asked
+ * anything: every test walked past an empty list and proved nothing about it.
+ * Inventing words instead would be worse — extraction discards a proposal the
+ * book does not contain, so the gate would still be empty and the reason would
+ * be hidden one layer deeper.
+ */
+function termAnswer(prompt: string): Response {
+  const passage = prompt.split("---")[1] ?? "";
+  const found = [...new Set(passage.match(/\b[A-Z][a-z]{2,}\b/g) ?? [])].slice(0, 2);
+  if (found.length === 0) return { text: "TERMS 0\nEND", ids: [], kind: "terms" };
+
+  return {
+    text: [
+      `TERMS ${found.length}`,
+      `[t:${found[0]}] rule=dnt note=a name`,
+      ...(found[1] === undefined ? [] : [`[t:${found[1]}] rule=prefer target=${found[1]}-reso`]),
+      "END",
+    ].join("\n"),
+    ids: found,
+    kind: "terms",
+  };
+}
+
 function respond(prompt: string): Response {
   const lines = prompt.split(/\r?\n/);
 
@@ -87,7 +113,7 @@ function respond(prompt: string): Response {
   if (verdictsAt !== -1) return verdictAnswer(lines, verdictsAt);
 
   // Term extraction: the instruction block names the format verbatim.
-  if (prompt.includes("TERMS <count>")) return { text: "TERMS 0\nEND", ids: [], kind: "terms" };
+  if (prompt.includes("TERMS <count>")) return termAnswer(prompt);
 
   const unitsAt = lines.findIndex((line) => /^UNITS\s+\d+$/.test(line.trim()));
   if (unitsAt !== -1) return translationAnswer(lines, unitsAt);
