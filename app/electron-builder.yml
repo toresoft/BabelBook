@@ -1,0 +1,47 @@
+appId: dev.toresoft.babelbook
+productName: babelBook
+copyright: © 2026 toresoft
+
+directories:
+  output: release
+  buildResources: build
+
+# The main and engine bundles are built with `packages: "external"`, so the
+# production dependencies are required at runtime and have to ship. What is
+# deliberately absent is `release/` itself and anything only the build needs.
+files:
+  - dist/**/*
+  - locales/**/*
+  - package.json
+  - "!**/*.map"
+
+# The renderer is already bundled and hashed by the Angular builder, and the
+# main bundle is one file: compressing them into an asar buys little and makes
+# every path inside harder to inspect when something is wrong.
+asar: true
+
+linux:
+  # Named here, or it is derived from the package name and ships as
+  # `@babelbookapp` — which is what the desktop entry would then have to call.
+  executableName: babelbook
+  target: [AppImage, deb, rpm]
+  category: Office
+  synopsis: Translates EPUB books with a language model
+  description: >-
+    babelBook translates an EPUB with a language model, keeping the book's
+    structure byte for byte and asking before it spends anything.
+  desktop:
+    entry:
+      # The tray and the window take their icon from here on Wayland, where
+      # the icon set on the window itself is ignored.
+      StartupWMClass: babelBook
+
+win:
+  target: [nsis]
+
+nsis:
+  # An installer that starts, decides where to put itself and finishes without
+  # asking is the kind that gets uninstalled.
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false

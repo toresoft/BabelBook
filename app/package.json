@@ -1,6 +1,12 @@
 {
   "name": "@babelbook/app",
   "version": "0.1.0",
+  "description": "Translates EPUB books with a language model",
+  "author": {
+    "name": "toresoft",
+    "email": "toresoft@gmail.com"
+  },
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
   "main": "dist/main/main.js",
@@ -30,7 +36,8 @@
     "@jsverse/transloco": "^8.4.0",
     "@playwright/test": "^1.50.0",
     "@types/node": "^26.2.0",
-    "electron": "^43.4.1",
+    "electron": "43.4.1",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.25.12",
     "jsdom": "^30.0.1",
     "rxjs": "~7.8.0",
