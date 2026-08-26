@@ -36,31 +36,25 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 2. Layer traduzione del core | **completo**, 14/14 | `core/translate/`, `core/analyze/`, `core/glossary/`, `core/ports.ts` |
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
-| 5. Gate, glossari, report | non iniziato | — |
+| 5. Gate, glossari, report | **task 1-5 su 8** | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/` |
 
-Suite: **432 test verdi** (260 core, 172 app) piu' **7 prove end-to-end**, di
+Suite: **482 test verdi** (260 core, 222 app) piu' **7 prove end-to-end**, di
 cui due portano un libro intero dal file all'EPUB tradotto e ne mettono in pausa
 uno a meta'. Typecheck e build di produzione sono puliti.
 
 ## Il prossimo passo
 
-**Piano 5** — le schermate dei due gate, i glossari, la scheda delle unita' e il
-report. Il piano 4 e' chiuso: provider e chiavi cifrate, risoluzione e verifica
-del modello, macchina a stati, engine nell'`utilityProcess` con proxy dello
-store, orchestratore persistente, composizione con gate, tray e ciclo di vita.
+**Piano 5, Task 6** — le schede del progetto. Il lavoro del main e' finito:
+approvazione dei termini, invalidazione con anteprima, revisione delle
+esclusioni, glossari, report, tutto raggiungibile via IPC. Restano tre
+schermate: le schede del progetto (6), le impostazioni (7), i due gate
+dall'inizio alla fine (8).
 
-Quello che l'applicazione fa oggi: si apre, crea un progetto da un EPUB, lo
-mostra in libreria con copertina, lingue, avanzamento e gli avvisi di
-impaginazione fissa e overlay, e **traduce un libro intero** — con pausa,
-chiusura della finestra, riavvio e ripresa che non ritraducono nulla di gia'
-fatto. Chiudere la finestra mentre un libro e' in lavorazione non chiude
-l'applicazione: resta in tray.
-
-Da `/settings` si **aggiunge un provider con la sua chiave**, partendo da un
-preset o da zero, si modificano i modelli e si verifica l'endpoint. La chiave
-non torna mai al renderer: il tipo `Provider` non ha un campo per contenerla.
-Restano al piano 5 le altre tre sezioni delle impostazioni (glossari,
-traduzione, applicazione).
+Quello che l'applicazione fa oggi: crea un progetto da un EPUB, mostra la
+libreria, **traduce un libro intero** con pausa e ripresa che non ritraducono
+nulla, compone l'EPUB con il suo gate, e da `/settings` si aggiunge un provider
+con la sua chiave. Cio' che manca all'utente e' vedere e decidere: i due gate
+oggi si attraversano solo con l'auto-accettazione.
 
 ## Decisioni prese durante l'esecuzione
 
@@ -108,7 +102,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 432 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 482 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è
