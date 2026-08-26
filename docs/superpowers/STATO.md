@@ -38,7 +38,7 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
 | 5. Gate, glossari, report | non iniziato | — |
 
-Suite: **423 test verdi** (260 core, 163 app) piu' **5 prove end-to-end**, di
+Suite: **432 test verdi** (260 core, 172 app) piu' **7 prove end-to-end**, di
 cui due portano un libro intero dal file all'EPUB tradotto e ne mettono in pausa
 uno a meta'. Typecheck e build di produzione sono puliti.
 
@@ -56,11 +56,11 @@ chiusura della finestra, riavvio e ripresa che non ritraducono nulla di gia'
 fatto. Chiudere la finestra mentre un libro e' in lavorazione non chiude
 l'applicazione: resta in tray.
 
-Quello che non puo' ancora fare dall'interfaccia: **aggiungere un provider e la
-sua chiave**. `createProvider`, `updateProvider` e `listProviders` esistono e
-sono testati, ma nessuno li chiama fuori dai test — il canale IPC c'e' solo per
-`provider.verify`. La schermata delle impostazioni e' il piano 5, quindi oggi
-l'unico backend raggiungibile e' quello finto (`BABELBOOK_FAKE_BACKEND=1`).
+Da `/settings` si **aggiunge un provider con la sua chiave**, partendo da un
+preset o da zero, si modificano i modelli e si verifica l'endpoint. La chiave
+non torna mai al renderer: il tipo `Provider` non ha un campo per contenerla.
+Restano al piano 5 le altre tre sezioni delle impostazioni (glossari,
+traduzione, applicazione).
 
 ## Decisioni prese durante l'esecuzione
 
@@ -108,7 +108,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 423 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 432 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è
