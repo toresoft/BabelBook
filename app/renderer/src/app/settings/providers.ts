@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { RouterLink } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
 import type { Provider, ProviderModel, ProviderPreset, VerifyCode } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
@@ -50,7 +49,7 @@ const BLANK: Draft = {
 @Component({
   selector: "bb-providers",
   standalone: true,
-  imports: [FormsModule, RouterLink, TranslocoDirective],
+  imports: [FormsModule, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./providers.html",
   styleUrl: "./providers.css",

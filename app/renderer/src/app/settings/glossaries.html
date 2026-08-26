@@ -1,0 +1,167 @@
+<section class="glossaries" data-testid="glossaries" *transloco="let t">
+  <header class="glossaries__bar">
+    <h2>{{ t('glossaries.title') }}</h2>
+    <p class="glossaries__lead">{{ t('glossaries.lead') }}</p>
+  </header>
+
+  @if (glossaries().length === 0) {
+    <p class="glossaries__empty" data-testid="glossaries-empty">{{ t('glossaries.empty') }}</p>
+  }
+
+  <ul class="glossaries__list">
+    @for (glossary of glossaries(); track glossary.id) {
+      <li class="glossary" [attr.data-testid]="'glossary-' + glossary.id">
+        <div class="glossary__head">
+          <strong>{{ glossary.name }}</strong>
+          <span class="glossary__languages">
+            {{ glossary.sourceLanguage }} → {{ glossary.targetLanguage }}
+          </span>
+          <span class="glossary__version">{{ t('glossaries.version', { version: glossary.version }) }}</span>
+          <span class="glossary__count">{{ t('glossaries.terms', { count: glossary.terms.length }) }}</span>
+        </div>
+        <p class="glossary__description">{{ glossary.description }}</p>
+
+        <div class="glossary__actions">
+          <button type="button" [attr.data-testid]="'edit-glossary-' + glossary.id" (click)="edit(glossary)">
+            {{ t('glossaries.edit') }}
+          </button>
+          <button type="button" [attr.data-testid]="'export-glossary-' + glossary.id" (click)="exportFile(glossary)">
+            {{ t('glossaries.export') }}
+          </button>
+          <button
+            type="button"
+            class="glossary__delete"
+            [attr.data-testid]="'delete-glossary-' + glossary.id"
+            (click)="remove(glossary)">
+            {{ t('glossaries.delete') }}
+          </button>
+        </div>
+      </li>
+    }
+  </ul>
+
+  @if (detached() !== null) {
+    <p class="glossaries__detached" data-testid="detached">
+      {{ t('glossaries.detached', { count: detached() }) }}
+    </p>
+  }
+
+  @if (draft() === null) {
+    <div class="glossaries__add">
+      <button type="button" data-testid="new-glossary" (click)="create()">
+        {{ t('glossaries.new') }}
+      </button>
+      <button type="button" data-testid="import-glossary" (click)="importFile()">
+        {{ t('glossaries.import') }}
+      </button>
+    </div>
+  }
+
+  @if (draft(); as form) {
+    <form class="gdraft" data-testid="glossary-form" (ngSubmit)="save()">
+      <label>
+        {{ t('glossaries.name') }}
+        <input
+          type="text"
+          data-testid="glossary-name"
+          [ngModel]="form.name"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="patch('name', $event)" />
+      </label>
+
+      <label>
+        {{ t('glossaries.description') }}
+        <input
+          type="text"
+          data-testid="glossary-description"
+          [ngModel]="form.description"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="patch('description', $event)" />
+        <small>{{ t('glossaries.descriptionHint') }}</small>
+      </label>
+
+      <div class="gdraft__languages">
+        <label>
+          {{ t('glossaries.sourceLanguage') }}
+          <input
+            type="text"
+            data-testid="glossary-source"
+            [ngModel]="form.sourceLanguage"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="patch('sourceLanguage', $event)" />
+        </label>
+        <label>
+          {{ t('glossaries.targetLanguage') }}
+          <input
+            type="text"
+            data-testid="glossary-target"
+            [ngModel]="form.targetLanguage"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="patch('targetLanguage', $event)" />
+        </label>
+      </div>
+
+      <fieldset class="gdraft__terms">
+        <legend>{{ t('glossaries.termsLegend') }}</legend>
+
+        @for (term of form.terms; track $index) {
+          <div class="gdraft__term" [attr.data-testid]="'gterm-' + $index">
+            <input
+              type="text"
+              [attr.data-testid]="'gterm-source-' + $index"
+              [placeholder]="t('glossaries.termSource')"
+              [ngModel]="term.source"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patchTerm($index, 'source', $event)" />
+            <select
+              [attr.data-testid]="'gterm-rule-' + $index"
+              [ngModel]="term.rule"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patchRule($index, $event)">
+              <option value="dnt">{{ t('terms.rules.dnt') }}</option>
+              <option value="prefer">{{ t('terms.rules.prefer') }}</option>
+              <option value="must">{{ t('terms.rules.must') }}</option>
+            </select>
+            @if (term.rule !== 'dnt') {
+              <input
+                type="text"
+                [attr.data-testid]="'gterm-target-' + $index"
+                [placeholder]="t('glossaries.termTarget')"
+                [ngModel]="term.target ?? ''"
+                [ngModelOptions]="{ standalone: true }"
+                (ngModelChange)="patchTerm($index, 'target', $event)" />
+            }
+            <input
+              type="text"
+              [attr.data-testid]="'gterm-sense-' + $index"
+              [placeholder]="t('glossaries.termSense')"
+              [ngModel]="term.sense ?? ''"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patchTerm($index, 'sense', $event)" />
+            <button type="button" [attr.data-testid]="'gterm-remove-' + $index" (click)="removeTerm($index)">
+              {{ t('glossaries.removeTerm') }}
+            </button>
+          </div>
+        }
+
+        <button type="button" data-testid="add-gterm" (click)="addTerm()">
+          {{ t('glossaries.addTerm') }}
+        </button>
+        <small>{{ t('glossaries.versionHint') }}</small>
+      </fieldset>
+
+      @if (failure()) {
+        <p class="gdraft__failure" data-testid="glossary-failure">{{ t('glossaries.failed') }}</p>
+      }
+
+      <div class="gdraft__actions">
+        <button type="submit" data-testid="save-glossary" [disabled]="invalid(form) || saving()">
+          {{ t('glossaries.save') }}
+        </button>
+        <button type="button" data-testid="cancel-glossary" (click)="cancel()">
+          {{ t('glossaries.cancel') }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

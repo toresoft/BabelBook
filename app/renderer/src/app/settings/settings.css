@@ -1,0 +1,13 @@
+.settings { padding: 1.5rem; max-width: 56rem; display: grid; gap: 0.9rem; }
+.settings__bar { display: flex; gap: 1rem; align-items: baseline; }
+.settings__bar h1 { margin: 0; font-size: 1.25rem; }
+.settings__back { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+
+.settings__sections { display: flex; gap: 0.25rem; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; }
+.settings__section {
+  border: none; background: none; padding: 0.45rem 0.7rem; cursor: pointer;
+  font-size: 0.9rem; color: #6b7280; border-bottom: 2px solid transparent;
+}
+.settings__section--on { color: #111827; border-bottom-color: #2563eb; }
+
+.settings__panel { padding-top: 0.5rem; }

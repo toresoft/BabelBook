@@ -80,6 +80,10 @@ export interface Invocations {
   "glossary.delete": { req: { id: string }; res: { detachedFrom: number } };
   "glossary.import": { req: { markdown: string }; res: GlossaryView };
   "glossary.export": { req: { id: string }; res: { markdown: string } };
+  /** Opens a dialog, reads the file in the main process, answers with what it parsed. */
+  "glossary.importFile": { req: undefined; res: GlossaryView | null };
+  /** Opens a save dialog and writes it. Null when the dialog was dismissed. */
+  "glossary.exportFile": { req: { id: string }; res: { path: string } | null };
   "glossary.attach": {
     req: { projectId: string; glossaryId: string; attached: boolean };
     res: undefined;
@@ -97,6 +101,8 @@ export interface Invocations {
   "provider.verify": { req: { providerId: string; modelId: string }; res: VerifyOutcome };
   "settings.get": { req: undefined; res: Settings };
   "settings.set": { req: Partial<Settings>; res: Settings };
+  /** Asks for the EPUBCheck jar and stores it. Returns the settings as they now stand. */
+  "settings.chooseJar": { req: undefined; res: Settings };
 }
 
 export interface Events {
@@ -115,10 +121,11 @@ export const INVOCATIONS = [
   "exclusions.list", "exclusions.force", "exclusions.clear",
   "glossaries.list", "glossary.save", "glossary.delete",
   "glossary.import", "glossary.export", "glossary.attach",
+  "glossary.importFile", "glossary.exportFile",
   "report.get", "file.open", "file.reveal",
   "providers.list", "providers.presets",
   "provider.create", "provider.update", "provider.delete", "provider.verify",
-  "settings.get", "settings.set",
+  "settings.get", "settings.set", "settings.chooseJar",
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 
 export const EVENTS = [

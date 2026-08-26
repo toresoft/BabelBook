@@ -91,6 +91,63 @@
     "keyringUnavailable": "The operating system keyring cannot be reached, so the key cannot be stored safely. The provider was not saved.",
     "gone": "This provider is gone: it may have been deleted elsewhere."
   },
+  "settings": {
+    "sections": {
+      "providers": "Providers",
+      "glossaries": "Glossaries",
+      "translation": "Translation",
+      "application": "Application"
+    }
+  },
+  "glossaries": {
+    "title": "Glossaries",
+    "lead": "A glossary applies to every book that uses it. Changing its terms invalidates translations made under the previous version.",
+    "empty": "No glossaries. Create one, or import one written elsewhere.",
+    "version": "version {{version}}",
+    "terms": "{{count}} terms",
+    "new": "New glossary",
+    "import": "Import from a file",
+    "edit": "Edit",
+    "export": "Export",
+    "delete": "Delete",
+    "detached": "Detached from {{count}} projects.",
+    "name": "Name",
+    "description": "Description",
+    "descriptionHint": "The domain vote reads it to decide whether this glossary applies to a book.",
+    "sourceLanguage": "Source language",
+    "targetLanguage": "Target language",
+    "termsLegend": "Terms",
+    "termSource": "term",
+    "termTarget": "rendering",
+    "termSense": "in which sense",
+    "addTerm": "Add a term",
+    "removeTerm": "Remove",
+    "versionHint": "Saving with changed terms raises the version, and that is what makes books using this glossary translate again.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "failed": "The glossary could not be saved."
+  },
+  "prefs": {
+    "translation": "Translation",
+    "application": "Application",
+    "autoAcceptTerms": "Accept terms without asking",
+    "autoAcceptTermsHint": "The translation will not stop for you to approve the extracted terms.",
+    "autoAcceptExclusions": "Accept exclusions without asking",
+    "autoAcceptExclusionsHint": "You will not be asked to check what is being left untranslated.",
+    "concurrency": "Chunks in parallel",
+    "concurrencyHint": "How many requests to the model at once. Higher is faster and costs the same, but some providers rate-limit.",
+    "uiLanguage": "Interface language",
+    "languages": {
+      "it": "Italian",
+      "en": "English"
+    },
+    "epubcheckJar": "EPUBCheck jar",
+    "chooseJar": "Choose the jar…",
+    "clearJar": "Remove",
+    "noJar": "Not set",
+    "epubcheckHint": "Optional, and it needs Java. Without it the report says the check did not run, rather than calling it a pass.",
+    "failed": "The setting could not be saved."
+  },
   "terms": {
     "title": "Terms",
     "lead": "{{count}} terms to decide. The translation will honour them.",

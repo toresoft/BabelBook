@@ -91,6 +91,63 @@
     "keyringUnavailable": "Il portachiavi del sistema operativo non è raggiungibile, quindi la chiave non può essere messa al sicuro. Il provider non è stato salvato.",
     "gone": "Questo provider non esiste più: forse è stato eliminato altrove."
   },
+  "settings": {
+    "sections": {
+      "providers": "Provider",
+      "glossaries": "Glossari",
+      "translation": "Traduzione",
+      "application": "Applicazione"
+    }
+  },
+  "glossaries": {
+    "title": "Glossari",
+    "lead": "Un glossario vale per tutti i libri che lo usano. Cambiarne i termini invalida le traduzioni fatte con la versione precedente.",
+    "empty": "Nessun glossario. Creane uno o importane uno scritto altrove.",
+    "version": "versione {{version}}",
+    "terms": "{{count}} termini",
+    "new": "Nuovo glossario",
+    "import": "Importa da file",
+    "edit": "Modifica",
+    "export": "Esporta",
+    "delete": "Elimina",
+    "detached": "Staccato da {{count}} progetti.",
+    "name": "Nome",
+    "description": "Descrizione",
+    "descriptionHint": "La legge il voto sul dominio per decidere se questo glossario si applica a un libro.",
+    "sourceLanguage": "Lingua di partenza",
+    "targetLanguage": "Lingua di destinazione",
+    "termsLegend": "Termini",
+    "termSource": "termine",
+    "termTarget": "resa",
+    "termSense": "in quale senso",
+    "addTerm": "Aggiungi un termine",
+    "removeTerm": "Togli",
+    "versionHint": "Salvando con i termini cambiati la versione sale, ed è quello che fa ritradurre i libri che usano questo glossario.",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "failed": "Non è stato possibile salvare il glossario."
+  },
+  "prefs": {
+    "translation": "Traduzione",
+    "application": "Applicazione",
+    "autoAcceptTerms": "Accetta i termini senza chiedere",
+    "autoAcceptTermsHint": "La traduzione non si ferma per farti approvare i termini estratti.",
+    "autoAcceptExclusions": "Accetta le esclusioni senza chiedere",
+    "autoAcceptExclusionsHint": "Non ti verrà chiesto di controllare cosa non verrà tradotto.",
+    "concurrency": "Gruppi in parallelo",
+    "concurrencyHint": "Quante richieste al modello contemporaneamente. Alzarlo va più veloce e costa uguale, ma alcuni provider limitano il ritmo.",
+    "uiLanguage": "Lingua dell'interfaccia",
+    "languages": {
+      "it": "Italiano",
+      "en": "Inglese"
+    },
+    "epubcheckJar": "Jar di EPUBCheck",
+    "chooseJar": "Scegli il jar…",
+    "clearJar": "Rimuovi",
+    "noJar": "Non impostato",
+    "epubcheckHint": "Facoltativo, e richiede Java. Senza, il report dice che il controllo non è stato eseguito invece di dichiararlo superato.",
+    "failed": "Non è stato possibile salvare l'impostazione."
+  },
   "terms": {
     "title": "Termini",
     "lead": "{{count}} termini da decidere. La traduzione li rispetterà.",

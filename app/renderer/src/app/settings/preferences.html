@@ -1,0 +1,77 @@
+<section class="prefs" [attr.data-testid]="'prefs-' + group()" *transloco="let t">
+  @if (settings(); as current) {
+    @if (group() === "translation") {
+      <h2>{{ t('prefs.translation') }}</h2>
+
+      <label class="prefs__check">
+        <input
+          type="checkbox"
+          data-testid="auto-terms"
+          [ngModel]="current.autoAcceptTerms"
+          (ngModelChange)="patch({ autoAcceptTerms: $event })" />
+        <span>
+          {{ t('prefs.autoAcceptTerms') }}
+          <small>{{ t('prefs.autoAcceptTermsHint') }}</small>
+        </span>
+      </label>
+
+      <label class="prefs__check">
+        <input
+          type="checkbox"
+          data-testid="auto-exclusions"
+          [ngModel]="current.autoAcceptExclusions"
+          (ngModelChange)="patch({ autoAcceptExclusions: $event })" />
+        <span>
+          {{ t('prefs.autoAcceptExclusions') }}
+          <small>{{ t('prefs.autoAcceptExclusionsHint') }}</small>
+        </span>
+      </label>
+
+      <label>
+        {{ t('prefs.concurrency') }}
+        <input
+          type="number"
+          min="1"
+          max="8"
+          data-testid="concurrency"
+          [ngModel]="current.concurrency"
+          (ngModelChange)="patch({ concurrency: $event })" />
+        <small>{{ t('prefs.concurrencyHint') }}</small>
+      </label>
+    } @else {
+      <h2>{{ t('prefs.application') }}</h2>
+
+      <label>
+        {{ t('prefs.uiLanguage') }}
+        <select
+          data-testid="ui-language"
+          [ngModel]="current.uiLanguage"
+          (ngModelChange)="patch({ uiLanguage: $event })">
+          @for (language of languages; track language) {
+            <option [value]="language">{{ t('prefs.languages.' + language) }}</option>
+          }
+        </select>
+      </label>
+
+      <div class="prefs__jar">
+        <span class="prefs__jarLabel">{{ t('prefs.epubcheckJar') }}</span>
+        @if (current.epubcheckJar; as jar) {
+          <code class="prefs__jarPath" data-testid="jar-path">{{ jar }}</code>
+          <button type="button" data-testid="clear-jar" (click)="clearJar()">
+            {{ t('prefs.clearJar') }}
+          </button>
+        } @else {
+          <span class="prefs__jarNone" data-testid="jar-none">{{ t('prefs.noJar') }}</span>
+        }
+        <button type="button" data-testid="choose-jar" (click)="chooseJar()">
+          {{ t('prefs.chooseJar') }}
+        </button>
+      </div>
+      <small class="prefs__hint">{{ t('prefs.epubcheckHint') }}</small>
+    }
+
+    @if (failure()) {
+      <p class="prefs__failure" data-testid="prefs-failure">{{ t('prefs.failed') }}</p>
+    }
+  }
+</section>

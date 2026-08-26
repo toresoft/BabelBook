@@ -1,3 +1,4 @@
+import { readFile, writeFile } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_SETTINGS, EVENTS, INVOCATIONS,
@@ -13,8 +14,8 @@ import { addManualTerm, decideTerms, listTerms, promoteToGlossary } from "./term
 import { applyInvalidation, previewInvalidation } from "./terms/invalidate.ts";
 import { clearForced, forceState, listExclusions } from "./exclusions/review.ts";
 import {
-  attachToProject, deleteGlossary, detachFromProject, exportGlossary, importGlossary,
-  listGlossaries, saveGlossary,
+  attachToProject, deleteGlossary, detachFromProject, exportGlossary, getGlossary,
+  importGlossary, listGlossaries, saveGlossary,
 } from "./glossaries/store.ts";
 import { buildReport } from "./report/build.ts";
 import { projectDetail } from "./projects/detail.ts";
@@ -29,6 +30,14 @@ export interface IpcDeps {
   crypto: Crypto;
   /** Opens the native dialog. The main process owns which files exist. */
   chooseEpub(): Promise<{ path: string; name: string } | null>;
+  /**
+   * Asks for a file of a named kind, and answers with its path.
+   *
+   * The kind, not a filter: the window says what it wants, and the main
+   * process — which owns the dialog — decides what that means.
+   */
+  chooseOpen(kind: "glossary" | "jar"): Promise<string | null>;
+  chooseSave(defaultName: string): Promise<string | null>;
   /** Puts a project in the machine's hands, and the machine's verdict on screen. */
   startRun(projectId: string): Promise<void>;
   pauseRun(projectId: string): Promise<void>;
@@ -200,6 +209,29 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "glossary.export": async ({ id }) => ({ markdown: exportGlossary(deps.db, id) }),
 
+    // The renderer never touches the filesystem: it asks, and this process
+    // answers with what it parsed. A path would be of no use to a sandboxed
+    // window anyway, and handing one over would only invite it to try.
+    "glossary.importFile": async () => {
+      const path = await deps.chooseOpen("glossary");
+      if (path === null) return null;
+
+      const imported = importGlossary(deps.db, await readFile(path, "utf8"));
+      deps.broadcast("providers.changed", {});
+      return imported;
+    },
+
+    "glossary.exportFile": async ({ id }) => {
+      // Serialised before the dialog opens: a glossary that cannot be written
+      // must not first ask the user where to put it.
+      const markdown = exportGlossary(deps.db, id);
+      const path = await deps.chooseSave(`${getGlossary(deps.db, id)?.name ?? "glossary"}.md`);
+      if (path === null) return null;
+
+      await writeFile(path, markdown, "utf8");
+      return { path };
+    },
+
     "glossary.attach": async ({ projectId, glossaryId, attached }) => {
       // One channel for both directions: the screen has a checkbox, not two
       // buttons, and splitting it would let the two drift apart.
@@ -259,6 +291,17 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       deps.broadcast("providers.changed", {});
     },
 
+    "settings.chooseJar": async () => {
+      const path = await deps.chooseOpen("jar");
+      if (path === null) return readSettings(deps.db);
+
+      deps.db.prepare(`
+        INSERT INTO setting (key, value) VALUES ('epubcheckJar', ?)
+        ON CONFLICT (key) DO UPDATE SET value = excluded.value
+      `).run(path);
+      return readSettings(deps.db);
+    },
+
     "settings.get": async () => readSettings(deps.db),
 
     "settings.set": async (patch) => {
@@ -267,13 +310,19 @@ export function buildHandlers(deps: IpcDeps): Handlers {
         throw new Error(`concurrency must be a positive integer, got ${patch.concurrency}`);
       }
 
-      const statement = deps.db.prepare(`
+      const write = deps.db.prepare(`
         INSERT INTO setting (key, value) VALUES (?, ?)
         ON CONFLICT (key) DO UPDATE SET value = excluded.value
       `);
+      const clear = deps.db.prepare("DELETE FROM setting WHERE key = ?");
+
       for (const [key, value] of Object.entries(patch)) {
         if (value === undefined) continue;
-        statement.run(key, String(value));
+        // `null` means "no value", and the row goes. Writing it through
+        // `String` would store the four letters "null", which comes back as a
+        // jar path that cannot exist and an error nobody can act on.
+        if (value === null) clear.run(key);
+        else write.run(key, String(value));
       }
       return readSettings(deps.db);
     },

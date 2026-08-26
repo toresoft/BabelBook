@@ -1,0 +1,26 @@
+.glossaries { display: grid; gap: 0.75rem; }
+.glossaries__bar { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+.glossaries__bar h2 { margin: 0; font-size: 1rem; }
+.glossaries__lead, .glossaries__empty, .glossaries__detached { color: #6b7280; font-size: 0.85rem; margin: 0; }
+
+.glossaries__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.glossary { border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.7rem; display: grid; gap: 0.3rem; }
+.glossary__head { display: flex; gap: 0.6rem; align-items: baseline; flex-wrap: wrap; }
+.glossary__languages, .glossary__version, .glossary__count, .glossary__description {
+  color: #6b7280; font-size: 0.8rem; margin: 0;
+}
+.glossary__actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.glossary__delete { color: #b91c1c; }
+
+.glossaries__add { display: flex; gap: 0.5rem; }
+
+.gdraft { display: grid; gap: 0.7rem; border: 1px solid #d1d5db; border-radius: 6px; padding: 1rem; }
+.gdraft label { display: grid; gap: 0.2rem; font-size: 0.9rem; }
+.gdraft small { color: #6b7280; font-size: 0.8rem; }
+.gdraft__languages { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.gdraft__terms { border: 1px solid #e5e7eb; border-radius: 4px; display: grid; gap: 0.45rem; }
+.gdraft__terms legend { font-size: 0.85rem; color: #6b7280; }
+.gdraft__term { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.gdraft__term input { min-width: 7rem; flex: 1; }
+.gdraft__failure { color: #b91c1c; font-size: 0.85rem; margin: 0; }
+.gdraft__actions { display: flex; gap: 0.6rem; }

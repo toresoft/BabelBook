@@ -257,6 +257,22 @@ app.whenReady().then(async () => {
         ? null
         : { path, name: path.split("/").pop() ?? path };
     },
+    chooseOpen: async (kind) => {
+      const chosen = await dialog.showOpenDialog({
+        properties: ["openFile"],
+        filters: kind === "glossary"
+          ? [{ name: "Glossary", extensions: ["md", "markdown"] }]
+          : [{ name: "JAR", extensions: ["jar"] }],
+      });
+      return chosen.canceled ? null : chosen.filePaths[0] ?? null;
+    },
+    chooseSave: async (defaultName) => {
+      const chosen = await dialog.showSaveDialog({
+        defaultPath: defaultName,
+        filters: [{ name: "Glossary", extensions: ["md"] }],
+      });
+      return chosen.canceled || chosen.filePath === undefined ? null : chosen.filePath;
+    },
     startRun: (projectId) => runtime.start(projectId),
     pauseRun: (projectId) => runtime.pause(projectId),
     approveGate: (projectId, gate) => runtime.approve(projectId, gate),

@@ -1,0 +1,28 @@
+<section class="settings" data-testid="settings" *transloco="let t">
+  <header class="settings__bar">
+    <a class="settings__back" routerLink="/">{{ t('app.library') }}</a>
+    <h1>{{ t('app.settings') }}</h1>
+  </header>
+
+  <nav class="settings__sections">
+    @for (name of sections; track name) {
+      <button
+        type="button"
+        class="settings__section"
+        [class.settings__section--on]="section() === name"
+        [attr.data-testid]="'section-' + name"
+        (click)="show(name)">
+        {{ t('settings.sections.' + name) }}
+      </button>
+    }
+  </nav>
+
+  <div class="settings__panel">
+    @switch (section()) {
+      @case ("providers") { <bb-providers /> }
+      @case ("glossaries") { <bb-glossaries /> }
+      @case ("translation") { <bb-preferences group="translation" /> }
+      @case ("application") { <bb-preferences group="application" /> }
+    }
+  </div>
+</section>

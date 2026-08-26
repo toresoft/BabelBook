@@ -342,3 +342,112 @@ describe("handing a file to the desktop", () => {
     expect(opened).toEqual([]);
   });
 });
+
+describe("importing and exporting a glossary", () => {
+  const markdown = `---
+name: fantasy
+version: 1
+description: Epic fantasy
+sourceLanguage: en
+targetLanguage: it
+---
+
+| source | target | rule |
+|---|---|---|
+| Rivendell |  | dnt |
+`;
+
+  async function withFiles(chosen: { open?: string | null; save?: string | null } = {}) {
+    const { dir, db, deps: d } = await deps();
+    const asked: string[] = [];
+    const handlers = buildHandlers({
+      ...d,
+      chooseOpen: async (kind: string) => {
+        asked.push(kind);
+        return chosen.open ?? null;
+      },
+      chooseSave: async () => chosen.save ?? null,
+    });
+    return { dir, db, asked, handlers };
+  }
+
+  it("reads the chosen file in the main process and stores what it parsed", async () => {
+    const { dir } = await withFiles();
+    const source = join(dir, "fantasy.md");
+    await writeFile(source, markdown);
+
+    const { db, asked, handlers } = await withFiles({ open: source });
+    const imported = await handlers["glossary.importFile"](undefined);
+
+    // The renderer never reads a file: it asks, and the main process answers
+    // with what it parsed.
+    expect(imported).toMatchObject({ name: "fantasy", version: 1 });
+    expect(asked).toEqual(["glossary"]);
+    expect(db.prepare("SELECT count(*) AS n FROM glossary").get()).toMatchObject({ n: 1 });
+  });
+
+  it("answers null when the dialog was dismissed, and imports nothing", async () => {
+    const { db, asked, handlers } = await withFiles({ open: null });
+
+    expect(await handlers["glossary.importFile"](undefined)).toBeNull();
+    expect(asked).toEqual(["glossary"]);
+    expect(db.prepare("SELECT count(*) AS n FROM glossary").get()).toMatchObject({ n: 0 });
+  });
+
+  it("writes the export where the dialog said, in the format the parser reads", async () => {
+    const { dir } = await withFiles();
+    const out = join(dir, "out.md");
+    const { handlers } = await withFiles({ save: out });
+    const glossary = await handlers["glossary.import"]({ markdown });
+
+    expect(await handlers["glossary.exportFile"]({ id: glossary.id })).toMatchObject({ path: out });
+    expect(await readFile(out, "utf8")).toContain("name: fantasy");
+  });
+
+  it("writes nothing when the save dialog was dismissed", async () => {
+    const { handlers } = await withFiles({ save: null });
+    const glossary = await handlers["glossary.import"]({ markdown });
+
+    expect(await handlers["glossary.exportFile"]({ id: glossary.id })).toBeNull();
+  });
+
+  it("refuses to ask where to save a glossary it cannot serialise", async () => {
+    const { asked, handlers } = await withFiles({ save: "/tmp/never.md" });
+
+    // The dialog must not open for a glossary that is not there: asking the
+    // user where to put nothing is worse than saying it is missing.
+    await expect(handlers["glossary.exportFile"]({ id: "ghost" }))
+      .rejects.toThrow(/GLOSSARY_UNKNOWN/);
+    expect(asked).toEqual([]);
+  });
+
+  it("asks for a jar when the settings want one, and stores the path", async () => {
+    const { asked, handlers } = await withFiles({ open: "/opt/epubcheck.jar" });
+
+    expect(await handlers["settings.chooseJar"](undefined))
+      .toMatchObject({ epubcheckJar: "/opt/epubcheck.jar" });
+    expect(asked).toEqual(["jar"]);
+    expect((await handlers["settings.get"](undefined)).epubcheckJar).toBe("/opt/epubcheck.jar");
+  });
+
+  it("leaves the settings alone when no jar was chosen", async () => {
+    const { handlers } = await withFiles({ open: null });
+
+    expect((await handlers["settings.chooseJar"](undefined)).epubcheckJar).toBeNull();
+  });
+});
+
+describe("clearing a setting", () => {
+  // Production break: `String(null)` stores the four letters "null", and the
+  // jar path comes back as a path that cannot exist.
+  it("removes a setting asked to be null instead of storing the word", async () => {
+    const { deps: d } = await deps();
+    const handlers = buildHandlers(d);
+
+    await handlers["settings.set"]({ epubcheckJar: "/opt/epubcheck.jar" });
+    const cleared = await handlers["settings.set"]({ epubcheckJar: null });
+
+    expect(cleared.epubcheckJar).toBeNull();
+    expect((await handlers["settings.get"](undefined)).epubcheckJar).toBeNull();
+  });
+});
