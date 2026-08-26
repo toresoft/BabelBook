@@ -56,6 +56,26 @@ const devServerUrl = process.env["NG_DEV_SERVER"] ?? process.env["VITE_DEV_SERVE
 const userDataDir = process.env["BABELBOOK_USER_DATA"] ?? app.getPath("userData");
 
 /**
+ * The end-to-end catalogue: a file the test writes, served instead of the
+ * bundled snapshot so the window can be driven against providers that do not
+ * exist. With it set, the background refresh is off — the network would
+ * otherwise replace the test's own catalogue mid-run.
+ */
+const catalogForTest = process.env["BABELBOOK_CATALOG_FOR_TEST"];
+
+/** The end-to-end local runtimes: "ollama=port;lmstudio=port", read the same way. */
+function localPortsForTest(): { ollama?: number; lmstudio?: number } {
+  const raw = process.env["BABELBOOK_LOCAL_PORTS_FOR_TEST"];
+  if (raw === undefined) return {};
+  const ports: { ollama?: number; lmstudio?: number } = {};
+  for (const pair of raw.split(";")) {
+    const [id, port] = pair.split("=");
+    if (id === "ollama" || id === "lmstudio") ports[id] = Number(port);
+  }
+  return ports;
+}
+
+/**
  * The deterministic backend of the whole-application test.
  *
  * Read here and nowhere else, like every test shortcut. The main decides the
@@ -218,7 +238,12 @@ app.whenReady().then(async () => {
   // cache when it is newer. The network is never on this path — it is asked
   // in the background, when there is a spare moment and a network to ask.
   const paths = catalogPaths(userDataDir);
-  let loaded = await readCatalog(paths);
+  let loaded = catalogForTest === undefined
+    ? await readCatalog(paths)
+    : {
+      catalog: parseImportedCatalog(await readFile(catalogForTest)),
+      bundled: true, stale: false, changed: false,
+    };
 
   glue.db = db;
   glue.t = t;
@@ -323,7 +348,7 @@ app.whenReady().then(async () => {
     pauseRun: (projectId) => runtime.pause(projectId),
     approveGate: (projectId, gate) => runtime.approve(projectId, gate),
     verifyProvider: verify,
-    probeLocalRuntimes: () => probeLocalRuntimes(),
+    probeLocalRuntimes: () => probeLocalRuntimes({ ports: localPortsForTest() }),
     catalog: {
       search: (query) => searchCatalog(loaded.catalog, query),
       modelsFor: (entryId, apiKey) => modelsForEntry(loaded.catalog, entryId, apiKey),
@@ -373,13 +398,16 @@ app.whenReady().then(async () => {
 
   // The network is asked now, in the background and off every critical path:
   // a catalogue that got fresher prices is worth having, and a machine with
-  // no network loses nothing by the attempt.
-  void refreshCatalog(paths).then((updated) => {
-    loaded = updated;
-    if (updated.changed) adoptCatalog(updated.catalog);
-  }).catch(() => {
-    /* the catalogue stays as it is; the state line already says its age */
-  });
+  // no network loses nothing by the attempt. Not under a test catalogue,
+  // which the network would replace with the real one mid-run.
+  if (catalogForTest === undefined) {
+    void refreshCatalog(paths).then((updated) => {
+      loaded = updated;
+      if (updated.changed) adoptCatalog(updated.catalog);
+    }).catch(() => {
+      /* the catalogue stays as it is; the state line already says its age */
+    });
+  }
 
   // Whichever comes first: the window is ready, or it failed and the splash
   // must not be left hanging over an application that is not coming.
