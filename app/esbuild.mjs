@@ -61,7 +61,14 @@ await Promise.all(
 
 /**
  * The migrations are read from disk at startup, not imported, so the bundler
- * does not see them. Without this copy the packaged app opens a database it
- * has no schema for — and only on a machine where nobody ran the tests.
+ * does not see them. Without this copy the packaged app opens a database it has
+ * no schema for — and only on a machine where nobody ran the tests.
  */
 await cp("main/db/migrations", "dist/main/migrations", { recursive: true });
+
+/**
+ * The bundled catalogue snapshot is read the same way. It is the floor the
+ * provider list stands on when there is no network and no cache yet; a package
+ * without it is an app whose settings screen has nothing to offer.
+ */
+await cp("catalog", "dist/catalog", { recursive: true });
