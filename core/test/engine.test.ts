@@ -192,3 +192,46 @@ describe("translateUnits", () => {
     expect(summary).toMatchObject({ tokensIn: 7, tokensOut: 3 });
   });
 });
+
+describe("translateUnits and the model's window", () => {
+  const answer = (ids: number[]) =>
+    ok(ids.map((n) => `[u:c1.xhtml#${n}]\nT${n}`).join("\n"), ids.length);
+  const base = (units: TranslationUnit[]) => ({
+    units, store: new FakeStore(units), progress: { report() {} }, cacheKey: "k1",
+    sourceLanguage: "en", targetLanguage: "it", concurrency: 1,
+  });
+
+  it("cuts smaller chunks for a model with a small window", async () => {
+    // Four units of a thousand characters: the default budget would send them
+    // together, a 2048-token window cannot hold them and their answer.
+    const units = [1, 2, 3, 4].map((n) => unit(n, "x".repeat(1000)));
+    const tight = new FakeBackend([answer([1, 2]), answer([3, 4])]);
+
+    await translateUnits({ ...base(units), backend: tight, contextWindowTokens: 2048 });
+
+    expect(tight.prompts).toHaveLength(2);
+    expect(tight.prompts[0]).toContain("c1.xhtml#1");
+    expect(tight.prompts[0]).not.toContain("c1.xhtml#3");
+  });
+
+  it("does not merge everything just because the window is huge", async () => {
+    // Eight thousand characters would fit a million-token window in one go;
+    // the ceiling is six thousand, so two chunks is the honest cut.
+    const units = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => unit(n, "x".repeat(1000)));
+    const wide = new FakeBackend([answer([1, 2, 3, 4, 5, 6]), answer([7, 8])]);
+
+    await translateUnits({ ...base(units), backend: wide, contextWindowTokens: 1_000_000 });
+
+    expect(wide.prompts).toHaveLength(2);
+    expect(wide.prompts[0]).not.toContain("c1.xhtml#7");
+  });
+
+  it("plans exactly as before when the window is unknown", async () => {
+    const units = [1, 2, 3, 4].map((n) => unit(n, "x".repeat(1000)));
+    const unknowing = new FakeBackend([answer([1, 2, 3, 4])]);
+
+    await translateUnits({ ...base(units), backend: unknowing });
+
+    expect(unknowing.prompts).toHaveLength(1);
+  });
+});

@@ -34,6 +34,8 @@ export interface RunConfig {
   autoAcceptTerms: boolean;
   autoAcceptExclusions: boolean;
   concurrency: number;
+  /** The model's context window in tokens, when known; it can only shrink chunks. */
+  contextWindowTokens?: number | null;
 }
 
 export interface RunSummary {

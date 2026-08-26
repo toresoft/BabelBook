@@ -2,7 +2,7 @@ import type { LlmBackend, ProgressSink, ProjectStore } from "../ports.ts";
 import type { TermEntry } from "../glossary/index.ts";
 import type { TranslationUnit, UnitState } from "../epub/index.ts";
 import { isWork } from "../epub/index.ts";
-import { planChunks, type Chunk } from "./plan.ts";
+import { charsBudgetFor, planChunks, type Chunk } from "./plan.ts";
 import { termsForChunk } from "./terms.ts";
 import { validate, type Rejection, type RejectionCode } from "./validate.ts";
 import { buildPayload, buildSystem } from "./wire.ts";
@@ -122,6 +122,11 @@ export interface RunInput {
   bookSummary?: string;
   description?: string;
   concurrency?: number;
+  /**
+   * The model's context window in tokens, when it is known. It can only
+   * shrink the chunks: the default budget is also quality's ceiling.
+   */
+  contextWindowTokens?: number | null;
   signal?: AbortSignal;
 }
 
@@ -154,6 +159,7 @@ export async function translateUnits(input: RunInput): Promise<RunSummary> {
     targetLanguage: input.targetLanguage,
     ...(input.bookSummary === undefined ? {} : { bookSummary: input.bookSummary }),
     ...(input.description === undefined ? {} : { description: input.description }),
+    maxCharsPerChunk: charsBudgetFor(input.contextWindowTokens ?? null),
     done,
   });
 

@@ -154,6 +154,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
     sourceLanguage: config.sourceLanguage,
     targetLanguage: config.targetLanguage,
     concurrency: config.concurrency,
+    contextWindowTokens: config.contextWindowTokens ?? null,
     signal,
     progress: {
       report(progress): void {

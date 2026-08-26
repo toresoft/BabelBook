@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planChunks } from "../translate/plan.ts";
+import { charsBudgetFor, planChunks } from "../translate/plan.ts";
 import type { TranslationUnit } from "../epub/index.ts";
 
 const unit = (
@@ -103,5 +103,31 @@ describe("planChunks", () => {
   it("keeps the window from running off either end of the document", () => {
     const chunks = planChunks({ units: [unit(1)], ...languages, contextWindow: 5 });
     expect(chunks[0].context).toMatchObject({ before: [], after: [], interleaved: [] });
+  });
+});
+
+describe("charsBudgetFor", () => {
+  it("keeps today's number when no window is known", () => {
+    // The reference behaviour: everything unknown about the model leaves the
+    // budget exactly where it has always been.
+    expect(charsBudgetFor(null)).toBe(6000);
+  });
+
+  it("shrinks for a small window, after reserving the answer and the prompt", () => {
+    // 2048 tokens: half held back for the translation itself, four characters
+    // per token, two thousand for the scaffolding and the context units.
+    expect(charsBudgetFor(2048)).toBe(2048 / 2 * 4 - 2000);
+    expect(charsBudgetFor(2048)).toBeLessThan(6000);
+  });
+
+  it("never grows past the ceiling, however large the window", () => {
+    // A group that merely fits is not a group that translates well: the cap
+    // is quality's, not the window's.
+    expect(charsBudgetFor(1_000_000)).toBe(6000);
+    expect(charsBudgetFor(200_000)).toBe(6000);
+  });
+
+  it("keeps a floor, so a tiny window still sends whole paragraphs", () => {
+    expect(charsBudgetFor(512)).toBeGreaterThanOrEqual(1000);
   });
 });

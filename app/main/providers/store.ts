@@ -315,6 +315,20 @@ export function modelPricesOf(
 }
 
 /**
+ * The context window the catalogue declared for a project's model, in tokens.
+ *
+ * Null when unknown: the planner then keeps the budget it has always used,
+ * which is the reference behaviour, not a fallback that guesses.
+ */
+export function modelContextOf(db: DatabaseSync, providerId: string, modelId: string): number | null {
+  const row = db.prepare(`
+    SELECT context_window FROM provider_model
+     WHERE provider_id = ? AND model_id = ?
+  `).get(providerId, modelId) as { context_window: number | null } | undefined;
+  return row?.context_window ?? null;
+}
+
+/**
  * The one preset that stays hand-built: the shortcut for endpoints the
  * catalogue does not know — OpenRouter, a corporate gateway, a model served
  * from the user's own machine. They differ by base URL, not by protocol, and

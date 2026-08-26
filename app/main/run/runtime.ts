@@ -10,7 +10,7 @@ import type {
 } from "../../shared/run.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
-import { modelPricesOf } from "../providers/store.ts";
+import { modelContextOf, modelPricesOf } from "../providers/store.ts";
 import type { Workspace } from "../workspace.ts";
 import type { ProjectEvent } from "../../../core/workflow/project.machine.ts";
 
@@ -241,6 +241,15 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     }
 
     const settings = deps.settings();
+    // The model's declared window, when there is one to read: it reaches the
+    // planner, which can only use it to cut smaller — never to merge more.
+    const configured = db.prepare(
+      "SELECT provider_id, model_id FROM project WHERE id = ?",
+    ).get(projectId) as { provider_id: string | null; model_id: string | null } | undefined;
+    const contextWindowTokens = configured?.provider_id != null && configured.model_id != null
+      ? modelContextOf(db, configured.provider_id, configured.model_id)
+      : null;
+
     const config: RunConfig = {
       projectId,
       cacheKey: row.source_sha256,
@@ -249,6 +258,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       autoAcceptTerms: settings.autoAcceptTerms,
       autoAcceptExclusions: settings.autoAcceptExclusions,
       concurrency: settings.concurrency,
+      contextWindowTokens,
     };
 
     activeId = projectId;

@@ -32,6 +32,44 @@ const DEFAULT_MAX_CHARS = 6000;
 const DEFAULT_WINDOW = 2;
 
 /**
+ * The ceiling a known window cannot raise.
+ *
+ * A group that merely fits is not a group that translates well: the further a
+ * chunk's units stand from each other, the weaker the coherence of each, and
+ * a window of a million tokens is not a reason to find out how far that goes.
+ * So the default budget is also the cap, and a model's window can only pull
+ * it down.
+ */
+const MAX_CHARS = DEFAULT_MAX_CHARS;
+/** Below this there is no paragraph worth sending: quality's floor. */
+const MIN_CHARS = 1000;
+/** A working exchange rate between characters and tokens, prudence included. */
+const CHARS_PER_TOKEN = 4;
+/** The translation is at least as long as its source; half the window is not ours to fill. */
+const OUTPUT_SHARE = 2;
+/** The prompt's scaffolding and the context units around the chunk. */
+const SCAFFOLDING_CHARS = 2000;
+
+/**
+ * The character budget a model's context window justifies.
+ *
+ * Unknown window, today's number: the reference behaviour stands. A small
+ * window shrinks the budget after holding back room for the answer and the
+ * scaffolding — a chunk that fills the window leaves the translation nowhere
+ * to go and comes back truncated, every unit in it falling back to source.
+ * A floor keeps whole paragraphs moving even on a tiny window, because a
+ * chunk is never split and an empty chunk translates nothing.
+ */
+export function charsBudgetFor(contextWindowTokens: number | null): number {
+  if (contextWindowTokens === null) return DEFAULT_MAX_CHARS;
+
+  const derived = Math.floor(
+    (contextWindowTokens / OUTPUT_SHARE) * CHARS_PER_TOKEN,
+  ) - SCAFFOLDING_CHARS;
+  return Math.max(MIN_CHARS, Math.min(derived, MAX_CHARS));
+}
+
+/**
  * The work, cut into chunks a model can answer in one go.
  *
  * Two rules shape every cut. A chunk never crosses a document, because the
