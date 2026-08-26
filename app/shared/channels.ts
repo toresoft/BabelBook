@@ -1,11 +1,11 @@
 import type {
   CreatedProject, CreateProjectRequest, ProjectSummary, Provider, ProviderInput, ProviderPatch,
-  ProviderPreset, Settings, UpdateProjectRequest, VerifyOutcome,
+  ProviderPreset, Settings, TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export type {
   CreatedProject, CreateProjectRequest, ProjectSummary, Provider, ProviderInput, ProviderModel,
-  ProviderPatch, ProviderPreset, Settings, UpdateProjectRequest, VerifyOutcome,
+  ProviderPatch, ProviderPreset, Settings, TermRow, TermRule, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +35,25 @@ export interface Invocations {
   "run.start": { req: { projectId: string }; res: void };
   "run.pause": { req: { projectId: string }; res: void };
   "run.approve": { req: { projectId: string; gate: "terms" | "code" }; res: void };
+  "terms.list": { req: { projectId: string }; res: TermRow[] };
+  "terms.decide": {
+    req: {
+      projectId: string;
+      decisions: Array<{
+        id: string; approval: "approved" | "rejected";
+        target?: string | null; rule?: TermRule; note?: string | null;
+      }>;
+    };
+    res: { approved: number; rejected: number };
+  };
+  "terms.add": {
+    req: {
+      projectId: string; source: string; target: string | null;
+      rule: TermRule; sense?: string | null; note: string | null;
+    };
+    res: TermRow;
+  };
+  "terms.promote": { req: { termId: string; glossaryId: string }; res: { version: number } };
   "providers.list": { req: undefined; res: Provider[] };
   "providers.presets": { req: undefined; res: ProviderPreset[] };
   "provider.create": { req: ProviderInput; res: Provider };
@@ -55,6 +74,7 @@ export interface Events {
 export const INVOCATIONS = [
   "projects.list", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "run.start", "run.pause", "run.approve",
+  "terms.list", "terms.decide", "terms.add", "terms.promote",
   "providers.list", "providers.presets",
   "provider.create", "provider.update", "provider.delete", "provider.verify",
   "settings.get", "settings.set",

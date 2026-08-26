@@ -9,6 +9,7 @@ import {
   createProvider, deleteProvider, listProviders, PRESETS, ProviderStoreError, updateProvider,
   type Crypto,
 } from "./providers/store.ts";
+import { addManualTerm, decideTerms, listTerms, promoteToGlossary } from "./terms/approve.ts";
 import { listProjects } from "./projects/query.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
@@ -120,6 +121,16 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     },
 
     "provider.verify": async (request) => deps.verifyProvider(request),
+
+    "terms.list": async ({ projectId }) => listTerms(deps.db, projectId),
+
+    "terms.decide": async ({ projectId, decisions }) =>
+      decideTerms(deps.db, projectId, decisions),
+
+    "terms.add": async ({ projectId, ...term }) => addManualTerm(deps.db, projectId, term),
+
+    "terms.promote": async ({ termId, glossaryId }) =>
+      promoteToGlossary(deps.db, termId, glossaryId),
 
     "providers.list": async () => listProviders(deps.db),
 

@@ -67,6 +67,36 @@ export interface Settings {
 }
 
 /**
+ * How strongly a term binds.
+ *
+ * Three, not two. Measured on the prototype's own glossaries: 73 `dnt`, 55
+ * `prefer`, 1 `must`. A preferred rendering is not an obligatory one, and
+ * folding it into `must` would strengthen fifty-five rules their author
+ * deliberately left weak.
+ */
+export type TermRule = "dnt" | "prefer" | "must";
+
+/**
+ * A term as the approval gate shows it.
+ *
+ * `occurrences` is what makes the gate answerable: a word appearing twice and
+ * a word appearing four hundred times deserve different amounts of the user's
+ * attention, and a list without the count asks them to guess.
+ */
+export interface TermRow {
+  id: string;
+  source: string;
+  target: string | null;
+  rule: TermRule;
+  origin: "glossary" | "extracted" | "manual";
+  approval: "pending" | "approved" | "rejected";
+  occurrences: number;
+  /** Which meaning of the word this entry is about; null when it has only one. */
+  sense: string | null;
+  note: string | null;
+}
+
+/**
  * One model an endpoint serves.
  *
  * Prices are per million tokens and may be null: the estimate then shows
