@@ -1,40 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import type {
+  Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset,
+} from "../../shared/dto.ts";
 
-/**
- * One model an endpoint serves.
- *
- * Prices are per million tokens and may be null: the estimate then shows
- * tokens only. That is deliberate — an invented price is worse than no price,
- * because a wrong number is believed and a missing one is asked about.
- */
-export interface ProviderModel {
-  id: string;
-  displayName: string;
-  contextWindow: number | null;
-  priceIn: number | null;
-  priceOut: number | null;
-}
-
-/**
- * An LLM endpoint as the rest of the application sees it.
- *
- * `hasKey` is the whole of what is said about the key. The bytes never appear
- * on this shape, so no serialisation of it — an IPC reply, a log line, a crash
- * dump — can carry them by accident.
- */
-export interface Provider {
-  id: string;
-  name: string;
-  /** The `@ai-sdk/*` package that serves it. */
-  route: string;
-  baseUrl: string | null;
-  headers: Record<string, string>;
-  /** Call options the route requires, keyed by provider as the SDK expects. */
-  options: Record<string, unknown>;
-  models: ProviderModel[];
-  hasKey: boolean;
-}
+// The shapes live in `shared/dto.ts` because they cross the IPC boundary, and
+// a second definition here would be free to drift from the one the renderer
+// compiles against. Re-exported so this module stays the place to import a
+// provider from.
+export type { Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset };
 
 /**
  * The keyring, as an interface rather than as `safeStorage` itself.
@@ -48,9 +22,6 @@ export interface Crypto {
   encrypt(plain: string): Buffer;
   decrypt(blob: Buffer): string;
 }
-
-export type ProviderInput = Omit<Provider, "id" | "hasKey"> & { apiKey?: string | null };
-export type ProviderPatch = Partial<Omit<Provider, "id" | "hasKey">> & { apiKey?: string | null };
 
 /** Thrown with a code, never with a sentence: the interface owns the words. */
 export class ProviderStoreError extends Error {
@@ -299,7 +270,7 @@ export function readKey(db: DatabaseSync, crypto: Crypto, id: string): string | 
  * number would be believed: the estimate is better shown in tokens until the
  * user fills in what their contract actually says.
  */
-export const PRESETS: Array<Omit<Provider, "id" | "hasKey">> = [
+export const PRESETS: ProviderPreset[] = [
   {
     name: "Anthropic",
     route: "anthropic",

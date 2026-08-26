@@ -1,0 +1,219 @@
+<section class="providers" data-testid="providers" *transloco="let t">
+  <header class="providers__bar">
+    <a class="providers__back" routerLink="/">{{ t('app.library') }}</a>
+    <h1>{{ t('providers.title') }}</h1>
+  </header>
+
+  <p class="providers__lead">{{ t('providers.lead') }}</p>
+
+  @if (providers().length === 0) {
+    <p class="providers__empty" data-testid="providers-empty">{{ t('providers.empty') }}</p>
+  }
+
+  <ul class="providers__list">
+    @for (provider of providers(); track provider.id) {
+      <li class="provider" [attr.data-testid]="'provider-' + provider.id">
+        <div class="provider__head">
+          <h2 class="provider__name">{{ provider.name }}</h2>
+          <span class="provider__route">{{ provider.route }}</span>
+          @if (provider.hasKey) {
+            <span class="provider__key provider__key--set" data-testid="key-set">
+              {{ t('providers.keySet') }}
+            </span>
+          } @else {
+            <span class="provider__key provider__key--missing" data-testid="key-missing">
+              {{ t('providers.keyMissing') }}
+            </span>
+          }
+        </div>
+
+        @if (provider.baseUrl) {
+          <p class="provider__url">{{ provider.baseUrl }}</p>
+        }
+        <p class="provider__models">{{ t('providers.modelCount', { count: provider.models.length }) }}</p>
+
+        <div class="provider__actions">
+          @if (provider.models.length > 0) {
+            <select
+              class="provider__model"
+              [attr.data-testid]="'verify-model-' + provider.id"
+              [ngModel]="modelFor(provider)"
+              (ngModelChange)="chooseModel(provider, $event)">
+              @for (model of provider.models; track model.id) {
+                <option [value]="model.id">{{ model.displayName || model.id }}</option>
+              }
+            </select>
+            <button
+              type="button"
+              [attr.data-testid]="'verify-' + provider.id"
+              [disabled]="verifying() === provider.id"
+              (click)="verify(provider)">
+              {{ verifying() === provider.id ? t('providers.verifying') : t('providers.verify') }}
+            </button>
+          }
+          <button type="button" [attr.data-testid]="'edit-' + provider.id" (click)="edit(provider)">
+            {{ t('providers.edit') }}
+          </button>
+          @if (provider.hasKey) {
+            <button type="button" [attr.data-testid]="'clear-key-' + provider.id" (click)="clearKey(provider)">
+              {{ t('providers.clearKey') }}
+            </button>
+          }
+          <button
+            type="button"
+            class="provider__delete"
+            [attr.data-testid]="'delete-' + provider.id"
+            (click)="remove(provider)">
+            {{ t('providers.delete') }}
+          </button>
+        </div>
+
+        @if (verified()[provider.id]; as outcome) {
+          <p
+            class="provider__verdict"
+            [class.provider__verdict--ok]="outcome.ok"
+            [attr.data-testid]="'verdict-' + provider.id">
+            @if (outcome.ok) {
+              {{ t('providers.reachable', { ms: outcome.latencyMs ?? 0 }) }}
+            } @else {
+              {{ t('verify.' + (outcome.code ?? 'unknown')) }}
+            }
+          </p>
+        }
+      </li>
+    }
+  </ul>
+
+  @if (draft() === null) {
+    <div class="providers__add">
+      <button type="button" data-testid="add-provider" (click)="startBlank()">
+        {{ t('providers.add') }}
+      </button>
+      @for (preset of presets(); track preset.route) {
+        <button
+          type="button"
+          class="providers__preset"
+          [attr.data-testid]="'preset-' + preset.route"
+          (click)="startFromPreset(preset)">
+          {{ preset.name }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (draft(); as form) {
+    <form class="draft" data-testid="provider-form" (ngSubmit)="save()">
+      <h2>{{ form.id === null ? t('providers.newTitle') : t('providers.editTitle') }}</h2>
+
+      <label>
+        {{ t('providers.name') }}
+        <input
+          type="text"
+          data-testid="provider-name"
+          [ngModel]="form.name"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="patch('name', $event)" />
+      </label>
+
+      <label>
+        {{ t('providers.route') }}
+        <input
+          type="text"
+          data-testid="provider-route"
+          [ngModel]="form.route"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="patch('route', $event)" />
+        <small>{{ t('providers.routeHint') }}</small>
+      </label>
+
+      <label>
+        {{ t('providers.baseUrl') }}
+        <input
+          type="url"
+          data-testid="provider-base-url"
+          [ngModel]="form.baseUrl"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="patch('baseUrl', $event)" />
+        <small>{{ t('providers.baseUrlHint') }}</small>
+      </label>
+
+      <label>
+        {{ t('providers.apiKey') }}
+        <input
+          type="password"
+          autocomplete="off"
+          data-testid="provider-api-key"
+          [placeholder]="form.id === null ? '' : t('providers.apiKeyUnchanged')"
+          [ngModel]="form.apiKey"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="patch('apiKey', $event)" />
+        <small>{{ t('providers.apiKeyHint') }}</small>
+      </label>
+
+      <fieldset class="draft__models">
+        <legend>{{ t('providers.models') }}</legend>
+
+        @for (model of form.models; track $index) {
+          <div class="draft__model" [attr.data-testid]="'model-row-' + $index">
+            <input
+              type="text"
+              [attr.data-testid]="'model-id-' + $index"
+              [placeholder]="t('providers.modelId')"
+              [ngModel]="model.id"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patchModel($index, 'id', $event)" />
+            <input
+              type="text"
+              [attr.data-testid]="'model-name-' + $index"
+              [placeholder]="t('providers.modelName')"
+              [ngModel]="model.displayName"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patchModel($index, 'displayName', $event)" />
+            <input
+              type="number"
+              [attr.data-testid]="'model-context-' + $index"
+              [placeholder]="t('providers.contextWindow')"
+              [ngModel]="model.contextWindow"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patchModel($index, 'contextWindow', $event)" />
+            <input
+              type="number"
+              [attr.data-testid]="'model-price-in-' + $index"
+              [placeholder]="t('providers.priceIn')"
+              [ngModel]="model.priceIn"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patchModel($index, 'priceIn', $event)" />
+            <input
+              type="number"
+              [attr.data-testid]="'model-price-out-' + $index"
+              [placeholder]="t('providers.priceOut')"
+              [ngModel]="model.priceOut"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patchModel($index, 'priceOut', $event)" />
+            <button type="button" [attr.data-testid]="'model-remove-' + $index" (click)="removeModel($index)">
+              {{ t('providers.removeModel') }}
+            </button>
+          </div>
+        }
+
+        <button type="button" data-testid="add-model" (click)="addModel()">
+          {{ t('providers.addModel') }}
+        </button>
+        <small>{{ t('providers.pricesHint') }}</small>
+      </fieldset>
+
+      @if (failure(); as code) {
+        <p class="draft__failure" data-testid="provider-failure">{{ t(failureKey(code)) }}</p>
+      }
+
+      <div class="draft__actions">
+        <button type="submit" data-testid="save-provider" [disabled]="invalid(form) || saving()">
+          {{ t('providers.save') }}
+        </button>
+        <button type="button" data-testid="cancel-provider" (click)="cancel()">
+          {{ t('providers.cancel') }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

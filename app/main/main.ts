@@ -240,6 +240,7 @@ app.whenReady().then(async () => {
   registerIpc(ipcMain, {
     db,
     userDataDir,
+    crypto,
     chooseEpub: async () => {
       // The native dialog cannot be driven from a test, so the end-to-end run
       // names the file it would have chosen. Read here and nowhere else: a

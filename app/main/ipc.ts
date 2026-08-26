@@ -5,12 +5,18 @@ import {
 } from "../shared/channels.ts";
 import { packFailure } from "../shared/dto.ts";
 import { createProject } from "./projects/create.ts";
+import {
+  createProvider, deleteProvider, listProviders, PRESETS, ProviderStoreError, updateProvider,
+  type Crypto,
+} from "./providers/store.ts";
 import { listProjects } from "./projects/query.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
 export interface IpcDeps {
   db: DatabaseSync;
   userDataDir: string;
+  /** The keyring. In production `safeStorage`; in a test, whatever hides bytes. */
+  crypto: Crypto;
   /** Opens the native dialog. The main process owns which files exist. */
   chooseEpub(): Promise<{ path: string; name: string } | null>;
   /** Puts a project in the machine's hands, and the machine's verdict on screen. */
@@ -114,6 +120,35 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     },
 
     "provider.verify": async (request) => deps.verifyProvider(request),
+
+    "providers.list": async () => listProviders(deps.db),
+
+    // Values, not a catalogue: everything a preset carries is editable in the
+    // form afterwards, and an id that has moved on is corrected there rather
+    // than waiting for a release.
+    "providers.presets": async () => PRESETS,
+
+    "provider.create": async (input) => {
+      const created = createProvider(deps.db, deps.crypto, input);
+      deps.broadcast("providers.changed", {});
+      return created;
+    },
+
+    "provider.update": async ({ id, ...patch }) => {
+      const updated = updateProvider(deps.db, deps.crypto, id, patch);
+      deps.broadcast("providers.changed", {});
+      return updated;
+    },
+
+    "provider.delete": async ({ id }) => {
+      // Refusing loudly rather than reporting a silent success: a delete that
+      // did nothing means the interface is looking at a list someone else
+      // already changed, and hiding that leaves a ghost row on screen.
+      if (!deleteProvider(deps.db, id)) {
+        throw new ProviderStoreError("PROVIDER_UNKNOWN", `no provider ${id}`);
+      }
+      deps.broadcast("providers.changed", {});
+    },
 
     "settings.get": async () => readSettings(deps.db),
 

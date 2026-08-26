@@ -6,6 +6,22 @@ import { buildEpub } from "../../core/test/corpus/build.ts";
 import { EVENTS, INVOCATIONS } from "../shared/channels.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import { buildHandlers, type IpcDeps } from "../main/ipc.ts";
+import { readKey } from "../main/providers/store.ts";
+
+/**
+ * A keyring that actually hides what it is given.
+ *
+ * Base64 rather than a prefix over the plaintext: a fake whose output still
+ * contains the key could not be used to prove the key is not stored in the
+ * clear, and the assertion would pass while saying nothing.
+ */
+export const testCrypto = {
+  isAvailable: () => true,
+  encrypt: (plain: string) =>
+    Buffer.from(Buffer.from(`enc:${plain}`, "utf8").toString("base64"), "utf8"),
+  decrypt: (blob: Buffer) =>
+    Buffer.from(blob.toString("utf8"), "base64").toString("utf8").replace(/^enc:/, ""),
+};
 
 async function deps(overrides: Partial<IpcDeps> = {}) {
   const dir = await mkdtemp(join(tmpdir(), "babelbook-ipc-"));
@@ -16,6 +32,7 @@ async function deps(overrides: Partial<IpcDeps> = {}) {
     db,
     deps: {
       db, userDataDir: dir,
+      crypto: testCrypto,
       chooseEpub: async () => null,
       broadcast: () => {},
       ...overrides,
@@ -166,5 +183,105 @@ describe("project.update", () => {
     const { deps: d } = await deps();
     await expect(buildHandlers(d)["project.update"]({ id: "ghost", targetLanguage: "fr" }))
       .rejects.toThrow();
+  });
+});
+
+/**
+ * The provider channels, and the one property that matters more than the rest.
+ *
+ * A provider is worth nothing to the user until it can be added without a
+ * database client, so these channels exist. But every one of them handles a
+ * credential, and the renderer is the one place it must never reach: an
+ * `IpcFailure`, a devtools panel and a crash dump all serialise whatever
+ * crossed the bridge. So the key tests are not about CRUD, they are about
+ * what the replies do *not* contain.
+ */
+describe("the provider channels", () => {
+  const secret = "sk-not-in-any-reply";
+
+  async function withProvider(apiKey: string | null = secret) {
+    const { deps: d } = await deps();
+    const handlers = buildHandlers(d);
+    const created = await handlers["provider.create"]({
+      name: "Acme", route: "openai-compatible", baseUrl: "https://api.acme.test/v1",
+      headers: {}, options: {},
+      models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5 }],
+      ...(apiKey === null ? {} : { apiKey }),
+    });
+    return { deps: d, handlers, created };
+  }
+
+  it("creates a provider and says it has a key, without ever saying the key", async () => {
+    const { handlers, created } = await withProvider();
+
+    expect(created).toMatchObject({ name: "Acme", route: "openai-compatible", hasKey: true });
+    expect(JSON.stringify(created)).not.toContain(secret);
+    expect(JSON.stringify(await handlers["providers.list"](undefined))).not.toContain(secret);
+  });
+
+  it("stores the key sealed, so the database is not a place to read it", async () => {
+    const { deps: d, created } = await withProvider();
+    const row = d.db.prepare("SELECT api_key_encrypted FROM provider WHERE id=?")
+      .get(created.id) as { api_key_encrypted: Uint8Array };
+
+    // node:sqlite yields a BLOB as a Uint8Array, whose own toString would
+    // render "115,107,45,…" and match nothing: it has to go through a Buffer
+    // or the assertion cannot fail.
+    expect(Buffer.from(row.api_key_encrypted).toString("utf8")).not.toContain(secret);
+  });
+
+  it("keeps the key when an edit does not mention it", async () => {
+    const { deps: d, handlers, created } = await withProvider();
+    const updated = await handlers["provider.update"]({ id: created.id, name: "Acme Europe" });
+
+    // The renderer cannot send back a key it is not allowed to see, so an
+    // absent one has to mean "leave it": otherwise renaming a provider would
+    // silently log the user out of it.
+    expect(updated).toMatchObject({ name: "Acme Europe", hasKey: true });
+    expect(readKey(d.db, testCrypto, created.id)).toBe(secret);
+  });
+
+  it("clears the key only when the request says so on purpose", async () => {
+    const { deps: d, handlers, created } = await withProvider();
+    const updated = await handlers["provider.update"]({ id: created.id, apiKey: null });
+
+    expect(updated.hasKey).toBe(false);
+    expect(readKey(d.db, testCrypto, created.id)).toBeNull();
+  });
+
+  it("replaces the models a provider serves", async () => {
+    const { handlers, created } = await withProvider();
+    const updated = await handlers["provider.update"]({
+      id: created.id,
+      models: [{ id: "m2", displayName: "M2", contextWindow: null, priceIn: null, priceOut: null }],
+    });
+
+    expect(updated.models.map((model) => model.id)).toEqual(["m2"]);
+  });
+
+  it("accepts a provider with no key, because a local endpoint needs none", async () => {
+    const { created } = await withProvider(null);
+    expect(created.hasKey).toBe(false);
+  });
+
+  it("deletes a provider, and says so when there was none to delete", async () => {
+    const { handlers, created } = await withProvider();
+
+    await handlers["provider.delete"]({ id: created.id });
+    expect(await handlers["providers.list"](undefined)).toEqual([]);
+    await expect(handlers["provider.delete"]({ id: "ghost" })).rejects.toThrow();
+  });
+
+  it("offers the presets as starting values, keys excluded by construction", async () => {
+    const { deps: d } = await deps();
+    const presets = await buildHandlers(d)["providers.presets"](undefined);
+
+    expect(presets.map((preset) => preset.route)).toContain("anthropic");
+    expect(presets.every((preset) => !("apiKey" in preset))).toBe(true);
+  });
+
+  it("refuses an edit of a provider that is not there", async () => {
+    const { deps: d } = await deps();
+    await expect(buildHandlers(d)["provider.update"]({ id: "ghost", name: "X" })).rejects.toThrow();
   });
 });

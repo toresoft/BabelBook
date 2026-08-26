@@ -67,6 +67,58 @@ export interface Settings {
 }
 
 /**
+ * One model an endpoint serves.
+ *
+ * Prices are per million tokens and may be null: the estimate then shows
+ * tokens only. An invented price is worse than no price, because a wrong
+ * number is believed and a missing one is asked about.
+ */
+export interface ProviderModel {
+  id: string;
+  displayName: string;
+  contextWindow: number | null;
+  priceIn: number | null;
+  priceOut: number | null;
+}
+
+/**
+ * An LLM endpoint as the renderer is allowed to see it.
+ *
+ * `hasKey` is the whole of what is said about the credential. The bytes are
+ * absent from the type, so no serialisation of it — an IPC reply, a devtools
+ * panel, a crash dump — can carry them by accident. That is a property of the
+ * shape rather than of anyone remembering to strip a field.
+ */
+export interface Provider {
+  id: string;
+  name: string;
+  /** The `@ai-sdk/*` package that serves it. */
+  route: string;
+  baseUrl: string | null;
+  headers: Record<string, string>;
+  /** Call options the route requires, keyed by provider as the SDK expects. */
+  options: Record<string, unknown>;
+  models: ProviderModel[];
+  hasKey: boolean;
+}
+
+/** A provider as it is proposed: everything but the id, plus the key once. */
+export type ProviderInput = Omit<Provider, "id" | "hasKey"> & { apiKey?: string | null };
+
+/**
+ * A partial edit.
+ *
+ * An absent `apiKey` means "do not touch it", never "clear it": the renderer
+ * cannot send back a key it is not allowed to see, so any other reading would
+ * wipe the credential every time a name or a model list is edited. Clearing is
+ * `null`, and has to be said on purpose.
+ */
+export type ProviderPatch = Partial<Omit<Provider, "id" | "hasKey">> & { apiKey?: string | null };
+
+/** A starting value for a known endpoint. Editable afterwards, never a cage. */
+export type ProviderPreset = Omit<Provider, "id" | "hasKey">;
+
+/**
  * What a verification says, and deliberately all it says.
  *
  * There is no `message` field, and that is the point: the provider's own words

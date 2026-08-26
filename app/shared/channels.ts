@@ -1,11 +1,11 @@
 import type {
-  CreatedProject, CreateProjectRequest, ProjectSummary, Settings, UpdateProjectRequest,
-  VerifyOutcome,
+  CreatedProject, CreateProjectRequest, ProjectSummary, Provider, ProviderInput, ProviderPatch,
+  ProviderPreset, Settings, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export type {
-  CreatedProject, CreateProjectRequest, ProjectSummary, Settings, UpdateProjectRequest,
-  VerifyOutcome,
+  CreatedProject, CreateProjectRequest, ProjectSummary, Provider, ProviderInput, ProviderModel,
+  ProviderPatch, ProviderPreset, Settings, UpdateProjectRequest, VerifyOutcome,
 } from "./dto.ts";
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +35,11 @@ export interface Invocations {
   "run.start": { req: { projectId: string }; res: void };
   "run.pause": { req: { projectId: string }; res: void };
   "run.approve": { req: { projectId: string; gate: "terms" | "code" }; res: void };
+  "providers.list": { req: undefined; res: Provider[] };
+  "providers.presets": { req: undefined; res: ProviderPreset[] };
+  "provider.create": { req: ProviderInput; res: Provider };
+  "provider.update": { req: ProviderPatch & { id: string }; res: Provider };
+  "provider.delete": { req: { id: string }; res: void };
   "provider.verify": { req: { providerId: string; modelId: string }; res: VerifyOutcome };
   "settings.get": { req: undefined; res: Settings };
   "settings.set": { req: Partial<Settings>; res: Settings };
@@ -42,18 +47,21 @@ export interface Invocations {
 
 export interface Events {
   "project.changed": { id: string };
+  "providers.changed": Record<string, never>;
   "run.phase": { projectId: string; phase: string };
   "run.progress": { projectId: string; done: number; total: number };
 }
 
 export const INVOCATIONS = [
   "projects.list", "project.chooseEpub", "project.create", "project.update", "project.delete",
-  "run.start", "run.pause", "run.approve", "provider.verify",
+  "run.start", "run.pause", "run.approve",
+  "providers.list", "providers.presets",
+  "provider.create", "provider.update", "provider.delete", "provider.verify",
   "settings.get", "settings.set",
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 
 export const EVENTS = [
-  "project.changed", "run.phase", "run.progress",
+  "project.changed", "providers.changed", "run.phase", "run.progress",
 ] as const satisfies ReadonlyArray<keyof Events>;
 
 export type Handlers = {
