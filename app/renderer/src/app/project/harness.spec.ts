@@ -14,7 +14,14 @@ import { provideI18n } from "../core/i18n";
  */
 describe("the component harness", () => {
   it("renders a real component, template, catalogue and all", async () => {
-    const invoke = vi.fn().mockResolvedValue([]);
+    const invoke = vi.fn(async (channel: string) => {
+      // Honest shapes for the channels the screen asks on open; everything
+      // else is an empty list, which is a fine answer from the harness.
+      if (channel === "catalog.state") {
+        return { at: "2026-08-20T10:00:00.000Z", providers: 1, models: 1, bundled: true };
+      }
+      return [];
+    });
     TestBed.configureTestingModule({
       imports: [Providers],
       providers: [

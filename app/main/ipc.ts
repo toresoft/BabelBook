@@ -2,7 +2,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_SETTINGS, EVENTS, INVOCATIONS,
-  type Events, type Handlers, type LocalRuntime, type Settings, type VerifyOutcome,
+  type CatalogEntry, type CatalogState, type Events, type Handlers, type LocalRuntime,
+  type ProviderModel, type Settings, type VerifyOutcome,
 } from "../shared/channels.ts";
 import { packFailure } from "../shared/dto.ts";
 import { createProject } from "./projects/create.ts";
@@ -50,6 +51,13 @@ export interface IpcDeps {
    * without one.
    */
   probeLocalRuntimes(): Promise<LocalRuntime[]>;
+  /** The provider catalogue, as the window may ask it. Held in the main. */
+  catalog: {
+    search(query: string): CatalogEntry[];
+    modelsFor(entryId: string, apiKey: string | null): Promise<ProviderModel[]>;
+    discover(baseUrl: string, apiKey: string | null): Promise<ProviderModel[]>;
+    state(): CatalogState;
+  };
   /** Hands a path to the desktop: opens the file, or shows it in its folder. */
   openPath(path: string): Promise<void>;
   revealPath(path: string): Promise<void>;
@@ -181,6 +189,14 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     // A closed port is an absent runtime, not an error: the answer is simply
     // the list of whatever answered, possibly nothing.
     "local.runtimes": async () => deps.probeLocalRuntimes(),
+
+    "catalog.search": async ({ query }) => deps.catalog.search(query),
+
+    "catalog.models": async ({ entryId, apiKey }) => deps.catalog.modelsFor(entryId, apiKey),
+
+    "provider.discover": async ({ baseUrl, apiKey }) => deps.catalog.discover(baseUrl, apiKey),
+
+    "catalog.state": async () => deps.catalog.state(),
 
     "project.get": async ({ id }) => projectDetail(deps.db, id),
 

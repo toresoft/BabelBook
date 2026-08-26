@@ -83,124 +83,170 @@
 
   @if (draft() === null) {
     <div class="providers__add">
-      <button type="button" data-testid="add-provider" (click)="startBlank()">
-        {{ t('providers.add') }}
-      </button>
-      @for (preset of presets(); track preset.route) {
+      <label>
+        {{ t('providers.search') }}
+        <input
+          type="search"
+          data-testid="catalog-query"
+          [ngModel]="query()"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="search($event)" />
+        <small>{{ t('providers.searchHint') }}</small>
+      </label>
+
+      @if (query().trim() === '') {
+        <p class="providers__runtimes-title">{{ t('providers.localTitle') }}</p>
+      }
+      @for (runtime of runtimes(); track runtime.id) {
         <button
           type="button"
-          class="providers__preset"
-          [attr.data-testid]="'preset-' + preset.route"
-          (click)="startFromPreset(preset)">
-          {{ preset.name }}
+          class="providers__runtime"
+          [attr.data-testid]="'local-' + runtime.id"
+          (click)="pickLocal(runtime)">
+          {{ runtime.name }} · {{ t('providers.local') }} ·
+          {{ t('providers.modelCount', { count: runtime.models.length }) }}
         </button>
       }
+
+      @for (entry of entries(); track entry.id) {
+        <button
+          type="button"
+          class="providers__entry"
+          [attr.data-testid]="'entry-' + entry.id"
+          (click)="pick(entry)">
+          {{ entry.name }}
+        </button>
+      }
+
+      <button
+        type="button"
+        class="providers__preset"
+        data-testid="add-compatible"
+        (click)="pickCompatible()">
+        {{ t('providers.compatible') }}
+      </button>
     </div>
   }
 
   @if (draft(); as form) {
     <form class="draft" data-testid="provider-form" (ngSubmit)="save()">
-      <h2>{{ form.id === null ? t('providers.newTitle') : t('providers.editTitle') }}</h2>
-
-      <label>
-        {{ t('providers.name') }}
-        <input
-          type="text"
-          data-testid="provider-name"
-          [ngModel]="form.name"
-          [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="patch('name', $event)" />
-      </label>
-
-      <label>
-        {{ t('providers.route') }}
-        <input
-          type="text"
-          data-testid="provider-route"
-          [ngModel]="form.route"
-          [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="patch('route', $event)" />
-        <small>{{ t('providers.routeHint') }}</small>
-      </label>
-
-      <label>
-        {{ t('providers.baseUrl') }}
-        <input
-          type="url"
-          data-testid="provider-base-url"
-          [ngModel]="form.baseUrl"
-          [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="patch('baseUrl', $event)" />
-        <small>{{ t('providers.baseUrlHint') }}</small>
-      </label>
-
-      <label>
-        {{ t('providers.apiKey') }}
-        <input
-          type="password"
-          autocomplete="off"
-          data-testid="provider-api-key"
-          [placeholder]="form.id === null ? '' : t('providers.apiKeyUnchanged')"
-          [ngModel]="form.apiKey"
-          [ngModelOptions]="{ standalone: true }"
-          (ngModelChange)="patch('apiKey', $event)" />
-        <small>{{ t('providers.apiKeyHint') }}</small>
-      </label>
-
-      <fieldset class="draft__models">
-        <legend>{{ t('providers.models') }}</legend>
-
-        @for (model of form.models; track $index) {
-          <div class="draft__model" [attr.data-testid]="'model-row-' + $index">
-            <input
-              type="text"
-              [attr.data-testid]="'model-id-' + $index"
-              [placeholder]="t('providers.modelId')"
-              [ngModel]="model.id"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="patchModel($index, 'id', $event)" />
-            <input
-              type="text"
-              [attr.data-testid]="'model-name-' + $index"
-              [placeholder]="t('providers.modelName')"
-              [ngModel]="model.displayName"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="patchModel($index, 'displayName', $event)" />
-            <input
-              type="number"
-              [attr.data-testid]="'model-context-' + $index"
-              [placeholder]="t('providers.contextWindow')"
-              [ngModel]="model.contextWindow"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="patchModel($index, 'contextWindow', $event)" />
-            <input
-              type="number"
-              [attr.data-testid]="'model-price-in-' + $index"
-              [placeholder]="t('providers.priceIn')"
-              [ngModel]="model.priceIn"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="patchModel($index, 'priceIn', $event)" />
-            <input
-              type="number"
-              [attr.data-testid]="'model-price-out-' + $index"
-              [placeholder]="t('providers.priceOut')"
-              [ngModel]="model.priceOut"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="patchModel($index, 'priceOut', $event)" />
-            <button type="button" [attr.data-testid]="'model-remove-' + $index" (click)="removeModel($index)">
-              {{ t('providers.removeModel') }}
-            </button>
-          </div>
+      <h2>
+        @switch (form.kind) {
+          @case ('compatible') { {{ t('providers.compatibleTitle') }} }
+          @case ('edit') { {{ t('providers.editTitle') }} }
+          @default { {{ form.name }} }
         }
+      </h2>
 
-        <button type="button" data-testid="add-model" (click)="addModel()">
-          {{ t('providers.addModel') }}
+      @if (form.kind === 'compatible' || form.kind === 'edit') {
+        <label>
+          {{ t('providers.name') }}
+          <input
+            type="text"
+            data-testid="provider-name"
+            [ngModel]="form.name"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="patch('name', $event)" />
+        </label>
+      }
+
+      @if (form.kind === 'compatible') {
+        <label>
+          {{ t('providers.baseUrl') }}
+          <input
+            type="url"
+            data-testid="provider-base-url"
+            [ngModel]="form.compatUrl"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="patch('compatUrl', $event)" />
+          <small>{{ t('providers.compatibleHint') }}</small>
+        </label>
+      }
+
+      @if (form.kind !== 'local') {
+        <label>
+          @if (form.kind === 'catalog') {
+            {{ t('providers.apiKey') }}
+            <small>{{ t('providers.apiKeyHint') }}</small>
+            <input
+              type="password"
+              autocomplete="off"
+              data-testid="provider-api-key"
+              [ngModel]="form.apiKey"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patch('apiKey', $event)" />
+          } @else if (form.kind === 'compatible') {
+            {{ t('providers.apiKeyOptional') }}
+            <input
+              type="password"
+              autocomplete="off"
+              data-testid="provider-api-key"
+              [ngModel]="form.apiKey"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patch('apiKey', $event)" />
+          } @else {
+            {{ t('providers.apiKey') }}
+            <input
+              type="password"
+              autocomplete="off"
+              [placeholder]="t('providers.apiKeyUnchanged')"
+              data-testid="provider-api-key"
+              [ngModel]="form.apiKey"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patch('apiKey', $event)" />
+          }
+        </label>
+      } @else {
+        <p class="draft__nokey" data-testid="no-key-needed">{{ t('providers.noKeyNeeded') }}</p>
+      }
+
+      @if (form.kind === 'catalog' && form.baseUrl !== null) {
+        <button
+          type="button"
+          data-testid="find-models"
+          [disabled]="finding()"
+          (click)="findModels()">
+          {{ finding() ? t('providers.finding') : t('providers.findModels') }}
         </button>
-        <small>{{ t('providers.pricesHint') }}</small>
-      </fieldset>
+      }
+      @if (form.kind === 'compatible') {
+        <button
+          type="button"
+          data-testid="find-models"
+          [disabled]="finding() || form.compatUrl.trim() === ''"
+          (click)="findModels()">
+          {{ finding() ? t('providers.finding') : t('providers.findModels') }}
+        </button>
+      }
+
+      @if (form.models.length > 0) {
+        <ul class="draft__models" data-testid="model-list">
+          @for (model of form.models; track model.id) {
+            <li class="draft__model" [attr.data-testid]="'model-' + model.id">
+              <span class="draft__model-name">{{ model.displayName }}</span>
+              @if (model.contextWindow !== null) {
+                <span class="draft__model-context">
+                  {{ t('providers.contextOf', { context: model.contextWindow }) }}
+                </span>
+              }
+              @if (model.priceIn !== null && model.priceOut !== null) {
+                <span class="draft__model-price">
+                  {{ t('providers.priceOf', { in: model.priceIn, out: model.priceOut }) }}
+                </span>
+              } @else {
+                <span class="draft__model-price draft__model-price--unknown">
+                  {{ t('providers.priceUnknown') }}
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      }
 
       @if (failure(); as code) {
-        <p class="draft__failure" data-testid="provider-failure">{{ t(failureKey(code)) }}</p>
+        <p class="draft__failure" data-testid="provider-failure">
+          {{ t(discoverPhrase(code)) }}
+        </p>
       }
 
       <div class="draft__actions">
@@ -212,5 +258,11 @@
         </button>
       </div>
     </form>
+  }
+
+  @if (catalogState(); as state) {
+    <p class="providers__catalog" data-testid="catalog-state">
+      {{ t('providers.catalogOf', { date: state.at.slice(0, 10), providers: state.providers }) }}
+    </p>
   }
 </section>

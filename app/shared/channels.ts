@@ -1,10 +1,12 @@
 import type {
-  CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView, InvalidationPreview, ProjectSummary,
-  Provider, ProviderInput, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
+  CatalogEntry, CatalogState, CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView,
+  InvalidationPreview, ProjectSummary,
+  Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
   ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome, LocalRuntime,
 } from "./dto.ts";
 
 export type {
+  CatalogEntry, CatalogState,
   CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, GlossaryTerm, GlossaryView,
   InvalidationPreview,
   ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings,
@@ -101,6 +103,22 @@ export interface Invocations {
   "provider.verify": { req: { providerId: string; modelId: string }; res: VerifyOutcome };
   /** Asks the machine itself which local runtimes are running right now. */
   "local.runtimes": { req: undefined; res: LocalRuntime[] };
+  /**
+   * Searches the provider catalogue. The typed key is never part of this
+   * call: searching reads the catalogue, and only finding models asks an
+   * endpoint anything.
+   */
+  "catalog.search": { req: { query: string }; res: CatalogEntry[] };
+  /**
+   * What one catalogue entry serves: the endpoint's list when the entry
+   * declares a URL to ask, its own otherwise. The key crosses renderer→main
+   * exactly once, like `provider.create`, and never comes back.
+   */
+  "catalog.models": { req: { entryId: string; apiKey: string | null }; res: ProviderModel[] };
+  /** Asks any OpenAI-compatible URL what it serves, with no metadata to add. */
+  "provider.discover": { req: { baseUrl: string; apiKey: string | null }; res: ProviderModel[] };
+  /** How old the catalogue in use is. One line, no alarm. */
+  "catalog.state": { req: undefined; res: CatalogState };
   "settings.get": { req: undefined; res: Settings };
   "settings.set": { req: Partial<Settings>; res: Settings };
   /** Asks for the EPUBCheck jar and stores it. Returns the settings as they now stand. */
@@ -128,6 +146,7 @@ export const INVOCATIONS = [
   "providers.list", "providers.presets",
   "provider.create", "provider.update", "provider.delete", "provider.verify",
   "local.runtimes",
+  "catalog.search", "catalog.models", "provider.discover", "catalog.state",
   "settings.get", "settings.set", "settings.chooseJar",
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 

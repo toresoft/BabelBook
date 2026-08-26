@@ -3,6 +3,8 @@ import {
   app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, safeStorage, shell, Tray,
 } from "electron";
 import { loadCatalogue, type Translate } from "./catalogue.ts";
+import { readCatalog } from "./catalog/load.ts";
+import { catalogState, discoverFromUrl, modelsForEntry, searchCatalog } from "./catalog/service.ts";
 import { probeLocalRuntimes } from "./catalog/local.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
 import { registerIpc, readSettings } from "./ipc.ts";
@@ -199,6 +201,15 @@ app.whenReady().then(async () => {
 
   const settings = readSettings(db);
   const t = await loadCatalogue(settings.uiLanguage, LOCALES_DIR);
+
+  // The provider catalogue is disk work only: the bundled snapshot, or the
+  // cache when it is newer. The network is never on this path — it is asked
+  // in the background, when there is a spare moment and a network to ask.
+  let loaded = await readCatalog({
+    bundled: join(import.meta.dirname, "..", "catalog", "snapshot.json.gz"),
+    cache: join(userDataDir, "catalog.json.gz"),
+  });
+
   glue.db = db;
   glue.t = t;
 
@@ -285,6 +296,12 @@ app.whenReady().then(async () => {
     approveGate: (projectId, gate) => runtime.approve(projectId, gate),
     verifyProvider: verify,
     probeLocalRuntimes: () => probeLocalRuntimes(),
+    catalog: {
+      search: (query) => searchCatalog(loaded.catalog, query),
+      modelsFor: (entryId, apiKey) => modelsForEntry(loaded.catalog, entryId, apiKey),
+      discover: (baseUrl, apiKey) => discoverFromUrl(baseUrl, apiKey),
+      state: () => catalogState(loaded.catalog, loaded.bundled),
+    },
     openPath: async (path) => {
       await shell.openPath(path);
     },

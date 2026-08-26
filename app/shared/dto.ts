@@ -350,6 +350,34 @@ export interface LocalRuntime {
 }
 
 /**
+ * One entry of the provider catalogue, as the picker may see it.
+ *
+ * `models` counts what the catalogue knows, not what the endpoint serves:
+ * the two meet when the key is pasted. `options` carries the call options
+ * this route needs to behave (DeepSeek without thinking), because they are
+ * facts about how the application must call the route, not catalogue data.
+ */
+export interface CatalogEntry {
+  id: string;
+  name: string;
+  route: string;
+  /** The endpoint's base URL, when the catalogue declares one. */
+  baseUrl: string | null;
+  options: Record<string, unknown>;
+  models: number;
+}
+
+/** How old the catalogue in use is, said in one line. */
+export interface CatalogState {
+  /** When the list in use was produced. */
+  at: string;
+  providers: number;
+  models: number;
+  /** True when the bundled snapshot is in use rather than an update. */
+  bundled: boolean;
+}
+
+/**
  * What a verification says, and deliberately all it says.
  *
  * There is no `message` field, and that is the point: the provider's own words

@@ -55,13 +55,9 @@
   "providers": {
     "title": "Providers",
     "lead": "A provider is an endpoint that serves models. The key stays encrypted on your machine and never reaches this window.",
-    "empty": "No providers yet. Start from a preset, or build one.",
-    "add": "Empty provider",
-    "newTitle": "New provider",
+    "empty": "No providers yet. Search for one below, or use a compatible endpoint.",
     "editTitle": "Edit provider",
     "name": "Name",
-    "route": "Route",
-    "routeHint": "The @ai-sdk package that serves it: anthropic, openai, deepseek, mistral, openai-compatible.",
     "baseUrl": "Base URL",
     "baseUrlHint": "Only for compatible endpoints: OpenRouter, a corporate gateway, a model on your own machine.",
     "apiKey": "API key",
@@ -71,15 +67,7 @@
     "keyMissing": "No key",
     "clearKey": "Remove the key",
     "models": "Models",
-    "modelId": "model id",
-    "modelName": "display name",
-    "contextWindow": "context",
-    "priceIn": "€/M in",
-    "priceOut": "€/M out",
-    "addModel": "Add a model",
-    "removeModel": "Remove",
     "modelCount": "{{count}} models",
-    "pricesHint": "Prices are per million tokens and may be left empty: without them the estimate shows tokens only.",
     "verify": "Verify",
     "verifying": "Verifying…",
     "reachable": "Reachable, {{ms}} ms",
@@ -89,7 +77,23 @@
     "cancel": "Cancel",
     "failed": "The provider could not be saved.",
     "keyringUnavailable": "The operating system keyring cannot be reached, so the key cannot be stored safely. The provider was not saved.",
-    "gone": "This provider is gone: it may have been deleted elsewhere."
+    "gone": "This provider is gone: it may have been deleted elsewhere.",
+    "search": "Search for a provider",
+    "searchHint": "Type to search the catalogue: OpenAI, DeepSeek, a gateway…",
+    "localTitle": "On your machine",
+    "local": "local",
+    "compatible": "Compatible endpoint",
+    "compatibleTitle": "Compatible endpoint",
+    "compatibleHint": "The way to what the catalogue does not know: a corporate gateway, a model you serve yourself. The model list comes from the endpoint.",
+    "apiKeyOptional": "API key (optional)",
+    "noKeyNeeded": "No key needed: it runs on your machine.",
+    "findModels": "Find the models",
+    "finding": "Looking for the models…",
+    "findFailed": "The model list could not be asked for.",
+    "priceUnknown": "no price in the catalogue",
+    "contextOf": "{{context}} tokens of context",
+    "priceOf": "{{in}} / {{out}} per million tokens",
+    "catalogOf": "Provider catalogue of {{date}}: {{providers}} entries."
   },
   "settings": {
     "sections": {
@@ -351,5 +355,10 @@
   },
   "errors": {
     "noBridge": "The interface cannot reach the application."
+  },
+  "discover": {
+    "unauthorized": "The key was refused.",
+    "unreachable": "The endpoint does not answer.",
+    "bad-response": "The answer is not a model list."
   }
 }

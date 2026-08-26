@@ -1,32 +1,35 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { TranslocoDirective } from "@jsverse/transloco";
-import type { Provider, ProviderModel, ProviderPreset, VerifyCode } from "../../../../shared/dto.js";
+import type {
+  CatalogEntry, CatalogState, LocalRuntime, Provider, ProviderModel, ProviderPreset, VerifyCode,
+} from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
 
 /**
- * A provider being written, as the form holds it.
+ * A provider being written.
+ *
+ * `kind` decides what the form asks for: a catalogue entry wants the key and
+ * nothing else, a local runtime wants nothing at all, the compatible endpoint
+ * wants a URL and, if the gateway has one, a key. No kind ever asks for a
+ * model id: the models arrive, or they do not.
  *
  * `apiKey` starts empty on every open and is never filled from the store: the
  * renderer is not allowed to read a key, so there is nothing to prefill with.
- * Empty therefore means "leave whatever is there", which is also what the main
- * process does with an absent one.
- *
- * `headers` and `options` are carried without being editable here. They are
- * not decoration: the DeepSeek preset disables reasoning, and a form that
- * dropped them would send every chunk to a model that spends its whole output
- * budget thinking, bill it in full, and hand back nothing.
  */
 interface Draft {
   id: string | null;
+  kind: "catalog" | "local" | "compatible" | "edit";
   name: string;
   route: string;
-  baseUrl: string;
+  baseUrl: string | null;
   apiKey: string;
   headers: Record<string, string>;
   options: Record<string, unknown>;
   catalogId: string | null;
   catalogAt: string | null;
+  /** The compatible endpoint's URL, typed by hand because nobody knows it. */
+  compatUrl: string;
   models: ProviderModel[];
 }
 
@@ -44,8 +47,9 @@ const FAILURE_KEYS: Record<string, string> = {
 };
 
 const BLANK: Draft = {
-  id: null, name: "", route: "openai-compatible", baseUrl: "",
-  apiKey: "", headers: {}, options: {}, catalogId: null, catalogAt: null, models: [],
+  id: null, kind: "compatible", name: "", route: "openai-compatible", baseUrl: null,
+  apiKey: "", headers: {}, options: {}, catalogId: null, catalogAt: null,
+  compatUrl: "", models: [],
 };
 
 @Component({
@@ -58,10 +62,16 @@ const BLANK: Draft = {
 })
 export class Providers implements OnDestroy {
   readonly providers = signal<Provider[]>([]);
-  readonly presets = signal<ProviderPreset[]>([]);
   readonly draft = signal<Draft | null>(null);
   readonly saving = signal(false);
+  /** Why finding models failed, as a code: the interface owns the words. */
   readonly failure = signal<string | null>(null);
+  readonly finding = signal(false);
+
+  readonly query = signal("");
+  readonly entries = signal<CatalogEntry[]>([]);
+  readonly runtimes = signal<LocalRuntime[]>([]);
+  readonly catalogState = signal<CatalogState | null>(null);
 
   /** The last verification, per provider, so a result stays on the row it belongs to. */
   readonly verified = signal<Record<string, { ok: boolean; code?: VerifyCode; latencyMs?: number }>>({});
@@ -73,6 +83,7 @@ export class Providers implements OnDestroy {
 
   constructor() {
     void this.reload();
+    void this.probeLocals();
     // Another window — or the run itself failing on a key — can change the
     // list. Reloading on the event keeps two open windows from disagreeing.
     this.#unsubscribe.push(this.#ipc.on("providers.changed", () => void this.reload()));
@@ -83,45 +94,75 @@ export class Providers implements OnDestroy {
   }
 
   async reload(): Promise<void> {
-    const [providers, presets] = await Promise.all([
+    const [providers, state] = await Promise.all([
       this.#ipc.invoke("providers.list", undefined),
-      this.#ipc.invoke("providers.presets", undefined),
+      this.#ipc.invoke("catalog.state", undefined),
     ]);
     this.providers.set(providers);
-    this.presets.set(presets);
+    this.catalogState.set(state);
   }
 
-  startBlank(): void {
-    this.failure.set(null);
-    this.draft.set({ ...BLANK, models: [] });
+  /** Local runtimes appear before any search is typed: they are already known. */
+  async probeLocals(): Promise<void> {
+    this.runtimes.set(await this.#ipc.invoke("local.runtimes", undefined));
   }
 
-  startFromPreset(preset: ProviderPreset): void {
+  /** 203 entries do not scroll: the list arrives only when something is typed. */
+  async search(text: string): Promise<void> {
+    this.query.set(text);
+    this.entries.set(text.trim() === ""
+      ? []
+      : await this.#ipc.invoke("catalog.search", { query: text }));
+  }
+
+  pick(entry: CatalogEntry): void {
     this.failure.set(null);
     this.draft.set({
-      id: null,
-      name: preset.name,
-      route: preset.route,
-      baseUrl: preset.baseUrl ?? "",
-      apiKey: "",
-      headers: { ...preset.headers },
-      options: { ...preset.options },
-      catalogId: preset.catalogId,
-      catalogAt: preset.catalogAt,
-      // Copied, not shared: editing the draft's models must not edit the
-      // preset the next new provider would start from.
-      models: preset.models.map((model) => ({ ...model })),
+      ...BLANK,
+      kind: "catalog",
+      name: entry.name,
+      route: entry.route,
+      baseUrl: entry.baseUrl,
+      options: { ...entry.options },
+      catalogId: entry.id,
+      // The date of the metadata this provider will carry, which is the
+      // catalogue's date: the answer to "how old is this price?".
+      catalogAt: this.catalogState()?.at ?? null,
     });
+    // An entry with no URL to ask carries its list in the catalogue itself;
+    // for a cloud provider that is the publisher's own list.
+    if (entry.baseUrl === null) void this.findModels();
+  }
+
+  pickLocal(runtime: LocalRuntime): void {
+    this.failure.set(null);
+    this.draft.set({
+      ...BLANK,
+      kind: "local",
+      name: runtime.name,
+      route: "openai-compatible",
+      baseUrl: runtime.baseUrl,
+      // What the running server serves, which no catalogue can know.
+      models: runtime.models.map((id) => ({
+        id, displayName: id, contextWindow: null, priceIn: null, priceOut: null, capabilities: null,
+      })),
+    });
+  }
+
+  pickCompatible(): void {
+    this.failure.set(null);
+    this.draft.set({ ...BLANK, kind: "compatible" });
   }
 
   edit(provider: Provider): void {
     this.failure.set(null);
     this.draft.set({
+      ...BLANK,
+      kind: "edit",
       id: provider.id,
       name: provider.name,
       route: provider.route,
-      baseUrl: provider.baseUrl ?? "",
-      apiKey: "",
+      baseUrl: provider.baseUrl,
       headers: { ...provider.headers },
       options: { ...provider.options },
       catalogId: provider.catalogId,
@@ -134,6 +175,13 @@ export class Providers implements OnDestroy {
     return FAILURE_KEYS[code] ?? "providers.failed";
   }
 
+  /** The codes discovery fails with have their own sentences; others get one. */
+  discoverPhrase(code: string): string {
+    return code === "unauthorized" || code === "unreachable" || code === "bad-response"
+      ? `discover.${code}`
+      : "providers.findFailed";
+  }
+
   cancel(): void {
     this.draft.set(null);
     this.failure.set(null);
@@ -143,39 +191,40 @@ export class Providers implements OnDestroy {
     this.draft.update((draft) => (draft === null ? draft : { ...draft, [field]: value }));
   }
 
-  addModel(): void {
-    this.draft.update((draft) => draft === null ? draft : {
-      ...draft,
-      models: [...draft.models,
-        { id: "", displayName: "", contextWindow: null, priceIn: null, priceOut: null,
-          capabilities: null }],
-    });
+  /**
+   * The one network act of the form: the models arrive, or a code says why
+   * they did not. The typed key crosses to the main process here, exactly as
+   * it does at save, and never comes back.
+   */
+  async findModels(): Promise<void> {
+    const draft = this.draft();
+    if (draft === null || this.finding()) return;
+
+    this.finding.set(true);
+    this.failure.set(null);
+    try {
+      const key = draft.apiKey.trim() === "" ? null : draft.apiKey;
+      const models = draft.kind === "catalog"
+        ? await this.#ipc.invoke("catalog.models", { entryId: draft.catalogId!, apiKey: key })
+        : await this.#ipc.invoke("provider.discover", {
+          baseUrl: draft.kind === "compatible" ? draft.compatUrl : draft.baseUrl!,
+          apiKey: key,
+        });
+      this.draft.update((form) => form === null ? form : { ...form, models });
+    } catch (error) {
+      this.failure.set((error as { code?: string }).code ?? "unknown");
+    } finally {
+      this.finding.set(false);
+    }
   }
 
-  patchModel(at: number, field: keyof ProviderModel, value: string): void {
-    this.draft.update((draft) => {
-      if (draft === null) return draft;
-      const models = draft.models.map((model, index) => {
-        if (index !== at) return model;
-        if (field === "id" || field === "displayName") return { ...model, [field]: value };
-        // A blank number is null, not zero: "no price declared" and "free" are
-        // different facts, and showing a cost of zero for the first is a lie.
-        return { ...model, [field]: value.trim() === "" ? null : Number(value) };
-      });
-      return { ...draft, models };
-    });
-  }
-
-  removeModel(at: number): void {
-    this.draft.update((draft) => draft === null ? draft
-      : { ...draft, models: draft.models.filter((_, index) => index !== at) });
-  }
-
-  /** A provider with no name, no route or a nameless model cannot be resolved. */
+  /** The models come from somewhere else; the form can only wait for them. */
   invalid(draft: Draft): boolean {
-    return draft.name.trim() === ""
-      || draft.route.trim() === ""
-      || draft.models.some((model) => model.id.trim() === "");
+    if (draft.kind === "compatible") {
+      return draft.name.trim() === "" || draft.compatUrl.trim() === "";
+    }
+    if (draft.kind === "edit") return draft.name.trim() === "";
+    return false;
   }
 
   async save(): Promise<void> {
@@ -185,28 +234,28 @@ export class Providers implements OnDestroy {
     this.saving.set(true);
     this.failure.set(null);
     try {
-      const body = {
-        name: draft.name.trim(),
-        route: draft.route.trim(),
-        baseUrl: draft.baseUrl.trim() === "" ? null : draft.baseUrl.trim(),
-        headers: draft.headers,
-        options: draft.options,
-        catalogId: draft.catalogId,
-        catalogAt: draft.catalogAt,
-        models: draft.models.map((model) => ({
-          ...model, id: model.id.trim(), displayName: model.displayName.trim() || model.id.trim(),
-        })),
-      };
-
-      if (draft.id === null) {
-        await this.#ipc.invoke("provider.create",
-          { ...body, ...(draft.apiKey === "" ? {} : { apiKey: draft.apiKey }) });
+      if (draft.id !== null) {
+        // An edit names the name and, only when typed, the key. The models
+        // are not the form's to rewrite: they came from the endpoint or the
+        // catalogue, and an edit that erased them would be a surprise.
+        await this.#ipc.invoke("provider.update", {
+          id: draft.id,
+          name: draft.name.trim(),
+          ...(draft.apiKey === "" ? {} : { apiKey: draft.apiKey }),
+        });
       } else {
-        // An empty field leaves the stored key alone. Sending "" instead would
-        // log the user out of a working provider every time they fixed a typo
-        // in its name.
-        await this.#ipc.invoke("provider.update",
-          { id: draft.id, ...body, ...(draft.apiKey === "" ? {} : { apiKey: draft.apiKey }) });
+        const baseUrl = draft.kind === "compatible" ? draft.compatUrl.trim() : draft.baseUrl;
+        await this.#ipc.invoke("provider.create", {
+          name: draft.name.trim(),
+          route: draft.route,
+          baseUrl: baseUrl === null || baseUrl === "" ? null : baseUrl,
+          headers: draft.headers,
+          options: draft.options,
+          catalogId: draft.catalogId,
+          catalogAt: draft.catalogAt,
+          models: draft.models,
+          ...(draft.apiKey === "" ? {} : { apiKey: draft.apiKey }),
+        });
       }
       this.draft.set(null);
       await this.reload();

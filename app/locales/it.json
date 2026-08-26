@@ -55,13 +55,9 @@
   "providers": {
     "title": "Provider",
     "lead": "Un provider è un endpoint che serve modelli. La chiave resta cifrata sul tuo computer e non arriva mai a questa finestra.",
-    "empty": "Nessun provider. Parti da un preset o creane uno.",
-    "add": "Provider vuoto",
-    "newTitle": "Nuovo provider",
+    "empty": "Nessun provider. Cercane uno qui sotto, oppure usa un endpoint compatibile.",
     "editTitle": "Modifica provider",
     "name": "Nome",
-    "route": "Rotta",
-    "routeHint": "Il pacchetto @ai-sdk che lo serve: anthropic, openai, deepseek, mistral, openai-compatible.",
     "baseUrl": "URL di base",
     "baseUrlHint": "Solo per endpoint compatibili: OpenRouter, un gateway aziendale, un modello sulla tua macchina.",
     "apiKey": "Chiave API",
@@ -71,15 +67,7 @@
     "keyMissing": "Senza chiave",
     "clearKey": "Rimuovi la chiave",
     "models": "Modelli",
-    "modelId": "id del modello",
-    "modelName": "nome visibile",
-    "contextWindow": "contesto",
-    "priceIn": "€/M input",
-    "priceOut": "€/M output",
-    "addModel": "Aggiungi un modello",
-    "removeModel": "Togli",
     "modelCount": "{{count}} modelli",
-    "pricesHint": "I prezzi sono per milione di token e possono restare vuoti: senza, la stima mostra solo i token.",
     "verify": "Verifica",
     "verifying": "Verifica in corso…",
     "reachable": "Raggiungibile, {{ms}} ms",
@@ -89,7 +77,23 @@
     "cancel": "Annulla",
     "failed": "Non è stato possibile salvare il provider.",
     "keyringUnavailable": "Il portachiavi del sistema operativo non è raggiungibile, quindi la chiave non può essere messa al sicuro. Il provider non è stato salvato.",
-    "gone": "Questo provider non esiste più: forse è stato eliminato altrove."
+    "gone": "Questo provider non esiste più: forse è stato eliminato altrove.",
+    "search": "Cerca un provider",
+    "searchHint": "Scrivi per cercare fra i provider del catalogo: OpenAI, DeepSeek, un gateway…",
+    "localTitle": "Sulla tua macchina",
+    "local": "locale",
+    "compatible": "Endpoint compatibile",
+    "compatibleTitle": "Endpoint compatibile",
+    "compatibleHint": "La via per ciò che il catalogo non conosce: un gateway aziendale, un modello servito da te. L'elenco dei modelli arriva dall'endpoint.",
+    "apiKeyOptional": "Chiave API (facoltativa)",
+    "noKeyNeeded": "Nessuna chiave: gira sulla tua macchina.",
+    "findModels": "Trova i modelli",
+    "finding": "Cerco i modelli…",
+    "findFailed": "Non è stato possibile chiedere l'elenco dei modelli.",
+    "priceUnknown": "prezzo non nel catalogo",
+    "contextOf": "{{context}} token di contesto",
+    "priceOf": "{{in}} / {{out}} per milione di token",
+    "catalogOf": "Catalogo dei provider del {{date}}: {{providers}} voci."
   },
   "settings": {
     "sections": {
@@ -351,5 +355,10 @@
   },
   "errors": {
     "noBridge": "L'interfaccia non riesce a parlare con l'applicazione."
+  },
+  "discover": {
+    "unauthorized": "La chiave è stata rifiutata.",
+    "unreachable": "L'endpoint non risponde.",
+    "bad-response": "La risposta non è un elenco di modelli."
   }
 }
