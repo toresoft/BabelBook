@@ -37,7 +37,8 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
 | 5. Gate, glossari, report | **completo**, 8/8 | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
-| 6. CI e pacchetti | **6 task su 8**, workflow mai girati | `.github/`, `app/electron-builder.yml` |
+| 6. CI e pacchetti | **6 task su 8**, CI verde su GitHub | `.github/`, `app/electron-builder.yml` |
+| 7. Catalogo provider e modelli locali | scritto, non iniziato | — |
 
 Suite: **574 test verdi** (260 core, 255 app, 59 componenti) piu' **11 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
@@ -50,9 +51,14 @@ I test dei componenti girano col builder `@angular/build:unit-test`
 
 ## Il prossimo passo
 
-**Far girare i workflow.** Sono scritti e committati, e non sono mai partiti:
-finché non lo fanno — e finché non li si è visti fallire per un test rotto di
-proposito — restano YAML. Serve un push su GitHub.
+**Piano 7** — il catalogo dei provider (models.dev), i modelli locali (Ollama e
+LM Studio) e una schermata dove aggiungere un provider sono tre gesti. Scritto
+in `docs/superpowers/plans/2026-08-26-babelbook-provider-catalogue.md`, nove
+task, non iniziato.
+
+La CI e' verde su GitHub (entrambi i job, prove end-to-end comprese) ma **non
+l'ho mai vista fallire**: finche' non si rompe un test di proposito e non la si
+guarda cadere, e' un badge.
 
 Poi restano due cose, entrambe fuori dalla portata di questa macchina:
 `libxcrypt-compat` per costruire `.deb` e `.rpm` su Fedora, e un runner Windows
