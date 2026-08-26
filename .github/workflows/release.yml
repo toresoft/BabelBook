@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  # So the packaging can be exercised without inventing a tag.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: ${{ matrix.name }}
+    strategy:
+      # One platform failing must not throw away another's finished package.
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux packages
+            os: ubuntu-latest
+            targets: --linux AppImage deb rpm
+          - name: windows installer
+            os: windows-latest
+            targets: --win nsis
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Never cross-built. `@node-rs/crc32` ships a different prebuilt binary
+      # per platform as an optional dependency, so an installer built on Linux
+      # would carry no Windows binding and fail at the first EPUB it read —
+      # not here, but on the machine of whoever downloaded it.
+      - run: npm ci
+
+      - run: npm run build -w app
+
+      - run: npx electron-builder ${{ matrix.targets }} --publish never
+        working-directory: app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.os }}
+          path: |
+            app/release/*.AppImage
+            app/release/*.deb
+            app/release/*.rpm
+            app/release/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: the release
+    needs: package
+    # Only a tag becomes a release; a manual run stops at the artifacts.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: packages
+          merge-multiple: true
+
+      - name: what the reader has to be told
+        run: |
+          cat > notes.md <<'NOTES'
+          ## babelBook ${{ github.ref_name }}
+
+          | Formato | Per |
+          |---|---|
+          | `.AppImage` | qualunque distribuzione: `chmod +x` e si avvia |
+          | `.deb` | Debian, Ubuntu e derivate |
+          | `.rpm` | Fedora e derivate |
+          | `.exe` | Windows, installer con scelta della cartella |
+
+          **I binari non sono firmati.** Al primo avvio Windows mostra un
+          avviso di SmartScreen: è la conseguenza di non avere un certificato,
+          non di un problema del programma.
+
+          EPUBCheck non è incluso — richiederebbe una JVM. Il percorso del jar
+          si indica dalle impostazioni; senza, il report dichiara che il
+          controllo non è stato eseguito invece di darlo per superato.
+          NOTES
+
+      # `gh` is already on the runner, so the release needs no third-party
+      # action — nothing to pin to a SHA and nothing to review at each bump.
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(packages/*.AppImage packages/*.deb packages/*.rpm packages/*.exe)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "no package reached the release job" >&2
+            exit 1
+          fi
+          gh release create "${{ github.ref_name }}" "${files[@]}" \
+            --repo "${{ github.repository }}" \
+            --title "babelBook ${{ github.ref_name }}" \
+            --notes-file notes.md
