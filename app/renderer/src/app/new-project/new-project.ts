@@ -4,7 +4,7 @@ import { Router } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
 import type { CreatedProject } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
-import { estimate } from "./estimate";
+import { estimate } from "../../../../shared/estimate.js";
 
 const TARGET_LANGUAGES = ["it", "en", "fr", "de", "es", "pt"] as const;
 

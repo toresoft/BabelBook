@@ -37,9 +37,13 @@ interface Row {
 
 const SELECT_TERMS = `
   SELECT t.id, t.source, t.target, t.rule, t.origin, t.approval_state, t.sense, t.note,
+         -- Case-sensitive, because unitsAffectedByTerms in the core is, and
+         -- the two must agree: a gate that says "appears 4 times" while the
+         -- invalidation it authorises touches 2 units is lying to the user
+         -- about what they are approving.
          (SELECT count(*) FROM unit u
            WHERE u.project_id = t.project_id
-             AND instr(lower(u.source_text), lower(t.source)) > 0) AS occurrences
+             AND instr(u.source_text, t.source) > 0) AS occurrences
     FROM term t
    WHERE t.project_id = ?
    ORDER BY t.approval_state = 'pending' DESC, t.source

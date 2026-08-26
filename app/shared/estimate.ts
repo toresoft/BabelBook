@@ -1,3 +1,12 @@
+/*
+ * Shared because both sides need the same number.
+ *
+ * The window estimates a book before it is started; the main process
+ * estimates what re-translating a handful of units would cost before it
+ * invalidates them. Two copies of these constants would drift, and the two
+ * screens would quote different prices for the same work.
+ */
+
 export interface Estimate {
   tokensIn: number;
   tokensOut: number;

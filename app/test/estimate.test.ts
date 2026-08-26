@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimate } from "../renderer/src/app/new-project/estimate.ts";
+import { estimate } from "../shared/estimate.ts";
 
 describe("estimate", () => {
   it("says how many tokens, and no price when the model declares none", () => {
