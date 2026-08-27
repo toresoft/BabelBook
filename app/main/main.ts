@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { generateText } from "ai";
 import {
   app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, Notification, safeStorage,
   shell, Tray,
@@ -24,7 +25,7 @@ import {
 import { getProvider, readKey, type Crypto } from "./providers/store.ts";
 import { classifyError, verifyProvider as runVerification } from "./providers/verify.ts";
 import { resolveModel } from "../engine/backends/resolve.ts";
-import { sdkBackend, type GenerateFn } from "../engine/backends/sdk.ts";
+import { sdkBackend } from "../engine/backends/sdk.ts";
 import type { BackendSpec, EngineMessage } from "../shared/run.ts";
 import type { Events } from "../shared/channels.ts";
 import type { VerifyOutcome } from "../shared/dto.ts";
@@ -102,17 +103,12 @@ async function verify(request: { providerId: string; modelId: string }): Promise
   const spec = `${provider.route}:${request.modelId}`;
   try {
     const resolved = await resolveModel(spec, {
-      load: (specifier) => import(specifier),
       apiKey: readKey(glue.db, crypto, provider.id),
       baseUrl: provider.baseUrl,
       headers: provider.headers,
       options: provider.options,
     });
-    // The specifier rides a variable so TypeScript does not resolve the
-    // package: it is the user's to install, and this machine may not have it.
-    const aiModule = "ai";
-    const ai = await import(aiModule) as { generateText: GenerateFn };
-    return await runVerification({ backend: sdkBackend(resolved, ai.generateText), modelId: spec });
+    return await runVerification({ backend: sdkBackend(resolved, generateText), modelId: spec });
   } catch (error) {
     return { ok: false, code: classifyError(error) };
   }

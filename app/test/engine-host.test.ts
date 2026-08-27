@@ -1,4 +1,6 @@
 import { EventEmitter } from "node:events";
+import { readFile } from "node:fs/promises";
+import { generateText } from "ai";
 import { describe, expect, it } from "vitest";
 import { startEngineRuntime } from "../engine/main.ts";
 import { StoreClient, type MessagePortLike } from "../engine/store-client.ts";
@@ -384,5 +386,26 @@ describe("engine host", () => {
     mainPort.send({ type: "phase", phase: "translate" });
 
     expect(phases).toEqual(["translate"]);
+  });
+});
+
+/**
+ * The SDK is a dependency now, not a hope.
+ *
+ * Importing it by name is the whole assertion: this file does not compile, and
+ * this test does not run, on a checkout where `ai` is not installed. The
+ * source check beside it is what keeps the two call sites from drifting back
+ * to a specifier held in a variable, which typechecks on any machine and
+ * therefore proves nothing.
+ */
+describe("the SDK the run calls", () => {
+  it("is imported by name and exports generateText", () => {
+    expect(typeof generateText).toBe("function");
+  });
+
+  it("is not hidden behind a variable in either process", async () => {
+    for (const path of ["app/main/main.ts", "app/engine/main.ts"]) {
+      expect(await readFile(path, "utf8")).not.toContain('const aiModule = "ai"');
+    }
   });
 });

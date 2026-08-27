@@ -1,8 +1,9 @@
 import { StoreClient } from "./store-client.ts";
+import { generateText } from "ai";
 import type { LlmBackend, ProjectStore } from "../../core/ports.ts";
 import { runProject } from "../main/run/orchestrator.ts";
 import { resolveModel } from "./backends/resolve.ts";
-import { sdkBackend, type GenerateFn } from "./backends/sdk.ts";
+import { sdkBackend } from "./backends/sdk.ts";
 import { fakeBackend } from "./fake.ts";
 import type {
   BackendSpec, EngineCommand, EngineMessage, MessagePortLike, RunConfig,
@@ -63,25 +64,19 @@ function isEngineCommand(message: unknown): message is EngineCommand {
 /**
  * A backend, built here because behaviour cannot cross the process boundary.
  *
- * The `ai` package and the `@ai-sdk/*` routes are the user's to install, so
- * both imports stay dynamic: a machine with none of them still runs every
- * phase that does not need a provider, and the fake still runs the whole book.
+ * Provider code is selected by the registry and loaded only for SDK runs; the
+ * SDK itself is a production dependency and can keep its type at this seam.
  */
 async function backendFromSpec(spec: BackendSpec): Promise<LlmBackend> {
   if (spec.kind === "fake") return fakeBackend();
 
   const resolved = await resolveModel(spec.spec, {
-    load: (specifier) => import(specifier),
     apiKey: spec.apiKey,
     baseUrl: spec.baseUrl,
     ...(Object.keys(spec.headers).length === 0 ? {} : { headers: spec.headers }),
     options: spec.options,
   });
-  // The specifier rides a variable so TypeScript does not resolve the package:
-  // it is the user's to install, and a machine without it still typechecks.
-  const aiModule = "ai";
-  const ai = await import(aiModule) as { generateText: GenerateFn };
-  return sdkBackend(resolved, ai.generateText);
+  return sdkBackend(resolved, generateText);
 }
 
 /** The production runner: a backend from the spec, then the phases. */

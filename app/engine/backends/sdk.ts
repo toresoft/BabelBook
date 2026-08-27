@@ -1,21 +1,22 @@
+import type { LanguageModel } from "ai";
 import type { LlmBackend, LlmCall, LlmResult } from "../../../core/ports.ts";
 import type { ResolvedModel } from "./resolve.ts";
+
+type GenerateTextInput = Parameters<typeof import("ai").generateText>[0];
 
 /**
  * `generateText` as this adapter needs it, described structurally.
  *
- * The `ai` package is the user's to install and is imported dynamically, so
- * nothing here may name its types: a structural shape the real function
- * satisfies keeps the adapter compilable on a machine where nothing is
- * installed yet, which is every machine before the first provider is added.
+ * The result stays structural so tests can supply the smallest honest fake;
+ * the input names the SDK types now that `ai` is a production dependency.
  */
 export interface GenerateInput {
-  model: unknown;
+  model: LanguageModel;
   prompt: string;
   system?: string;
   maxOutputTokens?: number;
   abortSignal?: AbortSignal;
-  providerOptions?: Record<string, unknown>;
+  providerOptions?: GenerateTextInput["providerOptions"];
 }
 
 export interface GenerateOutput {
@@ -65,12 +66,12 @@ export function sdkBackend(resolved: ResolvedModel, generate: GenerateFn): LlmBa
   return {
     async call(input: LlmCall): Promise<LlmResult> {
       const result = await generate({
-        model: resolved.model,
+        model: resolved.model as LanguageModel,
         prompt: input.prompt,
         system: input.system,
         maxOutputTokens: input.maxOutputTokens,
         abortSignal: input.signal,
-        providerOptions: resolved.options,
+        providerOptions: resolved.options as GenerateTextInput["providerOptions"],
       });
 
       return {
