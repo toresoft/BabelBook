@@ -1,3 +1,74 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: babelbook --default, babelbook-dark;
+}
+
+/*
+ * The palette, unchanged, in daisyUI's names.
+ *
+ * These are the values this application shipped before daisyUI existed here:
+ * the port changes the shape of the controls and nothing else, so a screenshot
+ * that comes back a different colour is a mistake rather than a redesign.
+ */
+@plugin "daisyui/theme" {
+  name: "babelbook";
+  default: true;
+  color-scheme: light;
+
+  --color-base-100: #ffffff;
+  --color-base-200: #f3f4f6;
+  --color-base-300: #e5e7eb;
+  --color-base-content: #111827;
+
+  --color-primary: #2563eb;
+  --color-primary-content: #ffffff;
+  --color-neutral: #4b5563;
+  --color-neutral-content: #ffffff;
+
+  --color-error: #b91c1c;
+  --color-error-content: #ffffff;
+  --color-warning: #b45309;
+  --color-warning-content: #ffffff;
+  --color-success: #166534;
+  --color-success-content: #ffffff;
+  --color-info: #2563eb;
+  --color-info-content: #ffffff;
+
+  --radius-box: 6px;
+  --radius-field: 6px;
+  --radius-selector: 6px;
+  --border: 1px;
+}
+
+@plugin "daisyui/theme" {
+  name: "babelbook-dark";
+  color-scheme: dark;
+
+  --color-base-100: #0f172a;
+  --color-base-200: #1e293b;
+  --color-base-300: #334155;
+  --color-base-content: #e2e8f0;
+
+  --color-primary: #60a5fa;
+  --color-primary-content: #0f172a;
+  --color-neutral: #cbd5e1;
+  --color-neutral-content: #0f172a;
+
+  --color-error: #f87171;
+  --color-error-content: #0f172a;
+  --color-warning: #fbbf24;
+  --color-warning-content: #0f172a;
+  --color-success: #86efac;
+  --color-success-content: #0f172a;
+  --color-info: #60a5fa;
+  --color-info-content: #0f172a;
+
+  --radius-box: 6px;
+  --radius-field: 6px;
+  --radius-selector: 6px;
+  --border: 1px;
+}
+
 /*
  * The foundations, and the only place a colour may live.
  *
