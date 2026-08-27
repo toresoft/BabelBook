@@ -49,6 +49,12 @@ export interface Invocations {
     req: { kind: ConfirmKind; detail?: Record<string, string | number> };
     res: { confirmed: boolean };
   };
+  /**
+   * The theme the system wears, asked once at start. The follow-ups come as
+   * the `theme.changed` event: on Linux the renderer's own media query never
+   * hears the system change (electron#22211), so nativeTheme tells it.
+   */
+  "ui.theme": { req: undefined; res: { dark: boolean } };
   "projects.list": { req: { filter?: string }; res: ProjectSummary[] };
   "project.chooseEpub": { req: undefined; res: { path: string; name: string } | null };
   "project.create": { req: CreateProjectRequest; res: CreatedProject };
@@ -153,10 +159,13 @@ export interface Events {
   "providers.changed": Record<string, never>;
   "run.phase": { projectId: string; phase: string };
   "run.progress": { projectId: string; done: number; total: number };
+  /** The system changed its mind, or the window opened into a new desktop. */
+  "theme.changed": { dark: boolean };
 }
 
 export const INVOCATIONS = [
   "ui.confirm",
+  "ui.theme",
   "projects.list", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "project.get", "units.list",
   "run.start", "run.pause", "run.approve",
@@ -176,7 +185,7 @@ export const INVOCATIONS = [
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 
 export const EVENTS = [
-  "project.changed", "providers.changed", "run.phase", "run.progress",
+  "project.changed", "providers.changed", "run.phase", "run.progress", "theme.changed",
 ] as const satisfies ReadonlyArray<keyof Events>;
 
 export type Handlers = {

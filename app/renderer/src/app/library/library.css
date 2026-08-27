@@ -28,6 +28,7 @@
   border: 1px solid var(--line-strong); color: var(--text-muted);
   border-radius: 999px; padding: 0.05rem 0.5rem; font-size: 0.72rem;
 }
+.tile__state--ready { border-color: var(--accent); color: var(--accent); }
 .tile__state--running { border-color: var(--accent); color: var(--accent); }
 .tile__state--composing { border-color: var(--accent); color: var(--accent); }
 .tile__state--done { border-color: var(--ok-line); color: var(--ok); }

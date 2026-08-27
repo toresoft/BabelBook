@@ -30,16 +30,21 @@ describe("the foundations", () => {
     expect(css).toMatch(/font-family:\s*system-ui/);
   });
 
-  it("declares both colour schemes, so native controls follow the theme", async () => {
+  it("declares a colour scheme for each theme, so native controls follow it", async () => {
     const css = await readFile(STYLES, "utf8");
-    expect(css).toContain("color-scheme: light dark");
+    expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*light/);
+    expect(css).toMatch(/:root\.theme-dark\s*\{[^}]*color-scheme:\s*dark/);
   });
 
   it("defines the colours as variables and redefines them for the dark theme", async () => {
     const css = await readFile(STYLES, "utf8");
     expect(css).toMatch(/:root\s*\{[^}]*--/);
 
-    const dark = css.match(/@media\s*\(prefers-color-scheme:\s*dark\)\s*\{([\s\S]*)\}/);
+    // The dark theme is a class the main process puts on the root when
+    // nativeTheme says so: on Linux the media query gets stuck on the
+    // startup value and never hears the system change (electron#22211), so
+    // the renderer is told instead of guessing.
+    const dark = css.match(/:root\.theme-dark\s*\{([\s\S]*)\}/);
     expect(dark).not.toBeNull();
     expect(dark?.[1]).toMatch(/--[a-z-]+:/);
   });

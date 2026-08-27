@@ -1,6 +1,6 @@
 # babelBook — Piano 8: l'interfaccia
 
-**Stato: in corso** — Task 1–5 completi, al 2026-08-27.
+**Stato: completo**, al 2026-08-27. Le schermate sono state guardate, in entrambi i temi.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -195,15 +195,22 @@ Nuovo progetto:
 **Files:**
 - Create: `app/e2e/screens.spec.ts`
 
-- [ ] **Step 1: Il test**
+- [x] **Step 1: Il test**
 
 Attraversa le schermate e cattura una immagine per ciascuna, chiaro e scuro. Non confronta pixel — un test che fallisce a ogni spostamento di due pixel viene disattivato entro un mese. Verifica ciò che si può affermare: che nessuna schermata renda testo su fondo dello stesso colore, che il tema scuro cambi davvero il fondo, e che nessun testo esca dal suo contenitore.
 
-- [ ] **Step 2: Guardare le immagini.**
+- [x] **Step 2: Guardare le immagini.**
 
 Questo passo non è automatizzabile ed è il motivo del task: **aprire i file e guardarli**. Un piano sull'aspetto che si dichiara finito senza che nessuno abbia guardato è esattamente l'errore che questo piano vuole correggere.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
+
+> **Nota d'esecuzione.** Guardando è emerso che il tema non seguiva davvero il sistema, per due ragioni, entrambe corrette:
+>
+> 1. **Su Linux la media query `prefers-color-scheme` resta inchiodata al valore d'avvio** e non sente i cambi (electron/electron#22211). Il tema ora è detto dal main: `nativeTheme` è la fonte di verità, il canale `ui.theme` lo chiede all'avvio e l'evento `theme.changed` lo segue; il renderer porta una classe `theme-dark` sulla radice e le variabili seguono quella.
+> 2. **Il foglio globale, in produzione, non si applicava affatto**: l'inlining del CSS critico emette `<link media="print" onload="this.media='all'">`, e la CSP dell'app (`script-src 'self'`) blocca l'attributo `onload` — il foglio restava "per la stampa". Disattivato `inlineCritical` in angular.json: un trucco da rete lenta che ad app:// non serve.
+>
+> Guardando le immagini sono stati corretti anche due difetti piccoli: il link-pulsante «Nuovo progetto» restava sottolineato (default del browser sugli anchor), e lo stato «Pronto» era l'unico senza colore proprio.
 
 ---
 

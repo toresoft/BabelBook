@@ -9,7 +9,7 @@
  */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
   --radius: 6px;
 
@@ -43,37 +43,43 @@
   --ok-line: #86efac;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #e2e8f0;
-    --text-soft: #cbd5e1;
-    --text-muted: #94a3b8;
-    --text-faint: #64748b;
+/*
+ * The dark theme is a class the main process puts on the root: nativeTheme
+ * hears the system change on every platform, the renderer's media query does
+ * not (on Linux it gets stuck on the start-up value, electron#22211). So the
+ * renderer is told, and the class carries the theme.
+ */
+:root.theme-dark {
+  color-scheme: dark;
 
-    --surface: #0f172a;
-    --surface-raised: #1e293b;
-    --line: #334155;
-    --line-strong: #475569;
+  --text: #e2e8f0;
+  --text-soft: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
 
-    --accent: #60a5fa;
-    --on-accent: #0f172a;
-    --accent-soft: #1e3a8a;
-    --accent-soft-text: #bfdbfe;
-    --accent-wash: #1e293b;
-    --accent-line: #2563eb;
+  --surface: #0f172a;
+  --surface-raised: #1e293b;
+  --line: #334155;
+  --line-strong: #475569;
 
-    --danger: #f87171;
+  --accent: #60a5fa;
+  --on-accent: #0f172a;
+  --accent-soft: #1e3a8a;
+  --accent-soft-text: #bfdbfe;
+  --accent-wash: #1e293b;
+  --accent-line: #2563eb;
 
-    --warning: #fbbf24;
-    --warning-soft: #78350f;
-    --warning-soft-text: #fde68a;
-    --warning-box: #292524;
-    --warning-line: #b45309;
+  --danger: #f87171;
 
-    --ok: #86efac;
-    --ok-soft: #14532d;
-    --ok-line: #22c55e;
-  }
+  --warning: #fbbf24;
+  --warning-soft: #78350f;
+  --warning-soft-text: #fde68a;
+  --warning-box: #292524;
+  --warning-line: #b45309;
+
+  --ok: #86efac;
+  --ok-soft: #14532d;
+  --ok-line: #22c55e;
 }
 
 /* The system's font, and the system's theme: the two things not ours to choose. */
@@ -108,6 +114,9 @@ button {
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+  /* The primary act of a screen may be a route, which is an anchor: it wears
+     the button and not the underline, whatever the browser's default says. */
+  text-decoration: none;
 }
 
 .btn--primary {

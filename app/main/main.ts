@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, safeStorage, shell, Tray,
+  app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, Notification, safeStorage,
+  shell, Tray,
 } from "electron";
 import { loadCatalogue, type Translate } from "./catalogue.ts";
 import {
@@ -296,6 +297,11 @@ app.whenReady().then(async () => {
     }
   };
 
+  // The theme is told, not guessed: on Linux the renderer's media query gets
+  // stuck on whatever the desktop wore at start-up and never hears a change
+  // (electron#22211), so nativeTheme — which does hear it — says so here.
+  nativeTheme.on("updated", () => broadcast("theme.changed", { dark: nativeTheme.shouldUseDarkColors }));
+
   /**
    * What a catalogue change does to what is already stored: the providers
    * bound to an entry take its new prices and dates, their keys and model
@@ -311,6 +317,7 @@ app.whenReady().then(async () => {
     userDataDir,
     crypto,
     t,
+    theme: () => ({ dark: nativeTheme.shouldUseDarkColors }),
     // The question is assembled in the ipc layer; this is only the platform's
     // part of it. The buttons' order is the contract — cancel first — so the
     // defaultId and the cancelId are pinned to it: Return and Escape are the

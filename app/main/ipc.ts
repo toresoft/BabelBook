@@ -32,6 +32,8 @@ export interface IpcDeps {
   crypto: Crypto;
   /** The main-side catalogue, from which the dialogs take their words. */
   t: Translate;
+  /** What the system wears, from nativeTheme: the one truth about the theme. */
+  theme(): { dark: boolean };
   /**
    * Asks the window's user through the OS dialog. Injected like every dialog:
    * the question is assembled here, the pixels belong to the platform.
@@ -184,6 +186,8 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     "ui.confirm": async ({ kind, detail }) => ({
       confirmed: await deps.askConfirm(confirmQuestion(deps.t, deps.db, kind, detail ?? {})),
     }),
+
+    "ui.theme": async () => deps.theme(),
 
     "projects.list": async ({ filter }) => listProjects(deps.db, filter),
 
