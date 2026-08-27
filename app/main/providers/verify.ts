@@ -16,7 +16,7 @@ export interface VerifyResult {
 }
 
 export type VerifyCode =
-  | "missing-key" | "package-missing" | "unauthorized"
+  | "missing-key" | "package-missing" | "unsupported-provider" | "unauthorized"
   | "unreachable" | "bad-spec" | "unknown";
 
 export interface VerifyDeps {
@@ -36,6 +36,7 @@ const MAX_OUTPUT_TOKENS = 32;
 /** Resolution codes and verification codes are one vocabulary, mapped here. */
 const SPEC_CODES: Record<string, VerifyCode> = {
   PACKAGE_MISSING: "package-missing",
+  UNSUPPORTED_ROUTE: "unsupported-provider",
   MISSING_KEY: "missing-key",
   MISSING_ROUTE: "bad-spec",
   INVALID_ROUTE: "bad-spec",

@@ -399,7 +399,7 @@ export interface CatalogState {
  * are English, change without notice, and sometimes quote the key back.
  */
 export type VerifyCode =
-  | "missing-key" | "package-missing" | "unauthorized"
+  | "missing-key" | "package-missing" | "unsupported-provider" | "unauthorized"
   | "unreachable" | "bad-spec" | "unknown";
 
 export interface VerifyOutcome {

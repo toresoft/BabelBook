@@ -307,6 +307,7 @@
   "verify": {
     "missing-key": "No key: this provider does not have one.",
     "package-missing": "The route's package is not installed on this machine.",
+    "unsupported-provider": "babelBook does not serve this provider. Add it as a compatible endpoint, giving its address.",
     "unauthorized": "The key was refused.",
     "unreachable": "The endpoint could not be reached.",
     "bad-spec": "Provider or model not recognised.",

@@ -307,6 +307,7 @@
   "verify": {
     "missing-key": "Manca la chiave: questo provider non ne ha una.",
     "package-missing": "Il pacchetto della rotta non è installato su questa macchina.",
+    "unsupported-provider": "babelBook non serve questo provider. Aggiungilo come endpoint compatibile, scrivendone l'indirizzo.",
     "unauthorized": "La chiave è stata rifiutata.",
     "unreachable": "Endpoint irraggiungibile.",
     "bad-spec": "Provider o modello non riconosciuto.",

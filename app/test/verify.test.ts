@@ -70,6 +70,17 @@ describe("classifyError", () => {
       .toBe("bad-spec");
   });
 
+  it("tells a provider this application does not serve from a package left uninstalled", () => {
+    const unsupported = new ModelSpecError("UNSUPPORTED_ROUTE", "watsonx:m1", "not served");
+    const missing = new ModelSpecError("PACKAGE_MISSING", "openai:gpt-5", "not installed");
+
+    // The two have different remedies: one is an endpoint typed by hand, the
+    // other is a build that shipped wrong. One sentence for both would send the
+    // user looking for a terminal that is not there.
+    expect(classifyError(unsupported)).toBe("unsupported-provider");
+    expect(classifyError(missing)).toBe("package-missing");
+  });
+
   it("prefers a status the provider stated over words in its message", () => {
     // The SDK carries the status on the error; a message that merely mentions
     // a number is not a status, and reading it as one is how a book titled
