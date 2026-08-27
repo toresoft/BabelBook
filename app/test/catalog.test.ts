@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { gzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { pruneCatalog, routeOf, type CatalogProvider } from "../main/catalog/shape.ts";
 import { CATALOG_URL, readCatalog, refreshCatalog } from "../main/catalog/load.ts";
@@ -96,8 +96,44 @@ describe("the catalogue shape", () => {
   });
 
   it("turns a package name into the route the provider store speaks", () => {
-    expect(routeOf("@ai-sdk/openai-compatible")).toBe("openai-compatible");
-    expect(routeOf("@ai-sdk/anthropic")).toBe("anthropic");
+    expect(routeOf("@ai-sdk/openai-compatible", null)).toBe("openai-compatible");
+    expect(routeOf("@ai-sdk/anthropic", null)).toBe("anthropic");
+  });
+});
+
+async function providers(): Promise<Array<{ name: string; npm: string; api: string | null }>> {
+  const json = gunzipSync(await readFile("app/catalog/snapshot.json.gz")).toString("utf8");
+  return (JSON.parse(json) as { providers: Array<{ name: string; npm: string; api: string | null }> })
+    .providers;
+}
+
+describe("the route a catalogue entry takes", () => {
+  it("does not move a single route that already resolved, because the cache is keyed on it", async () => {
+    // The spec `openai:gpt-5` is the modelId a translation was cached under.
+    // A route that changes name makes a paid-for book translate itself again.
+    for (const provider of await providers()) {
+      if (!provider.npm.startsWith("@ai-sdk/")) continue;
+      const legacy = provider.npm.slice("@ai-sdk/".length);
+      if (legacy.includes("/")) continue; // never resolved: the regex refused it
+      expect(routeOf(provider.npm, provider.api)).toBe(legacy);
+    }
+  });
+
+  it("serves an unknown package through openai-compatible when the catalogue knows its address", () => {
+    expect(routeOf("some-new-publisher", "https://example.test/v1")).toBe("openai-compatible");
+  });
+
+  it("says it cannot serve an unknown package with no address", () => {
+    expect(routeOf("some-new-publisher", null)).toBeNull();
+  });
+
+  it("leaves exactly the four on the old spec unserved", async () => {
+    const unserved = (await providers())
+      .filter((provider) => routeOf(provider.npm, provider.api) === null)
+      .map((provider) => provider.name)
+      .sort();
+
+    expect(unserved).toEqual(["AIHubMix", "SAP AI Core", "Venice AI", "watsonx.ai"]);
   });
 });
 

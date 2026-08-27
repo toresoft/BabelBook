@@ -369,7 +369,8 @@ export interface LocalRuntime {
 export interface CatalogEntry {
   id: string;
   name: string;
-  route: string;
+  /** Null when this application serves no route for the entry's publisher. */
+  route: string | null;
   /** The endpoint's base URL, when the catalogue declares one. */
   baseUrl: string | null;
   options: Record<string, unknown>;

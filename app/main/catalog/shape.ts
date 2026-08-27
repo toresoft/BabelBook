@@ -12,6 +12,8 @@
  * tests, and it must never learn about files or the network.
  */
 
+import { routeForPackage } from "../../engine/backends/registry.ts";
+
 /** Per million tokens, as the catalogue declares them. */
 export interface CatalogCost {
   input: number | null;
@@ -57,9 +59,23 @@ export interface Catalog {
   providers: CatalogProvider[];
 }
 
-/** The route of the provider store: the package name without its scope. */
-export function routeOf(npm: string): string {
-  return npm.replace(/^@ai-sdk\//, "");
+/**
+ * The route that will serve a catalogue entry, or null when none will.
+ *
+ * Three answers, in order. The registry knows the package: that route. It does
+ * not, but the catalogue knows an address: `openai-compatible` reaches
+ * anything that speaks the protocol, and most publishers outside the SDK do.
+ * Neither: null, and the list says so where the choice is made — which beats a
+ * key configured, a button pressed, and a sentence about a package.
+ *
+ * The address matters because it is the one thing `openai-compatible` cannot
+ * invent. Twenty-two providers this application does serve have none either;
+ * their own package carries its endpoint, so they never needed one.
+ */
+export function routeOf(npm: string, api: string | null): string | null {
+  const known = routeForPackage(npm);
+  if (known !== null) return known;
+  return api === null || api === "" ? null : "openai-compatible";
 }
 
 function str(value: unknown): string | null {

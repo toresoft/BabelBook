@@ -17,13 +17,13 @@ import { routeOf, type Catalog, type CatalogProvider } from "./shape.ts";
 const SEARCH_LIMIT = 12;
 
 function toEntry(provider: CatalogProvider): CatalogEntry {
-  const route = routeOf(provider.npm);
+  const route = routeOf(provider.npm, provider.api);
   return {
     id: provider.id,
     name: provider.name,
     route,
     baseUrl: provider.api,
-    options: routeDefaults(route),
+    options: route === null ? {} : routeDefaults(route),
     models: provider.models.length,
   };
 }
