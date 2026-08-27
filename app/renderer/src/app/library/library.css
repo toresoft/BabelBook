@@ -6,17 +6,33 @@
 .tile__title h2 { margin: 0.4rem 0 0.2rem; font-size: 0.95rem; }
 .library__settings { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
 .library__empty { color: var(--text-muted); }
+/* auto-fit collapses the tracks nobody needs: a shelf of two still reads as
+   a full window, centred, instead of two tiles pinned to the left of an empty
+   half. The 18rem ceiling keeps a lone cover from becoming a poster. */
 .library__grid {
   display: grid; gap: 1.25rem; list-style: none; margin: 0; padding: 0;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 18rem));
+  justify-content: center;
 }
 .tile__cover { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
 .tile__cover--none {
   display: grid; place-items: center; background: var(--line); color: var(--text-muted); font-size: 0.8rem;
 }
-.tile__title { font-size: 0.95rem; margin: 0.6rem 0 0.2rem; }
-.tile__meta { display: flex; flex-wrap: wrap; gap: 0.4rem; font-size: 0.75rem; color: var(--text-muted); margin: 0; }
+.tile__title { font-size: 1rem; font-weight: 600; margin: 0.6rem 0 0.2rem; }
+.tile__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-muted); margin: 0; }
 .tile__layout { color: var(--warning); }
+/* The state is a badge, not a word among words: seen first, read second. The
+   quiet states keep the neutral line; the ones that ask for the user's eye
+   carry the colour of what they mean. */
+.tile__state {
+  border: 1px solid var(--line-strong); color: var(--text-muted);
+  border-radius: 999px; padding: 0.05rem 0.5rem; font-size: 0.72rem;
+}
+.tile__state--running { border-color: var(--accent); color: var(--accent); }
+.tile__state--composing { border-color: var(--accent); color: var(--accent); }
+.tile__state--done { border-color: var(--ok-line); color: var(--ok); }
+.tile__state--failed { border-color: var(--danger); color: var(--danger); }
+.tile__state--waiting-terms, .tile__state--waiting-code { border-color: var(--warning-line); color: var(--warning); }
 .tile__progress { height: 4px; background: var(--line); border-radius: 2px; margin-top: 0.5rem; }
 .tile__bar { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
 .tile__counts { font-size: 0.72rem; color: var(--text-muted); margin: 0.3rem 0 0; }

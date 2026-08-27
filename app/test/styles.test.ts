@@ -122,3 +122,15 @@ describe("the controls", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("the library", () => {
+  it("fills the window with what there is, rather than half of it", async () => {
+    const css = await readFile("app/renderer/src/app/library/library.css", "utf8");
+
+    // auto-fit collapses the tracks nobody needs, so a small shelf still reads
+    // as a full one; a width ceiling on the section would anchor it back to
+    // the left with an empty right half.
+    expect(css).toMatch(/grid-template-columns:\s*repeat\(\s*auto-fit\s*,/);
+    expect(css).not.toMatch(/\.library\s*\{[^}]*max-width/);
+  });
+});

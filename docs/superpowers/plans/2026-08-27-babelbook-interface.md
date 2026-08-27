@@ -1,6 +1,6 @@
 # babelBook — Piano 8: l'interfaccia
 
-**Stato: in corso** — Task 1–3 completi, al 2026-08-27.
+**Stato: in corso** — Task 1–4 completi, al 2026-08-27.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -159,14 +159,14 @@ Il conteggio dei progetti va calcolato **prima** di eliminare, il che significa 
 **Files:**
 - Modify: `app/renderer/src/app/library/*`
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 - "Nuovo progetto" è un pulsante primario, non un collegamento sottolineato;
 - la griglia riempie la finestra invece di lasciarne vuota metà;
 - la tessera ha una gerarchia leggibile: titolo, lingue e stato, poi l'avanzamento;
 - lo stato del progetto si distingue a colpo d'occhio, e non è solo una parola grigia fra le altre.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 ---
 
