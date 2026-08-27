@@ -59,9 +59,10 @@ compressi, di cui 6,7 sono `ai` da solo, dentro un runtime Electron da ~180 MB.
 
 ## Obiettivi
 
-- Ogni provider del catalogo è chiamabile senza che l'utente installi nulla.
-- Un provider che l'applicazione non può servire lo si sa **prima**, nella
-  lista, non dopo aver configurato una chiave e premuto Verifica.
+- I 199 provider che l'applicazione può servire sono chiamabili senza che
+  l'utente installi nulla.
+- I 4 che non può servire lo dicono **prima**, nella lista, non dopo che si è
+  configurata una chiave e premuto Verifica.
 - La risoluzione non compone più nomi di pacchetti da stringhe di database.
 - Nessuna traduzione già pagata viene invalidata.
 
@@ -72,10 +73,14 @@ compressi, di cui 6,7 sono `ai` da solo, dentro un runtime Electron da ~180 MB.
   lavoro.
 - Spedire una seconda copia dell'SDK (`ai@6` sotto alias) per i quattro
   pacchetti su specifica vecchia. Due SDK da aggiornare e due percorsi di
-  chiamata da mantenere è un costo permanente per due provider su 203, e i
+  chiamata da mantenere è un costo permanente per quattro provider su 203, e i
   quattro migreranno comunque a v4.
-- Qualunque modifica alla schermata provider, alla Verifica, al catalogo o
-  all'interfaccia. Sono lavori separati.
+- Scrivere nell'applicazione gli indirizzi che il catalogo non conosce. Un URL
+  inventato è peggio di uno assente, ed è lo stesso principio per cui il
+  catalogo non inventa i prezzi.
+- La riprogettazione della schermata provider. È un lavoro separato. In scopo
+  qui c'è soltanto la marcatura dei provider non servibili nella lista di
+  ricerca: senza, l'obiettivo di dirlo prima non esiste.
 - Modifiche al formato dello spec `route:id`.
 
 ## Decisioni
@@ -86,9 +91,9 @@ compressi, di cui 6,7 sono `ai` da solo, dentro un runtime Electron da ~180 MB.
 | Assetto del bundler | Invariato: `packages: "external"` resta |
 | Come si trova la factory | Registro esplicito rotta → import statico, in un file solo |
 | Chiave del registro | La rotta corta, non il nome del pacchetto |
-| Pacchetto sconosciuto con `api` | Servito da `@ai-sdk/openai-compatible` |
-| Pacchetto sconosciuto senza `api` | Non servibile, detto nella lista |
-| Provider su specifica v3 | Trattati come sconosciuti: ripiego su `openai-compatible` |
+| Pacchetto sconosciuto o su specifica v3, con `api` | Servito da `@ai-sdk/openai-compatible` |
+| Pacchetto sconosciuto o su specifica v3, senza `api` | Non servibile, marcato nella lista |
+| I 4 di oggi (SAP, AIHubMix, watsonx, Venice) | Non servibili: il catalogo non ne conosce l'indirizzo |
 | Migrazione del database | Nessuna |
 
 ## Il registro
@@ -143,10 +148,25 @@ contenere provider che il registro non conosce:
 3. **Altrimenti** → il provider non è servibile, e lo si dice nella lista prima
    che venga scelto.
 
-I quattro su specifica v3 cadono nel caso 2. Venice e AIHubMix sono gateway
-OpenAI-compatible e funzioneranno davvero. SAP AI Core e watsonx hanno
-protocollo e autenticazione propri: potrebbero non rispondere, e in quel caso
-lo dice la Verifica — che esiste per questo e costa un clic, non un libro.
+**Nello snapshot di oggi il caso 2 non ha occupanti, e il caso 3 ne ha
+quattro.** SAP AI Core, AIHubMix, watsonx.ai e Venice AI hanno tutti `api:
+null`: il loro pacchetto parla la specifica vecchia *e* il catalogo non
+conosce un indirizzo a cui puntare `openai-compatible`. Sono non servibili, e
+il lavoro consiste nel dirlo dove si sceglie invece che dopo.
+
+`api: null` non è di per sé un difetto: 22 provider del registro ce l'hanno
+nullo — Anthropic, OpenAI, Bedrock — perché il loro pacchetto conosce da sé il
+proprio endpoint. L'indirizzo serve solo a chi passa da `openai-compatible`.
+
+Il caso 2 resta scritto perché il catalogo si aggiorna dalla rete: la prossima
+versione può portare un pacchetto sconosciuto che un `api` ce l'ha, e allora
+funziona senza che nessuno tocchi il codice.
+
+Chi usa davvero uno dei quattro non è in un vicolo cieco: la schermata provider
+ha già **«Endpoint compatibile»**, dove si incollano nome, indirizzo e chiave a
+mano. Un provider che il catalogo non sa indirizzare è un provider da
+aggiungere scrivendone l'indirizzo, non un provider perduto — ed è anche il
+motivo per cui non serve inventarne uno noi.
 
 La scoperta della factory (`findFactory`) resta com'è: il match caseless sulla
 rotta e il ripiego sull'unico `create*` esportato coprono già le forme note. Non
