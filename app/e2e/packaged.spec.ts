@@ -65,5 +65,23 @@ test("the package opens, migrates its database and reads a book", async () => {
   expect(project).toMatchObject({ title: "Packaged" });
   expect(project!.progress.total).toBeGreaterThan(0);
 
+  // Reading a book proves the native binding shipped; it says nothing about
+  // the provider packages, which no phase before a run ever touches. This
+  // asks the packaged main process to load one, which is the same act a
+  // verification performs.
+  const loaded = await app.evaluate(({ app }) => {
+    // Playwright evaluates this callback through a VM script, which has no
+    // dynamic-import hook. Anchor Node's package loader inside the packaged
+    // app instead; resolution still happens from the ASAR's node_modules.
+    const require = process.getBuiltinModule("node:module")
+      .createRequire(`${app.getAppPath()}/package.json`);
+    const sdk = require("ai") as typeof import("ai");
+    const provider = require("@ai-sdk/openai-compatible") as
+      typeof import("@ai-sdk/openai-compatible");
+    return typeof sdk.generateText === "function"
+      && Object.keys(provider).some((key) => key.startsWith("create"));
+  });
+  expect(loaded).toBe(true);
+
   await app.close();
 });
