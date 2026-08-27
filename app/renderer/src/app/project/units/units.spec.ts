@@ -18,9 +18,9 @@ const rows: UnitRow[] = [
   },
 ];
 
-function bridge() {
+function bridge(total = 2) {
   return vi.fn(async (channel: string, _payload?: unknown) =>
-    channel === "units.list" ? { units: rows, total: 2 } : undefined);
+    channel === "units.list" ? { units: rows, total } : undefined);
 }
 
 function mount(invoke = bridge()) {
@@ -48,6 +48,52 @@ describe("Units", () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain("The road to Rivendell");
     expect(text).toContain("La strada per Gran Burrone");
+  });
+
+  it("says which column is the source and which the translation", async () => {
+    const { fixture } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Two prose columns with nothing over them answer nothing: the reader
+    // should never have to guess which side is whose language.
+    const columns = fixture.nativeElement.querySelector("[data-testid=unit-columns]");
+    expect(columns).not.toBeNull();
+    const catalogue = it_IT as unknown as { units: Record<string, string> };
+    expect(columns.textContent).toContain(catalogue.units["sourceColumn"]);
+    expect(columns.textContent).toContain(catalogue.units["translationColumn"]);
+  });
+
+  it("keeps the pager off a single page", async () => {
+    const { fixture } = mount(bridge(2));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Two disabled buttons under a list that ended are not navigation: they
+    // are an admission that the list is short.
+    expect(fixture.nativeElement.querySelector("[data-testid=units-back]")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=units-more]")).toBeNull();
+  });
+
+  it("shows the pager when there is more than one page", async () => {
+    const { fixture } = mount(bridge(120));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=units-back]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=units-more]")).not.toBeNull();
+  });
+
+  it("keeps the count beside the filter that produces it", async () => {
+    const { fixture } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The count answers the filters, so it lives next to them — not as a
+    // report somewhere below the list it counted.
+    const bar = fixture.nativeElement.querySelector(".units__bar");
+    const afterSearch = bar.querySelector(".units__search").nextElementSibling;
+    expect(afterSearch.classList.contains("units__count")).toBe(true);
   });
 
   it("says a unit is untranslated rather than showing an empty column", async () => {

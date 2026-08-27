@@ -1,6 +1,6 @@
 # babelBook — Piano 8: l'interfaccia
 
-**Stato: in corso** — Task 1–4 completi, al 2026-08-27.
+**Stato: in corso** — Task 1–5 completi, al 2026-08-27.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -175,7 +175,7 @@ Il conteggio dei progetti va calcolato **prima** di eliminare, il che significa 
 **Files:**
 - Modify: `app/renderer/src/app/project/units/*`, `app/renderer/src/app/new-project/*`
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 Unità:
 - le due colonne hanno **un'intestazione** che dice quale sorgente e quale traduzione;
@@ -186,7 +186,7 @@ Nuovo progetto:
 - "Crea" è primario, "Annulla" secondario, e **annullare chiede** (Task 3);
 - la stima è l'elemento che si legge per primo dopo il titolo, perché è l'informazione su cui si decide.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 ---
 

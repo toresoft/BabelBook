@@ -28,6 +28,8 @@ const PAGE = 50;
 export class Units {
   readonly projectId = input.required<string>();
   readonly states = STATES;
+  /** The page size, on the template too: the pager is hidden while one page holds all. */
+  readonly pageSize = PAGE;
 
   readonly units = signal<UnitRow[]>([]);
   readonly total = signal(0);

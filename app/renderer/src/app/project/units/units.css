@@ -4,6 +4,18 @@
 .units__search { flex: 1; min-width: 12rem; }
 .units__count, .units__empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 
+/* The two columns are named once, over the list: which side is the source and
+   which the translation is not something the reader should have to deduce.
+   Only when the pair is actually side by side — stacked below that width the
+   labels would name two distant paragraphs. */
+.units__columns { display: none; }
+@media (min-width: 46rem) {
+  .units__columns {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;
+    padding: 0 0.7rem; color: var(--text-muted); font-size: 0.75rem;
+  }
+}
+
 .units__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
 .row { border: 1px solid var(--line); border-radius: 6px; padding: 0.6rem; display: grid; gap: 0.35rem; }
 .row__head { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }

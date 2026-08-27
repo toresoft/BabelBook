@@ -136,4 +136,38 @@ describe("NewProject", () => {
     expect(calls(invoke, "ui.confirm")).toHaveLength(0);
     expect(calls(invoke, "project.delete")).toHaveLength(0);
   });
+
+  it("makes Create the primary act and Cancel the quiet one", async () => {
+    const { fixture } = mount();
+    await chosen(fixture);
+    fixture.detectChanges();
+
+    // The two buttons do opposite things of opposite weight: identical ones
+    // invited the click that throws the analysis away.
+    const create = fixture.nativeElement.querySelector("[data-testid=create]");
+    const cancel = fixture.nativeElement.querySelector("[data-testid=cancel]");
+    expect(create.className).toContain("btn--primary");
+    expect(cancel.className).not.toContain("btn--primary");
+  });
+
+  it("puts the estimate first after the title, before the form it decides about", async () => {
+    const { fixture } = mount();
+    await chosen(fixture);
+
+    fixture.componentInstance.pickProvider("pv1");
+    fixture.componentInstance.pickModel("m1");
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    const at = (selector: string): number => {
+      const found = root.querySelector(selector);
+      expect(found, selector).not.toBeNull();
+      return [...root.querySelectorAll("*")].indexOf(found!);
+    };
+
+    // The estimate is what the decision turns on, so it is the first thing
+    // read after the book — not a footnote below the whole form.
+    expect(at("[data-testid=preview-title]")).toBeLessThan(at("[data-testid=estimate]"));
+    expect(at("[data-testid=estimate]")).toBeLessThan(at("[data-testid=target-language]"));
+  });
 });

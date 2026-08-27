@@ -229,6 +229,8 @@
     "allStates": "All states",
     "search": "Search the source and the translation",
     "count": "{{count}} units",
+    "sourceColumn": "Source",
+    "translationColumn": "Translation",
     "empty": "No units match.",
     "forced": "your decision",
     "untranslated": "Not translated yet",

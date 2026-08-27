@@ -1,7 +1,7 @@
 <section class="new" data-testid="new-project-screen" *transloco="let t">
   <h1>{{ t('newProject.title') }}</h1>
 
-  <button type="button" data-testid="choose-epub" (click)="choose()">
+  <button type="button" class="btn" data-testid="choose-epub" (click)="choose()">
     {{ t('newProject.chooseEpub') }}
   </button>
   @if (chosenName()) {
@@ -40,6 +40,22 @@
         }
       </div>
     </div>
+
+    @if (estimated(); as guess) {
+      <p class="new__estimate" data-testid="estimate">
+        @if (guess.cost === null) {
+          {{ t('newProject.estimate', { tokens: guess.tokensIn + guess.tokensOut }) }}
+        } @else {
+          {{ t('newProject.estimateWithCost', {
+            tokens: guess.tokensIn + guess.tokensOut,
+            cost: guess.cost.toFixed(2),
+          }) }}
+        }
+      </p>
+      @if (guess.cost === null) {
+        <p class="new__hint">{{ t('newProject.noPrices') }}</p>
+      }
+    }
 
     <label>
       {{ t('newProject.targetLanguage') }}
@@ -87,25 +103,13 @@
       <small>{{ t('newProject.descriptionHint') }}</small>
     </label>
 
-    @if (estimated(); as guess) {
-      <p class="new__estimate" data-testid="estimate">
-        @if (guess.cost === null) {
-          {{ t('newProject.estimate', { tokens: guess.tokensIn + guess.tokensOut }) }}
-        } @else {
-          {{ t('newProject.estimateWithCost', {
-            tokens: guess.tokensIn + guess.tokensOut,
-            cost: guess.cost.toFixed(2),
-          }) }}
-        }
-      </p>
-      @if (guess.cost === null) {
-        <p class="new__hint">{{ t('newProject.noPrices') }}</p>
-      }
-    }
-
     <div class="new__actions">
-      <button type="button" data-testid="create" (click)="create()">{{ t('newProject.create') }}</button>
-      <button type="button" data-testid="cancel" (click)="cancel()">{{ t('newProject.cancel') }}</button>
+      <button type="button" class="btn btn--primary" data-testid="create" (click)="create()">
+        {{ t('newProject.create') }}
+      </button>
+      <button type="button" class="btn" data-testid="cancel" (click)="cancel()">
+        {{ t('newProject.cancel') }}
+      </button>
     </div>
   }
 </section>

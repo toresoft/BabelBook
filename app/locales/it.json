@@ -229,6 +229,8 @@
     "allStates": "Tutti gli stati",
     "search": "Cerca nel sorgente e nella traduzione",
     "count": "{{count}} unità",
+    "sourceColumn": "Sorgente",
+    "translationColumn": "Traduzione",
     "empty": "Nessuna unità con questi criteri.",
     "forced": "deciso da te",
     "untranslated": "Non ancora tradotta",

@@ -24,6 +24,13 @@
     <span class="units__count">{{ t('units.count', { count: total() }) }}</span>
   </header>
 
+  @if (units().length > 0) {
+    <div class="units__columns" data-testid="unit-columns">
+      <span>{{ t('units.sourceColumn') }}</span>
+      <span>{{ t('units.translationColumn') }}</span>
+    </div>
+  }
+
   @if (units().length === 0 && !loading()) {
     <p class="units__empty" data-testid="units-empty">{{ t('units.empty') }}</p>
   }
@@ -54,16 +61,18 @@
     }
   </ul>
 
-  <div class="units__pager">
-    <button type="button" data-testid="units-back" [disabled]="offset() === 0" (click)="back()">
-      {{ t('units.previous') }}
-    </button>
-    <button
-      type="button"
-      data-testid="units-more"
-      [disabled]="offset() + units().length >= total()"
-      (click)="more()">
-      {{ t('units.next') }}
-    </button>
-  </div>
+  @if (total() > pageSize) {
+    <div class="units__pager">
+      <button type="button" data-testid="units-back" [disabled]="offset() === 0" (click)="back()">
+        {{ t('units.previous') }}
+      </button>
+      <button
+        type="button"
+        data-testid="units-more"
+        [disabled]="offset() + units().length >= total()"
+        (click)="more()">
+        {{ t('units.next') }}
+      </button>
+    </div>
+  }
 </section>
