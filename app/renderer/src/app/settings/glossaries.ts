@@ -25,7 +25,6 @@ export class Glossaries {
   readonly draft = signal<GlossaryView | null>(null);
   readonly saving = signal(false);
   readonly failure = signal<string | null>(null);
-  readonly detached = signal<number | null>(null);
 
   #ipc = inject(IpcService);
 
@@ -140,14 +139,21 @@ export class Glossaries {
   }
 
   /**
-   * Removing one says how many projects lost it.
+   * The question before the glossary goes.
    *
-   * A project that loses its terminology in silence is a book that changes
-   * register halfway through with no explanation.
+   * It says how many projects are about to lose this terminology — counted in
+   * the main process, before anything is destroyed — because that is the
+   * number the answer depends on. What the deletion itself detached is a
+   * report about something nobody can undo.
    */
   async remove(glossary: GlossaryView): Promise<void> {
-    const { detachedFrom } = await this.#ipc.invoke("glossary.delete", { id: glossary.id });
-    this.detached.set(detachedFrom);
+    const { confirmed } = await this.#ipc.invoke("ui.confirm", {
+      kind: "deleteGlossary",
+      detail: { id: glossary.id, name: glossary.name },
+    });
+    if (!confirmed) return;
+
+    await this.#ipc.invoke("glossary.delete", { id: glossary.id });
     await this.reload();
   }
 }

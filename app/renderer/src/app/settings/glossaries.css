@@ -1,7 +1,7 @@
 .glossaries { display: grid; gap: 0.75rem; }
 .glossaries__bar { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
 .glossaries__bar h2 { margin: 0; font-size: 1rem; }
-.glossaries__lead, .glossaries__empty, .glossaries__detached { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
+.glossaries__lead, .glossaries__empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 
 .glossaries__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
 .glossary { border: 1px solid var(--line); border-radius: 6px; padding: 0.7rem; display: grid; gap: 0.3rem; }
@@ -10,7 +10,6 @@
   color: var(--text-muted); font-size: 0.8rem; margin: 0;
 }
 .glossary__actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-.glossary__delete { color: var(--danger); }
 
 .glossaries__add { display: flex; gap: 0.5rem; }
 

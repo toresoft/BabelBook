@@ -32,7 +32,23 @@ export const DEFAULT_SETTINGS: Settings = {
  * copies of a channel list drift, and the drift shows up as a feature that
  * silently does nothing.
  */
+
+/** The destructive acts that are asked about before they happen. */
+export const CONFIRM_KINDS = [
+  "deleteProject", "deleteProvider", "deleteGlossary", "abandonProject",
+] as const;
+export type ConfirmKind = (typeof CONFIRM_KINDS)[number];
+
 export interface Invocations {
+  /**
+   * A question, and the answer. The words come from the catalogue on the main
+   * side, and the dialog is the operating system's: it follows the theme the
+   * rest of the desktop follows.
+   */
+  "ui.confirm": {
+    req: { kind: ConfirmKind; detail?: Record<string, string | number> };
+    res: { confirmed: boolean };
+  };
   "projects.list": { req: { filter?: string }; res: ProjectSummary[] };
   "project.chooseEpub": { req: undefined; res: { path: string; name: string } | null };
   "project.create": { req: CreateProjectRequest; res: CreatedProject };
@@ -140,6 +156,7 @@ export interface Events {
 }
 
 export const INVOCATIONS = [
+  "ui.confirm",
   "projects.list", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "project.get", "units.list",
   "run.start", "run.pause", "run.approve",

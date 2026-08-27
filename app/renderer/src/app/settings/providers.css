@@ -11,7 +11,6 @@
 .provider__key--set { background: var(--ok-soft); color: var(--ok); }
 .provider__key--missing { background: var(--warning-soft); color: var(--warning-soft-text); }
 .provider__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-.provider__delete { color: var(--danger); }
 .provider__verdict { margin: 0; font-size: 0.85rem; color: var(--danger); }
 .provider__verdict--ok { color: var(--ok); }
 

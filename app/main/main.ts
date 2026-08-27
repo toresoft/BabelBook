@@ -310,6 +310,21 @@ app.whenReady().then(async () => {
     db,
     userDataDir,
     crypto,
+    t,
+    // The question is assembled in the ipc layer; this is only the platform's
+    // part of it. The buttons' order is the contract — cancel first — so the
+    // defaultId and the cancelId are pinned to it: Return and Escape are the
+    // safe answer, never the destructive one.
+    askConfirm: async (question) => {
+      const chosen = await dialog.showMessageBox({
+        type: "warning",
+        buttons: [question.cancel, question.verify],
+        defaultId: 0,
+        cancelId: 0,
+        message: question.message,
+      });
+      return chosen.response === 1;
+    },
     chooseEpub: async () => {
       // The native dialog cannot be driven from a test, so the end-to-end run
       // names the file it would have chosen. Read here and nowhere else: a

@@ -112,4 +112,28 @@ describe("NewProject", () => {
     const sent = calls(invoke, "project.update")[0]![1] as Record<string, unknown>;
     expect(sent).toMatchObject({ id: "p1", providerId: "pv1", modelId: "m1" });
   });
+
+  it("asks before abandoning the project it just analysed, and keeps it when refused", async () => {
+    const { fixture, invoke } = mount(bridge({ "ui.confirm": { confirmed: false } }));
+    await chosen(fixture);
+
+    await fixture.componentInstance.cancel();
+
+    // Cancelling destroys the analysed project and its workspace: the
+    // question is what stands between the button and that.
+    expect(calls(invoke, "ui.confirm")[0]![1]).toMatchObject({
+      kind: "abandonProject", detail: { title: "A Book" },
+    });
+    expect(calls(invoke, "project.delete")).toHaveLength(0);
+  });
+
+  it("leaves without a question when there is nothing to destroy yet", async () => {
+    const { fixture, invoke } = mount();
+    await fixture.whenStable();
+
+    await fixture.componentInstance.cancel();
+
+    expect(calls(invoke, "ui.confirm")).toHaveLength(0);
+    expect(calls(invoke, "project.delete")).toHaveLength(0);
+  });
 });

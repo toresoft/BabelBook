@@ -123,7 +123,6 @@
     "edit": "Modifica",
     "export": "Esporta",
     "delete": "Elimina",
-    "detached": "Staccato da {{count}} progetti.",
     "name": "Nome",
     "description": "Descrizione",
     "descriptionHint": "La legge il voto sul dominio per decidere se questo glossario si applica a un libro.",
@@ -351,6 +350,24 @@
     "confirm": "Una traduzione è in corso. Uscire la mette in pausa: alla riapertura potrà riprendere senza ritradurre ciò che è già fatto.",
     "pauseAndQuit": "Metti in pausa ed esci",
     "cancel": "Annulla"
+  },
+  "confirm": {
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "abandon": "Abbandona",
+    "deleteProject": {
+      "message": "Eliminare «{{title}}»? Il progetto, il suo spazio di lavoro e l'EPUB tradotto verranno cancellati."
+    },
+    "abandonProject": {
+      "message": "Abbandonare la creazione di «{{title}}»? Il progetto appena analizzato e il suo spazio di lavoro verranno cancellati."
+    },
+    "deleteProvider": {
+      "message": "Eliminare il provider «{{name}}»? Anche la sua chiave cifrata verrà rimossa."
+    },
+    "deleteGlossary": {
+      "message": "Eliminare il glossario «{{name}}»? {{count}} progetti ne perderanno la terminologia.",
+      "messageNone": "Eliminare il glossario «{{name}}»? Nessun progetto lo usa."
+    }
   },
   "codes": {
     "unit-fell-back": "Un'unità è rimasta nella lingua di partenza dopo i tentativi previsti.",

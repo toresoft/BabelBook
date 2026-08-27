@@ -30,7 +30,7 @@
           </button>
           <button
             type="button"
-            class="glossary__delete"
+            class="btn btn--danger"
             [attr.data-testid]="'delete-glossary-' + glossary.id"
             (click)="remove(glossary)">
             {{ t('glossaries.delete') }}
@@ -39,12 +39,6 @@
       </li>
     }
   </ul>
-
-  @if (detached() !== null) {
-    <p class="glossaries__detached" data-testid="detached">
-      {{ t('glossaries.detached', { count: detached() }) }}
-    </p>
-  }
 
   @if (draft() === null) {
     <div class="glossaries__add">

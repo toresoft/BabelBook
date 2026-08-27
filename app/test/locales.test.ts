@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { CONFIRM_KINDS } from "../shared/channels.ts";
 
 const load = async (language: string) =>
   JSON.parse(await readFile(`app/locales/${language}.json`, "utf8")) as Record<string, unknown>;
@@ -53,6 +54,25 @@ describe("catalogues", () => {
       "waiting-code", "composing", "paused", "done", "incomplete", "failed",
     ]) {
       expect(defined).toContain(`state.${state}`);
+    }
+  });
+
+  it("has a question, in every language, for every destructive act there is", async () => {
+    const itKeys = keys(await load("it"));
+    const enKeys = keys(await load("en"));
+
+    // The main process assembles the confirmation dialogs from these keys: a
+    // missing one is a question that renders as its own raw key, in a dialog
+    // the operating system draws.
+    const wanted = [
+      ...CONFIRM_KINDS.map((kind) => `confirm.${kind}.message`),
+      "confirm.deleteGlossary.messageNone",
+      "confirm.cancel", "confirm.delete", "confirm.abandon",
+    ];
+
+    for (const key of wanted) {
+      expect(itKeys, `it must define ${key}`).toContain(key);
+      expect(enKeys, `en must define ${key}`).toContain(key);
     }
   });
 

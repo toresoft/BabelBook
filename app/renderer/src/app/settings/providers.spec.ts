@@ -314,4 +314,24 @@ describe("Providers", () => {
     // An edit has no business rewriting the models it did not touch.
     expect(body["models"]).toBeUndefined();
   });
+
+  it("asks before a provider goes, and a refusal keeps it", async () => {
+    const stored: Provider = {
+      id: "p1", name: "Acme", route: "acme-compatible",
+      baseUrl: "https://api.acme.test/v1", headers: {}, options: {},
+      catalogId: "acme", catalogAt: "2026-08-20T10:00:00.000Z",
+      models: [priced], hasKey: true,
+    };
+    const { fixture, invoke } = mount(bridge({ "ui.confirm": { confirmed: false } }));
+    await fixture.whenStable();
+
+    await fixture.componentInstance.remove(stored);
+
+    // The provider and its encrypted key go together; the question says which
+    // one it is about to take.
+    expect(calls(invoke, "ui.confirm")[0]![1]).toMatchObject({
+      kind: "deleteProvider", detail: { name: "Acme" },
+    });
+    expect(calls(invoke, "provider.delete")).toHaveLength(0);
+  });
 });

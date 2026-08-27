@@ -1,6 +1,6 @@
 # babelBook — Piano 8: l'interfaccia
 
-**Stato: in corso** — Task 1–2 completi, al 2026-08-27.
+**Stato: in corso** — Task 1–3 completi, al 2026-08-27.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -138,7 +138,7 @@ Le classi vanno nel foglio globale e i componenti le usano. Tre classi, non un f
 };
 ```
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 - ogni eliminazione **chiede prima**, e un rifiuto non tocca niente;
 - il pulsante affermativo porta un verbo specifico, mai "OK";
@@ -146,9 +146,11 @@ Le classi vanno nel foglio globale e i componenti le usano. Tre classi, non un f
 - la domanda sul glossario **dice quanti progetti perderanno la terminologia**, prima e non dopo;
 - le parole arrivano dal catalogo: un test in più fra i quattro che già lo sorvegliano.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 Il conteggio dei progetti va calcolato **prima** di eliminare, il che significa una lettura in più: è il punto del task.
+
+> Nota d'esecuzione: la riga «Libreria → eliminare un progetto» descrive un'azione che in libreria non esiste ancora — nessun pulsante la invoca. Il canale `ui.confirm` la dichiara e la implementa (`deleteProject`, con il conteggio e le parole pronte); il pulsante arriverà col compito che lo chiederà.
 
 ---
 

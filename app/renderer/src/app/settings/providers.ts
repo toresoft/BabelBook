@@ -318,7 +318,14 @@ export class Providers implements OnDestroy {
     await this.reload();
   }
 
+  /** The provider and its encrypted key go together, and only after the question. */
   async remove(provider: Provider): Promise<void> {
+    const { confirmed } = await this.#ipc.invoke("ui.confirm", {
+      kind: "deleteProvider",
+      detail: { name: provider.name },
+    });
+    if (!confirmed) return;
+
     await this.#ipc.invoke("provider.delete", { id: provider.id });
     this.verified.update(({ [provider.id]: _gone, ...rest }) => rest);
     await this.reload();

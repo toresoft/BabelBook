@@ -2,10 +2,11 @@ import { readFile, writeFile } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_SETTINGS, EVENTS, INVOCATIONS,
-  type CatalogEntry, type CatalogState, type Events, type Handlers, type LocalRuntime,
-  type ProviderModel, type Settings, type VerifyOutcome,
+  type CatalogEntry, type CatalogState, type ConfirmKind, type Events, type Handlers,
+  type LocalRuntime, type ProviderModel, type Settings, type VerifyOutcome,
 } from "../shared/channels.ts";
 import { packFailure } from "../shared/dto.ts";
+import { type Translate } from "./catalogue.ts";
 import { createProject } from "./projects/create.ts";
 import {
   createProvider, deleteProvider, listProviders, PRESETS, ProviderStoreError, updateProvider,
@@ -29,6 +30,13 @@ export interface IpcDeps {
   userDataDir: string;
   /** The keyring. In production `safeStorage`; in a test, whatever hides bytes. */
   crypto: Crypto;
+  /** The main-side catalogue, from which the dialogs take their words. */
+  t: Translate;
+  /**
+   * Asks the window's user through the OS dialog. Injected like every dialog:
+   * the question is assembled here, the pixels belong to the platform.
+   */
+  askConfirm(question: ConfirmQuestion): Promise<boolean>;
   /** Opens the native dialog. The main process owns which files exist. */
   chooseEpub(): Promise<{ path: string; name: string } | null>;
   /**
@@ -123,6 +131,47 @@ function workspaceOf(db: DatabaseSync, id: string): Workspace {
 }
 
 /**
+ * The question a destructive act is asked before it happens.
+ *
+ * The cancel comes first, and with it travel the Return and the Escape: the
+ * key that is easiest to hit must never be the one that destroys. The way in
+ * carries a verb that names the act — an "OK" would make every deletion the
+ * same word.
+ */
+export interface ConfirmQuestion {
+  cancel: string;
+  verify: string;
+  message: string;
+}
+
+export function confirmQuestion(
+  t: Translate,
+  db: DatabaseSync,
+  kind: ConfirmKind,
+  detail: Record<string, string | number>,
+): ConfirmQuestion {
+  const base = {
+    cancel: t("confirm.cancel"),
+    verify: t(kind === "abandonProject" ? "confirm.abandon" : "confirm.delete"),
+  };
+
+  if (kind === "deleteGlossary") {
+    // Counted before anything is destroyed — afterwards there is nothing left
+    // to count — because the number belongs in the question, where it can
+    // still change the answer.
+    const attached = db.prepare("SELECT count(*) AS n FROM project_glossary WHERE glossary_id = ?")
+      .get(String(detail["id"] ?? "")) as { n: number };
+    return {
+      ...base,
+      message: t(attached.n === 0 ? "confirm.deleteGlossary.messageNone" : "confirm.deleteGlossary.message",
+        { name: detail["name"] ?? "", count: attached.n }),
+    };
+  }
+
+  return { ...base, message: t(`confirm.${kind}.message`, detail) };
+}
+
+/**
  * The handlers, as data.
  *
  * Returning the map instead of registering it straight onto `ipcMain` is what
@@ -132,6 +181,10 @@ function workspaceOf(db: DatabaseSync, id: string): Workspace {
  */
 export function buildHandlers(deps: IpcDeps): Handlers {
   return {
+    "ui.confirm": async ({ kind, detail }) => ({
+      confirmed: await deps.askConfirm(confirmQuestion(deps.t, deps.db, kind, detail ?? {})),
+    }),
+
     "projects.list": async ({ filter }) => listProjects(deps.db, filter),
 
     "project.chooseEpub": async () => deps.chooseEpub(),

@@ -23,6 +23,7 @@ function bridge(answers: Partial<Record<string, unknown>> = {}) {
   return vi.fn(async (channel: string, _payload?: unknown) => {
     if (channel in answers) return answers[channel];
     if (channel === "glossaries.list") return [fantasy];
+    if (channel === "ui.confirm") return { confirmed: true };
     if (channel === "glossary.delete") return { detachedFrom: 3 };
     return undefined;
   });
@@ -79,17 +80,31 @@ describe("Glossaries", () => {
     expect(calls(invoke, "glossaries.list")).toHaveLength(before);
   });
 
-  it("says how many projects lost the glossary that was deleted", async () => {
-    const { fixture } = mount();
+  it("asks before a glossary goes, and a refusal deletes nothing", async () => {
+    const { fixture, invoke } = mount(bridge({ "ui.confirm": { confirmed: false } }));
+    await fixture.whenStable();
+
+    await fixture.componentInstance.remove(fantasy);
+
+    // The question names the glossary, so the count of the projects about to
+    // lose it can be read before the answer, not after the fact.
+    expect(calls(invoke, "ui.confirm")[0]![1]).toMatchObject({
+      kind: "deleteGlossary", detail: { id: "g1", name: "fantasy" },
+    });
+    expect(calls(invoke, "glossary.delete")).toHaveLength(0);
+  });
+
+  it("deletes once the question is answered, and reports nothing afterwards", async () => {
+    const { fixture, invoke } = mount();
     await fixture.whenStable();
 
     await fixture.componentInstance.remove(fantasy);
     fixture.detectChanges();
 
-    // Silence here is a book that changes register halfway through with no
-    // explanation.
-    expect(fixture.nativeElement.querySelector("[data-testid=detached]")).not.toBeNull();
-    expect(fixture.componentInstance.detached()).toBe(3);
+    expect(calls(invoke, "glossary.delete")).toHaveLength(1);
+    // The projects that lost the glossary were named in the question; saying
+    // it again after the fact is a report about something nobody can undo.
+    expect(fixture.nativeElement.querySelector("[data-testid=detached]")).toBeNull();
   });
 
   it("edits a copy, so abandoning the form leaves the list untouched", async () => {

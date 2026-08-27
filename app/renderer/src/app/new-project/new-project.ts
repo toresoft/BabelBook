@@ -118,14 +118,23 @@ export class NewProject {
   }
 
   /**
-   * Abandoning removes the project and its workspace.
+   * Abandoning removes the project and its workspace — after asking.
    *
    * The analysis had to write to answer at all, and leaving it behind would
-   * show a project in the library the user believes they cancelled.
+   * show a project in the library the user believes they cancelled. But the
+   * writing is real work being thrown away, so the question comes first; with
+   * nothing analysed yet, there is nothing to destroy and no question to ask.
    */
   async cancel(): Promise<void> {
     const found = this.project();
-    if (found !== null) await this.#ipc.invoke("project.delete", { id: found.id });
+    if (found !== null) {
+      const { confirmed } = await this.#ipc.invoke("ui.confirm", {
+        kind: "abandonProject",
+        detail: { title: found.title },
+      });
+      if (!confirmed) return;
+      await this.#ipc.invoke("project.delete", { id: found.id });
+    }
     await this.#router.navigateByUrl("/");
   }
 }

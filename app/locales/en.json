@@ -123,7 +123,6 @@
     "edit": "Edit",
     "export": "Export",
     "delete": "Delete",
-    "detached": "Detached from {{count}} projects.",
     "name": "Name",
     "description": "Description",
     "descriptionHint": "The domain vote reads it to decide whether this glossary applies to a book.",
@@ -351,6 +350,24 @@
     "confirm": "A translation is in flight. Quitting pauses it: when the app reopens it can resume without retranslating what is already done.",
     "pauseAndQuit": "Pause and quit",
     "cancel": "Cancel"
+  },
+  "confirm": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "abandon": "Abandon",
+    "deleteProject": {
+      "message": "Delete “{{title}}”? The project, its workspace and the translated EPUB will be removed."
+    },
+    "abandonProject": {
+      "message": "Abandon creating “{{title}}”? The project just analysed and its workspace will be removed."
+    },
+    "deleteProvider": {
+      "message": "Delete the provider “{{name}}”? Its encrypted key is removed with it."
+    },
+    "deleteGlossary": {
+      "message": "Delete the glossary “{{name}}”? {{count}} projects will lose its terminology.",
+      "messageNone": "Delete the glossary “{{name}}”? No project uses it."
+    }
   },
   "codes": {
     "unit-fell-back": "A unit stayed in the source language after the attempts it was given.",
