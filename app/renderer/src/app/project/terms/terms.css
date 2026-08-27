@@ -1,28 +1,28 @@
 .terms { display: grid; gap: 0.75rem; }
 .terms__bar { display: flex; gap: 1rem; align-items: baseline; }
 .terms__bar h2 { margin: 0; font-size: 1rem; }
-.terms__lead, .terms__empty { color: #6b7280; font-size: 0.85rem; margin: 0; }
+.terms__lead, .terms__empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 
 .terms__warning {
-  border: 1px solid #fbbf24; background: #fffbeb; border-radius: 6px;
+  border: 1px solid var(--warning-line); background: var(--warning-box); border-radius: 6px;
   padding: 0.75rem; display: grid; gap: 0.4rem;
 }
 .terms__warning p { margin: 0; font-size: 0.9rem; }
-.terms__cost { color: #92400e; font-size: 0.85rem; }
+.terms__cost { color: var(--warning-soft-text); font-size: 0.85rem; }
 .terms__warningActions { display: flex; gap: 0.5rem; }
 
 .terms__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-.term { border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.7rem; display: grid; gap: 0.35rem; }
-.term--decided { border-color: #93c5fd; background: #eff6ff; }
+.term { border: 1px solid var(--line); border-radius: 6px; padding: 0.7rem; display: grid; gap: 0.35rem; }
+.term--decided { border-color: var(--accent-line); background: var(--accent-wash); }
 .term__head { display: flex; gap: 0.6rem; align-items: baseline; flex-wrap: wrap; }
 .term__source { font-size: 0.95rem; }
 .term__occurrences, .term__origin, .term__approval, .term__context, .term__sense {
-  color: #6b7280; font-size: 0.8rem; margin: 0;
+  color: var(--text-muted); font-size: 0.8rem; margin: 0;
 }
 .term__context { font-style: italic; }
 .term__fields { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .term__fields label { display: grid; gap: 0.2rem; font-size: 0.85rem; }
 .term__actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 
-.terms__failure { color: #b91c1c; font-size: 0.85rem; margin: 0; }
+.terms__failure { color: var(--danger); font-size: 0.85rem; margin: 0; }
 .terms__footer { display: flex; gap: 0.6rem; flex-wrap: wrap; }

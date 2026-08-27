@@ -1,53 +1,53 @@
 .providers { display: grid; gap: 0.75rem; }
 .providers h2 { margin: 0; font-size: 1rem; }
-.providers__lead, .providers__empty { color: #6b7280; font-size: 0.85rem; margin: 0; }
+.providers__lead, .providers__empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 
 .providers__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
-.provider { border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.85rem; display: grid; gap: 0.4rem; }
+.provider { border: 1px solid var(--line); border-radius: 6px; padding: 0.85rem; display: grid; gap: 0.4rem; }
 .provider__head { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
 .provider__name { margin: 0; font-size: 1rem; }
-.provider__route, .provider__url, .provider__models { color: #6b7280; font-size: 0.85rem; margin: 0; }
+.provider__route, .provider__url, .provider__models { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 .provider__key { font-size: 0.75rem; border-radius: 999px; padding: 0.1rem 0.5rem; }
-.provider__key--set { background: #dcfce7; color: #166534; }
-.provider__key--missing { background: #fef3c7; color: #92400e; }
+.provider__key--set { background: var(--ok-soft); color: var(--ok); }
+.provider__key--missing { background: var(--warning-soft); color: var(--warning-soft-text); }
 .provider__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-.provider__delete { color: #b91c1c; }
-.provider__verdict { margin: 0; font-size: 0.85rem; color: #b91c1c; }
-.provider__verdict--ok { color: #166534; }
+.provider__delete { color: var(--danger); }
+.provider__verdict { margin: 0; font-size: 0.85rem; color: var(--danger); }
+.provider__verdict--ok { color: var(--ok); }
 
 /* The add section is a picker first: a search box, the local runtimes above
    the results, and the compatible endpoint as the declared last resort. */
 .providers__add { display: grid; gap: 0.5rem; }
 .providers__add label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
-.providers__add small { color: #6b7280; font-size: 0.8rem; }
-.providers__runtimes-title { margin: 0; font-size: 0.8rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
+.providers__add small { color: var(--text-muted); font-size: 0.8rem; }
+.providers__runtimes-title { margin: 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .providers__runtime, .providers__entry, .providers__preset {
   justify-self: start; padding: 0.35rem 0.75rem; border-radius: 999px;
-  border: 1px solid #d1d5db; background: none; cursor: pointer;
+  border: 1px solid var(--line-strong); background: none; cursor: pointer;
 }
-.providers__runtime { border-color: #86efac; }
-.providers__preset { color: #2563eb; }
+.providers__runtime { border-color: var(--ok-line); }
+.providers__preset { color: var(--accent); }
 .providers__catalog-row { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
-.providers__catalog { color: #6b7280; font-size: 0.8rem; margin: 0; }
+.providers__catalog { color: var(--text-muted); font-size: 0.8rem; margin: 0; }
 .providers__catalog-row button { font-size: 0.8rem; padding: 0.15rem 0.5rem; }
-.providers__catalog-outcome { color: #6b7280; font-size: 0.8rem; }
+.providers__catalog-outcome { color: var(--text-muted); font-size: 0.8rem; }
 
-.draft { display: grid; gap: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; padding: 1rem; }
+.draft { display: grid; gap: 0.75rem; border: 1px solid var(--line-strong); border-radius: 6px; padding: 1rem; }
 .draft h2 { margin: 0; font-size: 1rem; }
 .draft label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
-.draft small { color: #6b7280; font-size: 0.8rem; }
-.draft__nokey { margin: 0; font-size: 0.85rem; color: #166534; }
+.draft small { color: var(--text-muted); font-size: 0.8rem; }
+.draft__nokey { margin: 0; font-size: 0.85rem; color: var(--ok); }
 
 /* The model list is read-only: it arrived from the endpoint or the catalogue,
    and the form's job is to show it, not to edit it. */
-.draft__models { list-style: none; margin: 0; padding: 0; border: 1px solid #e5e7eb; border-radius: 4px; display: grid; gap: 0; }
+.draft__models { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 4px; display: grid; gap: 0; }
 .draft__model { display: flex; gap: 0.75rem; flex-wrap: wrap; padding: 0.4rem 0.6rem; align-items: baseline; }
-.draft__model + .draft__model { border-top: 1px solid #f3f4f6; }
+.draft__model + .draft__model { border-top: 1px solid var(--surface-raised); }
 .draft__model-name { font-size: 0.9rem; }
-.draft__model-context { color: #6b7280; font-size: 0.8rem; }
-.draft__model-price { color: #166534; font-size: 0.8rem; }
-.draft__model-price--unknown { color: #92400e; }
-.draft__failure { color: #b91c1c; font-size: 0.85rem; margin: 0; }
+.draft__model-context { color: var(--text-muted); font-size: 0.8rem; }
+.draft__model-price { color: var(--ok); font-size: 0.8rem; }
+.draft__model-price--unknown { color: var(--warning-soft-text); }
+.draft__failure { color: var(--danger); font-size: 0.85rem; margin: 0; }
 .draft__actions { display: flex; gap: 0.75rem; }
 
-.providers__checked { color: #6b7280; font-size: 0.78rem; margin-left: 0.4rem; }
+.providers__checked { color: var(--text-muted); font-size: 0.78rem; margin-left: 0.4rem; }

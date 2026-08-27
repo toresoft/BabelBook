@@ -1,7 +1,7 @@
 .prefs { display: grid; gap: 0.7rem; max-width: 34rem; }
 .prefs h2 { margin: 0; font-size: 1rem; }
 .prefs label { display: grid; gap: 0.2rem; font-size: 0.9rem; }
-.prefs small, .prefs__hint { color: #6b7280; font-size: 0.8rem; }
+.prefs small, .prefs__hint { color: var(--text-muted); font-size: 0.8rem; }
 
 .prefs__check { display: flex; gap: 0.5rem; align-items: flex-start; }
 .prefs__check input { margin-top: 0.2rem; }
@@ -11,7 +11,7 @@
 .prefs__jarLabel { font-size: 0.9rem; }
 .prefs__jarPath {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem;
-  background: #f3f4f6; padding: 0.15rem 0.4rem; border-radius: 4px; overflow-wrap: anywhere;
+  background: var(--surface-raised); padding: 0.15rem 0.4rem; border-radius: 4px; overflow-wrap: anywhere;
 }
-.prefs__jarNone { color: #6b7280; font-size: 0.85rem; }
-.prefs__failure { color: #b91c1c; font-size: 0.85rem; margin: 0; }
+.prefs__jarNone { color: var(--text-muted); font-size: 0.85rem; }
+.prefs__failure { color: var(--danger); font-size: 0.85rem; margin: 0; }

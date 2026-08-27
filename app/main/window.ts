@@ -1,4 +1,4 @@
-import { BrowserWindow, nativeImage } from "electron";
+import { BrowserWindow, nativeImage, nativeTheme } from "electron";
 import { APP_ICON } from "./icons.ts";
 
 export interface MainWindowOptions {
@@ -7,6 +7,15 @@ export interface MainWindowOptions {
   /** What the window loads: the app:// bundle, or a dev server. */
   url: string;
 }
+
+/**
+ * The window's own background, before the renderer has painted anything.
+ *
+ * It cannot read `--surface` from the stylesheet, so it repeats its value in
+ * both themes; the two must be changed together or a dark desktop sees a white
+ * flash on every opening.
+ */
+const SURFACE = nativeTheme.shouldUseDarkColors ? "#0f172a" : "#ffffff";
 
 /**
  * The one window of the application.
@@ -21,6 +30,7 @@ export function createMainWindow(options: MainWindowOptions): BrowserWindow {
     height: 860,
     minWidth: 900,
     minHeight: 600,
+    backgroundColor: SURFACE,
     // Wayland takes the window's icon from the desktop entry and ignores this;
     // X11 and Windows use it, and a window with no icon is a grey square in
     // the task switcher.

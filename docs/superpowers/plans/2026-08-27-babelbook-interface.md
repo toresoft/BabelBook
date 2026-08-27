@@ -1,6 +1,6 @@
 # babelBook — Piano 8: l'interfaccia
 
-**Stato: non iniziato**, al 2026-08-27.
+**Stato: in corso** — Task 1 completo, al 2026-08-27.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -81,7 +81,7 @@ Il glossario è il caso peggiore: oggi dice *"staccato da 3 progetti"* **dopo** 
 - Modify: `app/renderer/src/styles.css`, `app/main/window.ts`
 - Create: `app/test/styles.test.ts`
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 Sul foglio globale, perché è l'unico posto dove queste cose possono stare:
 
@@ -92,15 +92,15 @@ Sul foglio globale, perché è l'unico posto dove queste cose possono stare:
 
 L'ultimo è quello che tiene: senza, i colori tornano a spargersi al primo componente nuovo.
 
-- [ ] **Step 2: Eseguirli e verificare che falliscano**
+- [x] **Step 2: Eseguirli e verificare che falliscano**
 
-- [ ] **Step 3: Implementare**
+- [x] **Step 3: Implementare**
 
 Lo stack di sistema, la scala tipografica, e le variabili di colore in due temi. `window.ts` dichiara `backgroundColor` coerente col tema iniziale, o l'apertura lampeggia di bianco su un desktop scuro.
 
 I fogli dei componenti passano alle variabili. È il grosso del lavoro ed è meccanico.
 
-- [ ] **Step 4–5**: eseguire i test, commit.
+- [x] **Step 4–5**: eseguire i test, commit.
 
 ---
 

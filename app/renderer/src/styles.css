@@ -1,1 +1,86 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+ * The foundations, and the only place a colour may live.
+ *
+ * The font and the theme are the two things borrowed from the system; every
+ * other value here is the application's own, identical on every platform.
+ * Component stylesheets use the variables and never a colour of their own —
+ * a test holds that, because a palette that forks in twelve files is twelve
+ * palettes to fix.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  --text: #111827;
+  --text-soft: #4b5563;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+
+  --surface: #ffffff;
+  --surface-raised: #f3f4f6;
+  --line: #e5e7eb;
+  --line-strong: #d1d5db;
+
+  --accent: #2563eb;
+  --accent-soft: #dbeafe;
+  --accent-soft-text: #1e40af;
+  --accent-wash: #eff6ff;
+  --accent-line: #93c5fd;
+
+  --danger: #b91c1c;
+
+  --warning: #b45309;
+  --warning-soft: #fef3c7;
+  --warning-soft-text: #92400e;
+  --warning-box: #fffbeb;
+  --warning-line: #fbbf24;
+
+  --ok: #166534;
+  --ok-soft: #dcfce7;
+  --ok-line: #86efac;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #e2e8f0;
+    --text-soft: #cbd5e1;
+    --text-muted: #94a3b8;
+    --text-faint: #64748b;
+
+    --surface: #0f172a;
+    --surface-raised: #1e293b;
+    --line: #334155;
+    --line-strong: #475569;
+
+    --accent: #60a5fa;
+    --accent-soft: #1e3a8a;
+    --accent-soft-text: #bfdbfe;
+    --accent-wash: #1e293b;
+    --accent-line: #2563eb;
+
+    --danger: #f87171;
+
+    --warning: #fbbf24;
+    --warning-soft: #78350f;
+    --warning-soft-text: #fde68a;
+    --warning-box: #292524;
+    --warning-line: #b45309;
+
+    --ok: #86efac;
+    --ok-soft: #14532d;
+    --ok-line: #22c55e;
+  }
+}
+
+/* The system's font, and the system's theme: the two things not ours to choose. */
+html {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  line-height: 1.5;
+}

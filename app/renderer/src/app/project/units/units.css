@@ -2,14 +2,14 @@
 .units__bar { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
 .units__bar h2 { margin: 0; font-size: 1rem; }
 .units__search { flex: 1; min-width: 12rem; padding: 0.35rem 0.6rem; }
-.units__count, .units__empty { color: #6b7280; font-size: 0.85rem; margin: 0; }
+.units__count, .units__empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 
 .units__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-.row { border: 1px solid #e5e7eb; border-radius: 6px; padding: 0.6rem; display: grid; gap: 0.35rem; }
+.row { border: 1px solid var(--line); border-radius: 6px; padding: 0.6rem; display: grid; gap: 0.35rem; }
 .row__head { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
-.row__id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; color: #6b7280; }
-.row__state, .row__outcome { font-size: 0.75rem; color: #6b7280; }
-.row__forced { font-size: 0.72rem; background: #dbeafe; color: #1e40af; border-radius: 999px; padding: 0.05rem 0.45rem; }
+.row__id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; color: var(--text-muted); }
+.row__state, .row__outcome { font-size: 0.75rem; color: var(--text-muted); }
+.row__forced { font-size: 0.72rem; background: var(--accent-soft); color: var(--accent-soft-text); border-radius: 999px; padding: 0.05rem 0.45rem; }
 
 /* Side by side above a phone, stacked below: two columns of prose at 22rem
    are two columns of single words. */
@@ -18,7 +18,7 @@
   .row__pair { grid-template-columns: 1fr 1fr; }
 }
 .row__source, .row__translation { margin: 0; font-size: 0.85rem; overflow-wrap: anywhere; }
-.row__source { color: #4b5563; }
-.row__translation--none { color: #9ca3af; font-style: italic; }
+.row__source { color: var(--text-soft); }
+.row__translation--none { color: var(--text-faint); font-style: italic; }
 
 .units__pager { display: flex; gap: 0.5rem; }
