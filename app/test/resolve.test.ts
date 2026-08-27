@@ -91,6 +91,8 @@ describe("resolveModel", () => {
           apiKey: "not-a-real-key", baseUrl: null,
         });
         expect(resolved.modelId).toBe(`${route}:a-model`);
+        expect((resolved.model as { specificationVersion?: string }).specificationVersion)
+          .toBe("v4");
       } catch (error) {
         // FACTORY_FAILED is an allowed answer, and the reason this test asserts
         // on codes rather than on success: Bedrock wants a region, Vertex a

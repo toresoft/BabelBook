@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
+import { routeForPackage } from "../engine/backends/registry.ts";
 import { pruneCatalog, routeOf, type CatalogProvider } from "../main/catalog/shape.ts";
 import { CATALOG_URL, readCatalog, refreshCatalog } from "../main/catalog/load.ts";
 import { enrichModels } from "../main/catalog/enrich.ts";
@@ -112,6 +113,7 @@ describe("the route a catalogue entry takes", () => {
     // The spec `openai:gpt-5` is the modelId a translation was cached under.
     // A route that changes name makes a paid-for book translate itself again.
     for (const provider of await providers()) {
+      if (routeForPackage(provider.npm) === null) continue;
       if (!provider.npm.startsWith("@ai-sdk/")) continue;
       const legacy = provider.npm.slice("@ai-sdk/".length);
       if (legacy.includes("/")) continue; // never resolved: the regex refused it
@@ -127,13 +129,13 @@ describe("the route a catalogue entry takes", () => {
     expect(routeOf("some-new-publisher", null)).toBeNull();
   });
 
-  it("leaves exactly the four on the old spec unserved", async () => {
+  it("leaves exactly the providers with neither a compatible package nor an endpoint unserved", async () => {
     const unserved = (await providers())
       .filter((provider) => routeOf(provider.npm, provider.api) === null)
       .map((provider) => provider.name)
       .sort();
 
-    expect(unserved).toEqual(["AIHubMix", "SAP AI Core", "Venice AI", "watsonx.ai"]);
+    expect(unserved).toEqual(["AIHubMix", "SAP AI Core", "Venice AI", "v0", "watsonx.ai"]);
   });
 });
 

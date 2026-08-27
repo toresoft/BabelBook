@@ -14,5 +14,12 @@
     "postinstall": "node node_modules/electron/install.js",
     "test": "npm test -w core && npm test -w app",
     "typecheck": "npm run typecheck -w core && npm run typecheck -w app"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "^3.0.0",
+    "ai": "^7.0.83"
+  },
+  "overrides": {
+    "@openrouter/ai-sdk-provider": "$@openrouter/ai-sdk-provider"
   }
 }

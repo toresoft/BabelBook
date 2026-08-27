@@ -3,10 +3,12 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { PROVIDER_PACKAGES, routeForPackage } from "../engine/backends/registry.ts";
 
-/** The packages the catalogue names for the four providers on the old spec. */
+/** Catalogue packages that cannot enter the native registry on AI SDK 7. */
 const OLD_SPEC = [
+  "@ai-sdk/vercel",
   "@jerome-benoit/sap-ai-provider-v2",
   "@aihubmix/ai-sdk-provider",
+  "merge-gateway-ai-sdk-provider",
   "watsonx-ai-provider",
   "venice-ai-sdk-provider",
 ];
@@ -43,7 +45,7 @@ describe("the provider registry", () => {
     expect(failures).toEqual([]);
   });
 
-  it("names a route for every package the catalogue serves, and none for the four on the old spec", async () => {
+  it("names a route for every compatible package, and none for packages on the old spec", async () => {
     const unmapped = new Set<string>();
     for (const provider of await catalogue()) {
       if (routeForPackage(provider.npm) === null) unmapped.add(provider.npm);

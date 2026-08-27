@@ -42,7 +42,6 @@
     "@ai-sdk/openai-compatible": "^3.0.39",
     "@ai-sdk/perplexity": "^4.0.34",
     "@ai-sdk/togetherai": "^3.0.40",
-    "@ai-sdk/vercel": "^2.0.75",
     "@ai-sdk/xai": "^4.0.48",
     "@babelbook/core": "*",
     "@openrouter/ai-sdk-provider": "^3.0.0",
@@ -50,8 +49,7 @@
     "@saladtechnologies-oss/ai-sdk-provider": "^0.2.0",
     "ai": "^7.0.83",
     "ai-gateway-provider": "^4.0.0",
-    "gitlab-ai-provider": "^6.12.2",
-    "merge-gateway-ai-sdk-provider": "^0.2.0"
+    "gitlab-ai-provider": "^6.12.2"
   },
   "devDependencies": {
     "@angular/build": "^22.1.5",

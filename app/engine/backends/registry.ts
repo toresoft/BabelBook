@@ -8,7 +8,7 @@
  * no build step could see, so none of them shipped.
  *
  * Written as thunks rather than top-level imports: naming them here must not
- * cost the start-up time of loading twenty-three packages nobody asked for.
+ * cost the start-up time of loading every package nobody asked for.
  * Written as literal specifiers rather than a variable: a bundler and a
  * packager can both see a literal, and neither can see a name computed at
  * runtime.
@@ -56,7 +56,6 @@ export const PROVIDER_PACKAGES: ProviderPackages = {
   togetherai: { specifier: "@ai-sdk/togetherai", load: () => import("@ai-sdk/togetherai") },
   cerebras: { specifier: "@ai-sdk/cerebras", load: () => import("@ai-sdk/cerebras") },
   deepinfra: { specifier: "@ai-sdk/deepinfra", load: () => import("@ai-sdk/deepinfra") },
-  vercel: { specifier: "@ai-sdk/vercel", load: () => import("@ai-sdk/vercel") },
   gateway: { specifier: "@ai-sdk/gateway", load: () => import("@ai-sdk/gateway") },
   "amazon-bedrock": {
     specifier: "@ai-sdk/amazon-bedrock",
@@ -77,10 +76,6 @@ export const PROVIDER_PACKAGES: ProviderPackages = {
   },
   gitlab: { specifier: "gitlab-ai-provider", load: () => import("gitlab-ai-provider") },
   "ai-gateway": { specifier: "ai-gateway-provider", load: () => import("ai-gateway-provider") },
-  "merge-gateway": {
-    specifier: "merge-gateway-ai-sdk-provider",
-    load: () => import("merge-gateway-ai-sdk-provider"),
-  },
 };
 
 const BY_PACKAGE = new Map(
