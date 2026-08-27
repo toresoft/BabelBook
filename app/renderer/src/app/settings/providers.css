@@ -49,3 +49,5 @@
 .draft__model-price--unknown { color: #92400e; }
 .draft__failure { color: #b91c1c; font-size: 0.85rem; margin: 0; }
 .draft__actions { display: flex; gap: 0.75rem; }
+
+.providers__checked { color: #6b7280; font-size: 0.78rem; margin-left: 0.4rem; }

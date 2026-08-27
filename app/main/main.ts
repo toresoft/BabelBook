@@ -242,7 +242,7 @@ app.whenReady().then(async () => {
     ? await readCatalog(paths)
     : {
       catalog: parseImportedCatalog(await readFile(catalogForTest)),
-      bundled: true, stale: false, changed: false,
+      bundled: true, stale: false, changed: false, checkedAt: null,
     };
 
   glue.db = db;
@@ -353,7 +353,7 @@ app.whenReady().then(async () => {
       search: (query) => searchCatalog(loaded.catalog, query),
       modelsFor: (entryId, apiKey) => modelsForEntry(loaded.catalog, entryId, apiKey),
       discover: (baseUrl, apiKey) => discoverFromUrl(baseUrl, apiKey),
-      state: () => catalogState(loaded.catalog, loaded.bundled),
+      state: () => catalogState(loaded.catalog, loaded.bundled, loaded.checkedAt),
       refresh: async () => {
         const updated = await refreshCatalog(paths);
         loaded = updated;
@@ -363,7 +363,7 @@ app.whenReady().then(async () => {
         if (updated.stale) {
           throw new CatalogError("REFRESH_FAILED", "the catalogue could not be updated");
         }
-        return catalogState(updated.catalog, updated.bundled);
+        return catalogState(updated.catalog, updated.bundled, updated.checkedAt);
       },
       importFile: async () => {
         // The file is read by this process, like the glossaries: no path
@@ -372,11 +372,11 @@ app.whenReady().then(async () => {
           properties: ["openFile"],
           filters: [{ name: "Catalogue", extensions: ["json", "gz"] }],
         }).then((chosen) => (chosen.canceled ? null : chosen.filePaths[0] ?? null));
-        if (path === null) return catalogState(loaded.catalog, loaded.bundled);
+        if (path === null) return catalogState(loaded.catalog, loaded.bundled, loaded.checkedAt);
 
         const imported = parseImportedCatalog(await readFile(path));
         await installCatalog(paths, imported);
-        loaded = { catalog: imported, bundled: false, stale: false, changed: true };
+        loaded = { catalog: imported, bundled: false, stale: false, changed: true, checkedAt: null };
         adoptCatalog(imported);
         return catalogState(imported, false);
       },

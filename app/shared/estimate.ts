@@ -35,6 +35,24 @@ const DEFAULT_CONTEXT_OVERHEAD = 1.5;
 const PER_MILLION = 1_000_000;
 
 /**
+ * What a number of tokens costs, at prices quoted per million.
+ *
+ * The one place that turns tokens into money. The estimate calls it before a
+ * book is started and the run calls it after one is finished, and they have to
+ * agree: two copies of this arithmetic would part company the day a provider
+ * quotes per thousand, or the day cached tokens get their own rate.
+ *
+ * Null when either price is unknown, because half a price is not a price.
+ */
+export function priceTokens(input: {
+  tokensIn: number; tokensOut: number; priceIn: number | null; priceOut: number | null;
+}): number | null {
+  if (input.priceIn === null || input.priceOut === null) return null;
+  return (input.tokensIn / PER_MILLION) * input.priceIn
+    + (input.tokensOut / PER_MILLION) * input.priceOut;
+}
+
+/**
  * What a book will cost, to an order of magnitude.
  *
  * It is an estimate and the interface says so. Its job is to stop someone
@@ -49,9 +67,9 @@ export function estimate(input: EstimateInput): Estimate {
   const tokensIn = Math.round(input.words * TOKENS_PER_WORD * overhead);
   const tokensOut = Math.round(input.words * TOKENS_PER_WORD);
 
-  const cost = input.priceIn === null || input.priceOut === null
-    ? null
-    : (tokensIn / PER_MILLION) * input.priceIn + (tokensOut / PER_MILLION) * input.priceOut;
-
-  return { tokensIn, tokensOut, cost };
+  return {
+    tokensIn,
+    tokensOut,
+    cost: priceTokens({ tokensIn, tokensOut, priceIn: input.priceIn, priceOut: input.priceOut }),
+  };
 }

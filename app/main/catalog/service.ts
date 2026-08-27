@@ -76,11 +76,14 @@ export async function discoverFromUrl(
   return enrichModels(discovered.map((model) => model.id), null);
 }
 
-export function catalogState(catalog: Catalog, bundled: boolean): CatalogState {
+export function catalogState(
+  catalog: Catalog, bundled: boolean, checkedAt: string | null = null,
+): CatalogState {
   return {
     at: catalog.at,
     providers: catalog.providers.length,
     models: catalog.providers.reduce((total, provider) => total + provider.models.length, 0),
     bundled,
+    checkedAt,
   };
 }

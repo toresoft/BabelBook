@@ -181,8 +181,49 @@ describe("the refresh pipeline", () => {
     expect(notModified.changed).toBe(false);
     expect(notModified.stale).toBe(false);
     expect(await readFile(p.cache)).toEqual(cacheBefore);
-    // The check is recorded next to the cache, not inside it.
-    const checked = await readFile(`${p.cache}.checked`, "utf8");
-    expect(Number.isNaN(Date.parse(checked))).toBe(false);
+
+    // Production break: the check is recorded on disk and reaches nobody.
+    //
+    // Recorded next to the cache rather than inside it, so a 304 does not
+    // rewrite four megabytes — and handed back, because a catalogue produced
+    // three weeks ago and confirmed unchanged a minute ago is current, and the
+    // date alone would call it stale.
+    expect(Number.isNaN(Date.parse(notModified.checkedAt ?? ""))).toBe(false);
+
+    // And it survives the process that wrote it: the next start reads it back.
+    expect((await readCatalog(p)).checkedAt).toBe(notModified.checkedAt);
+  });
+
+  it("has nothing to report before the network has ever answered", async () => {
+    const p = await paths();
+    await writeGz(p.bundled, { at: "2026-01-01T00:00:00.000Z", providers: [ACME] });
+
+    // Null, not the moment of asking: never confirmed is a different fact from
+    // confirmed long ago.
+    expect((await readCatalog(p)).checkedAt).toBeNull();
+  });
+});
+
+describe("a server that says nothing", () => {
+  // Production break: the refresh the interface awaits waits for minutes.
+  it("gives up rather than holding the button that asked", async () => {
+    const p = await paths();
+    await writeGz(p.bundled, { at: "2026-01-01T00:00:00.000Z", providers: [ACME] });
+
+    // What a hanging server looks like from here: the connection is accepted,
+    // nothing comes back, and only the abort ends it.
+    const hangs = ((_url: unknown, init?: { signal?: AbortSignal }) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+      })) as unknown as typeof fetch;
+
+    const started = Date.now();
+    const loaded = await refreshCatalog(p, { fetch: hangs, timeoutMs: 40 });
+
+    expect(loaded.stale).toBe(true);
+    expect(loaded.changed).toBe(false);
+    // The catalogue that already worked keeps answering.
+    expect(loaded.catalog.providers).toHaveLength(1);
+    expect(Date.now() - started).toBeLessThan(5_000);
   });
 });

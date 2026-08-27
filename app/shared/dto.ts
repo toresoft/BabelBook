@@ -384,6 +384,11 @@ export interface CatalogState {
   models: number;
   /** True when the bundled snapshot is in use rather than an update. */
   bundled: boolean;
+  /**
+   * When the network last confirmed this list current, or null when it never
+   * has. `at` alone reads as stale for a catalogue that is simply unchanged.
+   */
+  checkedAt: string | null;
 }
 
 /**

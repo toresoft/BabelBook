@@ -97,6 +97,7 @@
     "contextOf": "{{context}} tokens of context",
     "priceOf": "{{in}} / {{out}} per million tokens",
     "catalogOf": "Provider catalogue of {{date}}: {{providers}} entries.",
+    "catalogChecked": "· confirmed on {{date}}",
     "catalogRefresh": "Update",
     "catalogImport": "Import from file",
     "catalogUpdated": "Updated.",

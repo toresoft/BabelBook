@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimate } from "../shared/estimate.ts";
+import { estimate, priceTokens } from "../shared/estimate.ts";
 
 describe("estimate", () => {
   it("says how many tokens, and no price when the model declares none", () => {
@@ -41,5 +41,29 @@ describe("estimate", () => {
   it("answers zero for a book with no words rather than a stray fraction", () => {
     expect(estimate({ words: 0, priceIn: 3, priceOut: 15 }))
       .toEqual({ tokensIn: 0, tokensOut: 0, cost: 0 });
+  });
+});
+
+describe("priceTokens", () => {
+  it("prices tokens at rates quoted per million", () => {
+    expect(priceTokens({ tokensIn: 1_000_000, tokensOut: 0, priceIn: 3, priceOut: 15 })).toBe(3);
+    expect(priceTokens({ tokensIn: 0, tokensOut: 500_000, priceIn: 3, priceOut: 15 })).toBe(7.5);
+  });
+
+  it("says nothing when either half of the price is unknown", () => {
+    // Half a price is not a price: a figure computed from one side would be
+    // wrong in the direction that flatters us.
+    expect(priceTokens({ tokensIn: 1000, tokensOut: 1000, priceIn: 3, priceOut: null })).toBeNull();
+    expect(priceTokens({ tokensIn: 1000, tokensOut: 1000, priceIn: null, priceOut: 15 })).toBeNull();
+  });
+
+  // Production break: the estimate and the run bill the same tokens differently.
+  it("gives the estimate and the finished run the same answer for the same tokens", () => {
+    const quoted = estimate({ words: 10_000, priceIn: 3, priceOut: 15 });
+    const charged = priceTokens({
+      tokensIn: quoted.tokensIn, tokensOut: quoted.tokensOut, priceIn: 3, priceOut: 15,
+    });
+
+    expect(charged).toBe(quoted.cost);
   });
 });

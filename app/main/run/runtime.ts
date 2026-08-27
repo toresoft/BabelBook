@@ -4,6 +4,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { sha256 } from "../../../core/epub/index.ts";
 import { SqliteProjectStore } from "../db/store.ts";
 import { composeEpub } from "../compose.ts";
+import { priceTokens } from "../../shared/estimate.ts";
 import type { Events } from "../../shared/channels.ts";
 import type {
   BackendSpec, EngineHandle, EngineMessage, RunConfig, RunSummary,
@@ -177,9 +178,15 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
         const prices = configured?.provider_id != null && configured.model_id != null
           ? modelPricesOf(db, configured.provider_id, configured.model_id)
           : null;
-        const cost = prices === null ? null
-          : (message.summary.tokensIn / 1_000_000) * prices.priceIn
-            + (message.summary.tokensOut / 1_000_000) * prices.priceOut;
+        // The same arithmetic the estimate used before the run started, so
+        // the figure quoted beforehand and the one charged afterwards cannot
+        // drift apart.
+        const cost = prices === null ? null : priceTokens({
+          tokensIn: message.summary.tokensIn,
+          tokensOut: message.summary.tokensOut,
+          priceIn: prices.priceIn,
+          priceOut: prices.priceOut,
+        });
 
         db.prepare(
           "UPDATE run SET tokens_in = ?, tokens_out = ?, cost = ?, ended_at = ? WHERE id = ?",

@@ -264,6 +264,11 @@
     <div class="providers__catalog-row">
       <p class="providers__catalog" data-testid="catalog-state">
         {{ t('providers.catalogOf', { date: state.at.slice(0, 10), providers: state.providers }) }}
+        @if (state.checkedAt; as checked) {
+          <span class="providers__checked" data-testid="catalog-checked">
+            {{ t('providers.catalogChecked', { date: checked.slice(0, 10) }) }}
+          </span>
+        }
       </p>
       <button
         type="button"

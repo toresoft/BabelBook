@@ -36,6 +36,7 @@ const runtime: LocalRuntime = {
 
 const state: CatalogState = {
   at: "2026-08-20T10:00:00.000Z", providers: 203, models: 7339, bundled: true,
+  checkedAt: null,
 };
 
 /** A rejection the way the preload delivers it: packed in a marker message. */
@@ -44,15 +45,18 @@ const failureOf = (code: string) =>
 
 function bridge(answers: Record<string, unknown> = {}) {
   return vi.fn(async (channel: string, payload?: unknown) => {
-    if (channel === "providers.list") return [] as Provider[];
-    if (channel === "providers.presets") return [];
-    if (channel === "local.runtimes") return [runtime];
-    if (channel === "catalog.state") return state;
+    // What the test asked for wins over the defaults. The other way round, an
+    // override of a channel that has a default is dropped in silence, and the
+    // test passes while measuring the fixture instead of its own case.
     if (channel in answers) {
       const answer = answers[channel];
       if (answer instanceof Error) throw answer;
       return typeof answer === "function" ? answer(payload) : answer;
     }
+    if (channel === "providers.list") return [] as Provider[];
+    if (channel === "providers.presets") return [];
+    if (channel === "local.runtimes") return [runtime];
+    if (channel === "catalog.state") return state;
     return undefined;
   });
 }
@@ -222,9 +226,33 @@ describe("Providers", () => {
     expect(line.textContent).toContain("203");
   });
 
+  // Production break: a catalogue confirmed current reads as three weeks stale.
+  it("says when the network last confirmed the list", async () => {
+    const { fixture } = mount(bridge({
+      "catalog.state": { ...state, checkedAt: "2026-08-27T09:00:00.000Z" },
+    }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const line = fixture.nativeElement.querySelector("[data-testid=catalog-checked]");
+    expect(line).not.toBeNull();
+    expect((line as HTMLElement).textContent).toContain("2026-08-27");
+  });
+
+  it("says nothing about a confirmation that never happened", async () => {
+    // Never confirmed is a different fact from confirmed long ago, and an
+    // invented date here would be the kind a reader believes.
+    const { fixture } = mount(bridge());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=catalog-checked]")).toBeNull();
+  });
+
   it("updates the catalogue on request, and the line moves with it", async () => {
     const fresher: CatalogState = {
       at: "2026-08-26T00:00:00.000Z", providers: 204, models: 7500, bundled: false,
+      checkedAt: "2026-08-26T00:00:00.000Z",
     };
     const { fixture, invoke } = mount(bridge({ "catalog.refresh": fresher }));
     await fixture.whenStable();
