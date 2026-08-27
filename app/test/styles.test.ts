@@ -115,6 +115,35 @@ describe("the controls", () => {
     expect(offenders).toEqual([]);
   });
 
+  it("shapes a bare button like a classed one, so a row of them cannot disagree", async () => {
+    const css = await readFile(STYLES, "utf8");
+
+    // Six of the fifty-two buttons carry the class. Without the element in
+    // the same rule, "Verify" and "Edit" render as OS controls beside a
+    // "Delete" that is `.btn btn--danger` — three heights in one row.
+    const shape = css.match(/(?:^|\n)(button[^{]*\.btn[^{]*|\.btn[^{]*button[^{]*)\{([^}]*)\}/);
+    expect(shape).not.toBeNull();
+    expect(shape?.[2]).toMatch(/font:\s*inherit/);
+    expect(shape?.[2]).toMatch(/padding:/);
+    expect(shape?.[2]).toMatch(/border-radius:/);
+    expect(shape?.[2]).toMatch(/background:/);
+  });
+
+  it("answers the pointer, which is all that is left once the cursor does not", async () => {
+    // The tabs and the pills are `border: none; background: none` — with no
+    // cursor and no hover they are grey text that happens to be clickable.
+    const files = await cssFiles("app/renderer/src");
+    const silent: string[] = [];
+
+    for (const path of files) {
+      const css = await readFile(path, "utf8");
+      const clickable = /\.(project__tab|providers__(?:runtime|entry|preset)|settings__section)\b/;
+      if (clickable.test(css) && !css.includes(":hover")) silent.push(path);
+    }
+
+    expect(silent).toEqual([]);
+  });
+
   it("never points the cursor on a button: the arrow, like a native application", async () => {
     const files = await cssFiles("app/renderer/src");
     const offenders = [];

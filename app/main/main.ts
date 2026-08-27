@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { generateText } from "ai";
 import {
   app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, nativeTheme, Notification, safeStorage,
-  shell, Tray,
+  shell, Tray, type MessageBoxOptions,
 } from "electron";
 import { loadCatalogue, type Translate } from "./catalogue.ts";
 import {
@@ -319,13 +319,22 @@ app.whenReady().then(async () => {
     // defaultId and the cancelId are pinned to it: Return and Escape are the
     // safe answer, never the destructive one.
     askConfirm: async (question) => {
-      const chosen = await dialog.showMessageBox({
+      const options = {
         type: "warning",
         buttons: [question.cancel, question.verify],
         defaultId: 0,
         cancelId: 0,
         message: question.message,
-      });
+      } satisfies MessageBoxOptions;
+
+      // Parented on the window, so it cannot be lost behind it. An
+      // un-parented box is not modal: a click on the main window drops it
+      // out of sight, and the renderer goes on awaiting an answer nobody can
+      // give any more — a Delete that neither deletes nor fails. With no
+      // window there is nothing to hide behind, and nothing to parent on.
+      const chosen = glue.window === null
+        ? await dialog.showMessageBox(options)
+        : await dialog.showMessageBox(glue.window, options);
       return chosen.response === 1;
     },
     chooseEpub: async () => {

@@ -108,7 +108,18 @@ button {
   color: inherit;
 }
 
+/*
+ * The element and the class wear the same shape.
+ *
+ * Only a handful of buttons need a class — the primary act, the destructive
+ * one. If the class were what made a button look like a button, the ordinary
+ * ones beside them would stay OS controls, and a single row would carry two
+ * heights, two radii and two backgrounds. The class says which button this
+ * is; it does not say that it is one.
+ */
+button,
 .btn {
+  font: inherit;
   padding: 0.4rem 0.9rem;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
@@ -117,6 +128,33 @@ button {
   /* The primary act of a screen may be a route, which is an anchor: it wears
      the button and not the underline, whatever the browser's default says. */
   text-decoration: none;
+}
+
+/*
+ * The pointer is answered by the surface, because it is not answered by the
+ * cursor: the arrow stays, like a native application, so hover is the only
+ * thing left that says a thing can be pressed.
+ */
+button:hover,
+.btn:hover {
+  background: var(--surface-raised);
+}
+
+.btn--primary:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn--danger:hover {
+  background: var(--surface-raised);
+  color: var(--danger);
+}
+
+button:disabled,
+button:disabled:hover {
+  color: var(--text-faint);
+  background: var(--surface);
 }
 
 .btn--primary {

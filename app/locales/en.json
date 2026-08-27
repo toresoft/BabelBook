@@ -370,6 +370,7 @@
     },
     "deleteGlossary": {
       "message": "Delete the glossary “{{name}}”? {{count}} projects will lose its terminology.",
+      "messageOne": "Delete the glossary “{{name}}”? One project will lose its terminology.",
       "messageNone": "Delete the glossary “{{name}}”? No project uses it."
     }
   },

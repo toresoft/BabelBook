@@ -17,6 +17,48 @@ import { IpcService } from "./core/ipc.service";
 const systemLanguage = (globalThis as { navigator?: { language?: string } })
   .navigator?.language?.split("-")[0] ?? "it";
 
+/**
+ * The chosen language — and the system's theme — settled before the first
+ * render.
+ *
+ * Without this the setting applies while the window is open and is forgotten
+ * at the next start — which is indistinguishable, to the person who set it,
+ * from a setting that does nothing. The theme arrives the same way because the
+ * renderer cannot be trusted to notice the system changing it by itself
+ * (electron#22211): it is asked once here, and the `theme.changed` event keeps
+ * it honest while the window lives.
+ *
+ * The two are asked over the same bridge and caught apart. Sharing one catch
+ * would make the theme's failure the language's: the setting would be read and
+ * never applied, which is the very thing this exists to prevent. Either
+ * failure alone is a missing bridge — a component test, or a preload that did
+ * not load — and leaves the best guess available standing.
+ */
+export async function settleAppearance(
+  ipc: IpcService,
+  transloco: TranslocoService,
+): Promise<void> {
+  const wear = (dark: boolean): void => {
+    document.documentElement.classList.toggle("theme-dark", dark);
+  };
+
+  try {
+    ipc.on("theme.changed", ({ dark }) => wear(dark));
+    wear((await ipc.invoke("ui.theme", undefined)).dark);
+  } catch {
+    // The light theme stands.
+  }
+
+  try {
+    const settings = await ipc.invoke("settings.get", undefined);
+    if (settings.uiLanguage !== transloco.getActiveLang()) {
+      transloco.setActiveLang(settings.uiLanguage);
+    }
+  } catch {
+    // The system's language stands.
+  }
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -25,35 +67,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     ...provideI18n(systemLanguage),
     { provide: IpcService, useFactory: () => new IpcService() },
-
-    // The chosen language — and the system's theme — are settled before the
-    // first render.
-    //
-    // Without this the setting applies while the window is open and is
-    // forgotten at the next start — which is indistinguishable, to the person
-    // who set it, from a setting that does nothing. The theme arrives the
-    // same way because the renderer cannot be trusted to notice the system
-    // changing it by itself (electron#22211): it is asked once here, and the
-    // `theme.changed` event keeps it honest while the window lives.
-    provideAppInitializer(async () => {
-      const transloco = inject(TranslocoService);
-      const ipc = inject(IpcService);
-      const wear = (dark: boolean): void => {
-        document.documentElement.classList.toggle("theme-dark", dark);
-      };
-      try {
-        ipc.on("theme.changed", ({ dark }) => wear(dark));
-        wear((await ipc.invoke("ui.theme", undefined)).dark);
-
-        const settings = await ipc.invoke("settings.get", undefined);
-        if (settings.uiLanguage !== transloco.getActiveLang()) {
-          transloco.setActiveLang(settings.uiLanguage);
-        }
-      } catch {
-        // No bridge — a component test, or a preload that failed to load. The
-        // system's language stands, and with it the light theme, which are
-        // the best guesses available.
-      }
-    }),
+    provideAppInitializer(() => settleAppearance(inject(IpcService), inject(TranslocoService))),
   ],
 };

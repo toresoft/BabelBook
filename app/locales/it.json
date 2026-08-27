@@ -370,6 +370,7 @@
     },
     "deleteGlossary": {
       "message": "Eliminare il glossario «{{name}}»? {{count}} progetti ne perderanno la terminologia.",
+      "messageOne": "Eliminare il glossario «{{name}}»? Un progetto ne perderà la terminologia.",
       "messageNone": "Eliminare il glossario «{{name}}»? Nessun progetto lo usa."
     }
   },

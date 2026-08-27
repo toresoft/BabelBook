@@ -163,10 +163,12 @@ export function confirmQuestion(
     // still change the answer.
     const attached = db.prepare("SELECT count(*) AS n FROM project_glossary WHERE glossary_id = ?")
       .get(String(detail["id"] ?? "")) as { n: number };
+    // A glossary used by one project is the commonest thing anyone deletes,
+    // and the plural sentence writes "1 progetti" for it.
+    const key = attached.n === 0 ? "messageNone" : attached.n === 1 ? "messageOne" : "message";
     return {
       ...base,
-      message: t(attached.n === 0 ? "confirm.deleteGlossary.messageNone" : "confirm.deleteGlossary.message",
-        { name: detail["name"] ?? "", count: attached.n }),
+      message: t(`confirm.deleteGlossary.${key}`, { name: detail["name"] ?? "", count: attached.n }),
     };
   }
 

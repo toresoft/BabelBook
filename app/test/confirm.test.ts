@@ -141,6 +141,23 @@ describe("ui.confirm", () => {
     expect(questions[0]!.message).not.toMatch(/\b0\b/);
   });
 
+  it("counts one project in the singular, which is the commonest case of all", async () => {
+    const { deps, questions } = await scene(true);
+    const handlers = buildHandlers(deps);
+    const glossary = await handlers["glossary.save"]({
+      id: "g1", name: "fantasy", version: 1, description: "Names", sourceLanguage: "en",
+      targetLanguage: "it", terms: [],
+    });
+    const one = await aProject(deps, deps.userDataDir, "One");
+    await handlers["glossary.attach"]({ projectId: one, glossaryId: glossary.id, attached: true });
+
+    await handlers["ui.confirm"]({ kind: "deleteGlossary", detail: { id: glossary.id, name: "fantasy" } });
+
+    // "1 progetti" is the sentence a plural-only string writes, and a glossary
+    // used by a single project is the likeliest thing anyone deletes.
+    expect(questions[0]!.message).not.toMatch(/\bprogetti\b/);
+  });
+
   it("keeps the cancel as what Return and Escape answer", async () => {
     const { deps, questions } = await scene(true);
     await buildHandlers(deps)["ui.confirm"]({ kind: "deleteProvider", detail: { name: "OpenRouter" } });
@@ -152,5 +169,16 @@ describe("ui.confirm", () => {
     const source = await readFile("app/main/main.ts", "utf8");
     expect(source).toContain("defaultId: 0");
     expect(source).toContain("cancelId: 0");
+  });
+
+  it("asks on the window, so the question cannot be lost behind it", async () => {
+    const source = await readFile("app/main/main.ts", "utf8");
+    const body = /askConfirm: async \(question\) => \{([\s\S]*?)\n    \},/.exec(source);
+
+    // An un-parented box is not modal: on Linux and Windows a click on the
+    // main window drops it behind, and the renderer waits on `ui.confirm`
+    // for ever — a Delete that neither deletes nor fails.
+    expect(body).not.toBeNull();
+    expect(body?.[1]).toContain("showMessageBox(glue.window,");
   });
 });

@@ -24,6 +24,9 @@
   justify-self: start; padding: 0.35rem 0.75rem; border-radius: 999px;
   border: 1px solid var(--line-strong); background: none;
 }
+.providers__runtime:hover, .providers__entry:hover, .providers__preset:hover {
+  background: var(--surface-raised);
+}
 .providers__runtime { border-color: var(--ok-line); }
 .providers__entry--unserved { color: var(--text-faint); border-style: dashed; }
 .providers__preset { color: var(--accent); }

@@ -21,6 +21,8 @@
   font-size: 0.9rem; color: var(--text-muted); border-bottom: 2px solid transparent;
 }
 .project__tab--on { color: var(--text); border-bottom-color: var(--accent); }
+/* The arrow never changes over a tab, so the tab changes instead. */
+.project__tab:hover { color: var(--text); background: var(--surface-raised); }
 
 .project__panel { padding-top: 0.5rem; }
 
