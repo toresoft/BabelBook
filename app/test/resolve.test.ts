@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
+import { PROVIDER_PACKAGES } from "../engine/backends/registry.ts";
 import { parseSpec, resolveModel } from "../engine/backends/resolve.ts";
 import { sdkBackend } from "../engine/backends/sdk.ts";
 
 const fakeModule = { createAcme: (opts: unknown) => (id: string) => ({ id, opts }) };
-const load = async (specifier: string) => {
-  if (specifier === "@ai-sdk/acme") return fakeModule;
-  throw new Error(`Cannot find package '${specifier}'`);
+const packages = {
+  acme: { specifier: "@ai-sdk/acme", load: async () => fakeModule },
+  broken: {
+    specifier: "@ai-sdk/broken",
+    load: async () => { throw new Error("Cannot find package '@ai-sdk/broken'"); },
+  },
 };
 
 describe("parseSpec", () => {
@@ -28,18 +32,18 @@ describe("parseSpec", () => {
 
 describe("resolveModel", () => {
   it("fails before anything is opened when the package is absent", async () => {
-    await expect(resolveModel("ghost:m1", { load, apiKey: "k", baseUrl: null }))
+    await expect(resolveModel("broken:m1", { packages, apiKey: "k", baseUrl: null }))
       .rejects.toMatchObject({ code: "PACKAGE_MISSING" });
   });
 
   it("fails when the key is missing, naming the provider", async () => {
-    await expect(resolveModel("acme:m1", { load, apiKey: null, baseUrl: null }))
+    await expect(resolveModel("acme:m1", { packages, apiKey: null, baseUrl: null }))
       .rejects.toMatchObject({ code: "MISSING_KEY", spec: "acme:m1" });
   });
 
   it("lets a keyless endpoint through when it was given a base URL", async () => {
     const resolved = await resolveModel("acme:m1", {
-      load, apiKey: null, baseUrl: "http://localhost:11434/v1",
+      packages, apiKey: null, baseUrl: "http://localhost:11434/v1",
     });
     expect((resolved.model as { opts: { baseURL: string } }).opts.baseURL)
       .toBe("http://localhost:11434/v1");
@@ -47,21 +51,60 @@ describe("resolveModel", () => {
 
   it("carries the provider options into the resolved model", async () => {
     const resolved = await resolveModel("acme:m1", {
-      load, apiKey: "k", baseUrl: null, options: { acme: { thinking: { type: "disabled" } } },
+      packages, apiKey: "k", baseUrl: null, options: { acme: { thinking: { type: "disabled" } } },
     });
     expect(resolved.modelId).toBe("acme:m1");
     expect(resolved.options).toMatchObject({ acme: { thinking: { type: "disabled" } } });
   });
 
   it("hands the factory the id after the route, not the whole spec", async () => {
-    const resolved = await resolveModel("acme:arn:aws:foo:0", { load, apiKey: "k", baseUrl: null });
+    const resolved = await resolveModel(
+      "acme:arn:aws:foo:0", { packages, apiKey: "k", baseUrl: null },
+    );
     expect((resolved.model as { id: string }).id).toBe("arn:aws:foo:0");
   });
 
   it("says so when the package serves no provider factory", async () => {
     const empty = async () => ({ somethingElse: 1 });
-    await expect(resolveModel("acme:m1", { load: empty, apiKey: "k", baseUrl: null }))
+    const emptyPackages = {
+      acme: { specifier: "@ai-sdk/acme", load: empty },
+    };
+    await expect(resolveModel("acme:m1", {
+      packages: emptyPackages, apiKey: "k", baseUrl: null,
+    }))
       .rejects.toMatchObject({ code: "FACTORY_MISSING" });
+  });
+
+  it("refuses a route the registry does not name, before anything is loaded", async () => {
+    await expect(resolveModel("nowhere:m1", { packages, apiKey: "k", baseUrl: null }))
+      .rejects.toThrow(/UNSUPPORTED_ROUTE/);
+  });
+
+  it("finds a factory for every route the registry names", async () => {
+    const failures: string[] = [];
+
+    for (const route of Object.keys(PROVIDER_PACKAGES)) {
+      try {
+        // A key that is never used: building a model does not call the endpoint,
+        // and no test of this suite may.
+        const resolved = await resolveModel(`${route}:a-model`, {
+          apiKey: "not-a-real-key", baseUrl: null,
+        });
+        expect(resolved.modelId).toBe(`${route}:a-model`);
+      } catch (error) {
+        // FACTORY_FAILED is an allowed answer, and the reason this test asserts
+        // on codes rather than on success: Bedrock wants a region, Vertex a
+        // project, and refusing a model without them is correct behaviour. That
+        // refusal still proves what is being tested — the package loaded and its
+        // factory was found. UNSUPPORTED_ROUTE or PACKAGE_MISSING would not.
+        const code = (error as { code?: string }).code;
+        if (code !== "FACTORY_FAILED") {
+          failures.push(`${route}: ${code ?? "?"} — ${(error as Error).message}`);
+        }
+      }
+    }
+
+    expect(failures).toEqual([]);
   });
 });
 

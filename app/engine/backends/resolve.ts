@@ -7,6 +7,8 @@
  * paid for, and the user is looking at a progress bar that will never finish.
  */
 
+import { PROVIDER_PACKAGES, type ProviderPackages } from "./registry.ts";
+
 /**
  * A spec that cannot become a model, with a code the interface can translate.
  *
@@ -36,16 +38,12 @@ export interface ResolvedModel {
   options?: Record<string, unknown>;
 }
 
-/**
- * How a package is fetched, injected rather than hard-wired.
- *
- * The provider packages are the user's to install, and no test may install
- * one or reach the network. In production this is `(s) => import(s)`.
- */
-export type ModuleLoader = (specifier: string) => Promise<unknown>;
-
 export interface ResolveDeps {
-  load: ModuleLoader;
+  /**
+   * The packages this application ships, injected so a test can name its own.
+   * Absent means the real registry, which is what production wants.
+   */
+  packages?: ProviderPackages;
   apiKey: string | null;
   baseUrl: string | null;
   headers?: Record<string, string>;
@@ -102,7 +100,9 @@ type Factory = (settings: Record<string, unknown>) => (id: string) => unknown;
  * miss most of them. A caseless match on the route comes first; a package that
  * exports exactly one `create*` function is taken at its word.
  */
-function findFactory(module: Record<string, unknown>, route: string, spec: string): Factory {
+function findFactory(
+  module: Record<string, unknown>, route: string, specifier: string, spec: string,
+): Factory {
   const candidates = Object.keys(module)
     .filter((key) => key.startsWith("create") && typeof module[key] === "function");
 
@@ -113,12 +113,12 @@ function findFactory(module: Record<string, unknown>, route: string, spec: strin
   if (candidates.length === 1) return module[candidates[0]!] as Factory;
   if (candidates.length === 0) {
     throw new ModelSpecError(
-      "FACTORY_MISSING", spec, `@ai-sdk/${route} exports no provider factory`,
+      "FACTORY_MISSING", spec, `${specifier} exports no provider factory`,
     );
   }
   throw new ModelSpecError(
     "FACTORY_AMBIGUOUS", spec,
-    `@ai-sdk/${route} exports several factories and none matches the route`,
+    `${specifier} exports several factories and none matches the route`,
   );
 }
 
@@ -139,17 +139,26 @@ export async function resolveModel(spec: string, deps: ResolveDeps): Promise<Res
     throw new ModelSpecError("MISSING_KEY", spec, `${route} has no key configured`);
   }
 
-  const specifier = `@ai-sdk/${route}`;
-  let module: Record<string, unknown>;
-  try {
-    module = (await deps.load(specifier)) as Record<string, unknown>;
-  } catch {
-    // The loader's message names a path on this machine and is in English;
-    // the interface says "install @ai-sdk/<route>" from its own catalogue.
-    throw new ModelSpecError("PACKAGE_MISSING", spec, `${specifier} is not installed`);
+  const entry = (deps.packages ?? PROVIDER_PACKAGES)[route];
+  if (entry === undefined) {
+    // Not "the package is missing on this machine": this application does not
+    // serve this provider, and saying so is a different sentence with a
+    // different remedy — an endpoint typed by hand, not an install.
+    throw new ModelSpecError(
+      "UNSUPPORTED_ROUTE", spec, `${route} is not a provider this application serves`,
+    );
   }
 
-  const factory = findFactory(module, route, spec);
+  let module: Record<string, unknown>;
+  try {
+    module = (await entry.load()) as Record<string, unknown>;
+  } catch {
+    // Registry and package.json disagreeing is a build failure, not a state
+    // the user can reach or repair; the code stays so it is not silent.
+    throw new ModelSpecError("PACKAGE_MISSING", spec, `${entry.specifier} is not installed`);
+  }
+
+  const factory = findFactory(module, route, entry.specifier, spec);
 
   // Only what was actually configured is passed: an explicit `baseURL:
   // undefined` is not the same as an absent one to every provider package.
@@ -166,7 +175,7 @@ export async function resolveModel(spec: string, deps: ResolveDeps): Promise<Res
   } catch (error) {
     throw new ModelSpecError(
       "FACTORY_FAILED", spec,
-      `@ai-sdk/${route} refused the model id (${(error as Error).name})`,
+      `${entry.specifier} refused the model id (${(error as Error).name})`,
     );
   }
 
