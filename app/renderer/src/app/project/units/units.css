@@ -1,7 +1,7 @@
 .units { display: grid; gap: 0.75rem; }
 .units__bar { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
 .units__bar h2 { margin: 0; font-size: 1rem; }
-.units__search { flex: 1; min-width: 12rem; padding: 0.35rem 0.6rem; }
+.units__search { flex: 1; min-width: 12rem; }
 .units__count, .units__empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 
 .units__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }

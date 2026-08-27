@@ -70,3 +70,55 @@ describe("the component stylesheets", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * The controls, as rules rather than per-component handiwork.
+ *
+ * A primary, a secondary and a destructive button must be tellable apart in a
+ * single glance, which only holds when each is one class in the global sheet
+ * rather than a colour someone wrote next to the button that needed it.
+ */
+describe("the controls", () => {
+  it("distinguishes primary, secondary and destructive buttons by their own rules", async () => {
+    const css = await readFile(STYLES, "utf8");
+
+    expect(css).toMatch(/\.btn\s*\{/);
+    expect(css).toMatch(/\.btn--primary\s*\{[^}]*var\(--accent\)/);
+    expect(css).toMatch(/\.btn--danger\s*\{[^}]*var\(--danger\)/);
+  });
+
+  it("gives fields and selects one height and one radius", async () => {
+    const css = await readFile(STYLES, "utf8");
+
+    const shared = css.match(/input[^{]*,\s*select[^{]*,\s*textarea\s*\{([^}]*)\}/);
+    expect(shared).not.toBeNull();
+    expect(shared?.[1]).toMatch(/padding/);
+    expect(shared?.[1]).toMatch(/border-radius/);
+  });
+
+  it("sizes no field in its component: no padding of its own on inputs and selects", async () => {
+    const files = (await cssFiles("app/renderer/src")).filter((path) => path !== STYLES);
+    const offenders: string[] = [];
+
+    for (const path of files) {
+      const css = await readFile(path, "utf8");
+      for (const match of css.matchAll(/([^{}]*?(?:input|select|search)[^{}]*)\{([^}]*)\}/g)) {
+        if (/padding|border-radius/.test(match[2])) offenders.push(`${path}: ${match[1].trim()}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it("never points the cursor on a button: the arrow, like a native application", async () => {
+    const files = await cssFiles("app/renderer/src");
+    const offenders = [];
+
+    for (const path of files) {
+      const css = await readFile(path, "utf8");
+      if (css.includes("cursor: pointer")) offenders.push(path);
+    }
+
+    expect(offenders).toEqual([]);
+  });
+});

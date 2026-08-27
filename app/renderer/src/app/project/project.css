@@ -17,7 +17,7 @@
 
 .project__tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .project__tab {
-  border: none; background: none; padding: 0.45rem 0.7rem; cursor: pointer;
+  border: none; background: none; padding: 0.45rem 0.7rem;
   font-size: 0.9rem; color: var(--text-muted); border-bottom: 2px solid transparent;
 }
 .project__tab--on { color: var(--text); border-bottom-color: var(--accent); }

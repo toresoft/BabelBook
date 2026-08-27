@@ -11,6 +11,8 @@
 :root {
   color-scheme: light dark;
 
+  --radius: 6px;
+
   --text: #111827;
   --text-soft: #4b5563;
   --text-muted: #6b7280;
@@ -22,6 +24,7 @@
   --line-strong: #d1d5db;
 
   --accent: #2563eb;
+  --on-accent: #ffffff;
   --accent-soft: #dbeafe;
   --accent-soft-text: #1e40af;
   --accent-wash: #eff6ff;
@@ -53,6 +56,7 @@
     --line-strong: #475569;
 
     --accent: #60a5fa;
+    --on-accent: #0f172a;
     --accent-soft: #1e3a8a;
     --accent-soft-text: #bfdbfe;
     --accent-wash: #1e293b;
@@ -83,4 +87,47 @@ body {
   background: var(--surface);
   color: var(--text);
   line-height: 1.5;
+}
+
+/*
+ * The controls. The cursor is the arrow everywhere, including buttons: the
+ * pointing hand is for links that leave, and nothing here is one.
+ *
+ * Three kinds of button — the quiet secondary is the plain `.btn` — and one
+ * shape of field, so a select next to an input reads as a row made by one
+ * application rather than two browsers.
+ */
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.btn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.btn--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+input:not([type="checkbox"]),
+select,
+textarea {
+  font: inherit;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
 }

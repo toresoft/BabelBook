@@ -1,7 +1,7 @@
 .library { padding: 1.5rem; }
 .library__bar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
 .library__bar h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
-.library__search { flex: 1; max-width: 22rem; padding: 0.45rem 0.7rem; }
+.library__search { flex: 1; max-width: 22rem; }
 .tile__title { text-decoration: none; color: inherit; }
 .tile__title h2 { margin: 0.4rem 0 0.2rem; font-size: 0.95rem; }
 .library__settings { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }

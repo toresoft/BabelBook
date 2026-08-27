@@ -1,6 +1,6 @@
 # babelBook — Piano 8: l'interfaccia
 
-**Stato: in corso** — Task 1 completo, al 2026-08-27.
+**Stato: in corso** — Task 1–2 completi, al 2026-08-27.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -109,13 +109,13 @@ I fogli dei componenti passano alle variabili. È il grosso del lavoro ed è mec
 **Files:**
 - Modify: `app/renderer/src/styles.css`
 
-- [ ] **Step 1: I test che falliscono**
+- [x] **Step 1: I test che falliscono**
 
 - un pulsante primario, uno secondario e uno distruttivo si distinguono da regole diverse, non da un colore scritto a mano nel componente;
 - i campi e i `select` condividono altezza e raggio;
 - **nessun `cursor: pointer` sui pulsanti**: è la freccia, come in un'applicazione vera.
 
-- [ ] **Step 2–5**: come sopra.
+- [x] **Step 2–5**: come sopra.
 
 Le classi vanno nel foglio globale e i componenti le usano. Tre classi, non un framework.
 

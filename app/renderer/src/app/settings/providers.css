@@ -23,7 +23,7 @@
 .providers__runtimes-title { margin: 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .providers__runtime, .providers__entry, .providers__preset {
   justify-self: start; padding: 0.35rem 0.75rem; border-radius: 999px;
-  border: 1px solid var(--line-strong); background: none; cursor: pointer;
+  border: 1px solid var(--line-strong); background: none;
 }
 .providers__runtime { border-color: var(--ok-line); }
 .providers__preset { color: var(--accent); }
