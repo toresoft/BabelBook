@@ -112,6 +112,9 @@
         <button
           type="button"
           class="providers__entry"
+          [class.providers__entry--unserved]="entry.route === null"
+          [disabled]="entry.route === null"
+          [attr.title]="entry.route === null ? t('providers.unserved') : null"
           [attr.data-testid]="'entry-' + entry.id"
           (click)="pick(entry)">
           {{ entry.name }}

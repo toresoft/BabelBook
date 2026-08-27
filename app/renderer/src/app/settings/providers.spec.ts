@@ -19,6 +19,10 @@ const entry: CatalogEntry = {
   baseUrl: "https://api.acme.test/v1", options: {}, models: 12,
 };
 
+const unserved: CatalogEntry = {
+  id: "venice", name: "Venice AI", route: null, baseUrl: null, options: {}, models: 3,
+};
+
 const priced: ProviderModel = {
   id: "acme-mini", displayName: "Acme Mini", contextWindow: 128_000,
   priceIn: 0.5, priceOut: 2, capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
@@ -333,5 +337,27 @@ describe("Providers", () => {
       kind: "deleteProvider", detail: { name: "Acme" },
     });
     expect(calls(invoke, "provider.delete")).toHaveLength(0);
+  });
+
+  it("shows an entry it cannot serve, and refuses to let it be chosen", async () => {
+    const { fixture } = mount(bridge({ "catalog.search": [entry, unserved] }));
+    await fixture.whenStable();
+
+    fixture.componentInstance.search("a");
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const served = fixture.nativeElement
+      .querySelector("[data-testid=entry-acme]") as HTMLButtonElement;
+    const refused = fixture.nativeElement
+      .querySelector("[data-testid=entry-venice]") as HTMLButtonElement | null;
+
+    // Visible, because a name that vanishes from the list teaches nothing;
+    // unpressable, because the sentence about it belongs here and not three
+    // steps later, after a key has been pasted.
+    expect(served.disabled).toBe(false);
+    expect(refused).not.toBeNull();
+    expect(refused!.disabled).toBe(true);
+    expect(refused!.getAttribute("title")).toBe(catalog.providers["unserved"]);
   });
 });

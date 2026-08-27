@@ -83,6 +83,7 @@
     "gone": "This provider is gone: it may have been deleted elsewhere.",
     "search": "Search for a provider",
     "searchHint": "Type to search the catalogue: OpenAI, DeepSeek, a gateway…",
+    "unserved": "babelBook does not serve this provider: add it as a compatible endpoint, giving its address.",
     "localTitle": "On your machine",
     "local": "local",
     "compatible": "Compatible endpoint",

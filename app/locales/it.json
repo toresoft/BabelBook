@@ -83,6 +83,7 @@
     "gone": "Questo provider non esiste più: forse è stato eliminato altrove.",
     "search": "Cerca un provider",
     "searchHint": "Scrivi per cercare fra i provider del catalogo: OpenAI, DeepSeek, un gateway…",
+    "unserved": "babelBook non serve questo provider: aggiungilo come endpoint compatibile, scrivendone l'indirizzo.",
     "localTitle": "Sulla tua macchina",
     "local": "locale",
     "compatible": "Endpoint compatibile",

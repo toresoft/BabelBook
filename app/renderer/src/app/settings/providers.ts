@@ -156,6 +156,9 @@ export class Providers implements OnDestroy {
   }
 
   pick(entry: CatalogEntry): void {
+    // The button is disabled, and this is the same fact said where the type
+    // can hold it: a draft has a route, and an entry may not have one.
+    if (entry.route === null) return;
     this.failure.set(null);
     this.draft.set({
       ...BLANK,

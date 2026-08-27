@@ -25,6 +25,7 @@
   border: 1px solid var(--line-strong); background: none;
 }
 .providers__runtime { border-color: var(--ok-line); }
+.providers__entry--unserved { color: var(--text-faint); border-style: dashed; }
 .providers__preset { color: var(--accent); }
 .providers__catalog-row { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
 .providers__catalog { color: var(--text-muted); font-size: 0.8rem; margin: 0; }
