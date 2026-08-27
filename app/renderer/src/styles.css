@@ -115,12 +115,12 @@
 }
 
 /*
- * The dark theme is a class the main process puts on the root: nativeTheme
+ * The dark theme is an attribute the main process sets on the root: nativeTheme
  * hears the system change on every platform, the renderer's media query does
  * not (on Linux it gets stuck on the start-up value, electron#22211). So the
- * renderer is told, and the class carries the theme.
+ * renderer is told, and the attribute carries the theme.
  */
-:root.theme-dark {
+:root[data-theme="babelbook-dark"] {
   color-scheme: dark;
 
   --text: #e2e8f0;

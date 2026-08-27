@@ -33,18 +33,18 @@ describe("the foundations", () => {
   it("declares a colour scheme for each theme, so native controls follow it", async () => {
     const css = await readFile(STYLES, "utf8");
     expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*light/);
-    expect(css).toMatch(/:root\.theme-dark\s*\{[^}]*color-scheme:\s*dark/);
+    expect(css).toMatch(/:root\[data-theme="babelbook-dark"\]\s*\{[^}]*color-scheme:\s*dark/);
   });
 
   it("defines the colours as variables and redefines them for the dark theme", async () => {
     const css = await readFile(STYLES, "utf8");
     expect(css).toMatch(/:root\s*\{[^}]*--/);
 
-    // The dark theme is a class the main process puts on the root when
+    // The dark theme is an attribute the main process sets on the root when
     // nativeTheme says so: on Linux the media query gets stuck on the
     // startup value and never hears the system change (electron#22211), so
     // the renderer is told instead of guessing.
-    const dark = css.match(/:root\.theme-dark\s*\{([\s\S]*)\}/);
+    const dark = css.match(/:root\[data-theme="babelbook-dark"\]\s*\{([\s\S]*)\}/);
     expect(dark).not.toBeNull();
     expect(dark?.[1]).toMatch(/--[a-z-]+:/);
   });

@@ -25,10 +25,11 @@ async function setTheme(app: ElectronApplication, window: Page, theme: Theme): P
   await app.evaluate(({ nativeTheme }, source) => {
     nativeTheme.themeSource = source;
   }, theme);
-  // The class is the honest witness that the theme arrived: the renderer is
-  // told by the main process, and the colours follow the class.
+  // The attribute is the honest witness that the theme arrived: the renderer
+  // is told by the main process, and the colours follow the attribute.
+  const expected = theme === "dark" ? "babelbook-dark" : "babelbook";
   await expect.poll(() => window.evaluate(() =>
-    document.documentElement.classList.contains("theme-dark"))).toBe(theme === "dark");
+    document.documentElement.dataset["theme"])).toBe(expected);
   await window.waitForTimeout(100);
   return window.evaluate(() => getComputedStyle(document.body).backgroundColor);
 }

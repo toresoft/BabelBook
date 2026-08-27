@@ -39,7 +39,10 @@ export async function settleAppearance(
   transloco: TranslocoService,
 ): Promise<void> {
   const wear = (dark: boolean): void => {
-    document.documentElement.classList.toggle("theme-dark", dark);
+    // daisyUI chooses by attribute. Both names are written explicitly: leaving
+    // the attribute off in the light case would hand the choice to whatever
+    // daisyUI considers the default, which is not a decision made here.
+    document.documentElement.dataset["theme"] = dark ? "babelbook-dark" : "babelbook";
   };
 
   try {
@@ -47,6 +50,7 @@ export async function settleAppearance(
     wear((await ipc.invoke("ui.theme", undefined)).dark);
   } catch {
     // The light theme stands.
+    wear(false);
   }
 
   try {

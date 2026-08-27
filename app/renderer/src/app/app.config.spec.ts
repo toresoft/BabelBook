@@ -49,9 +49,24 @@ describe("settling the appearance", () => {
 
     await settleAppearance(TestBed.inject(IpcService), transloco);
 
-    expect(document.documentElement.classList.contains("theme-dark")).toBe(true);
+    expect(document.documentElement.dataset["theme"]).toBe("babelbook-dark");
     expect(transloco.getActiveLang()).toBe("en");
     expect(ipc.invoke).toHaveBeenCalledWith("ui.theme", undefined);
+  });
+
+  it("wears the light theme when the system is light", async () => {
+    const ipc = { on: () => () => {}, invoke: vi.fn(async (channel: string) =>
+      channel === "ui.theme" ? { dark: false } : stored) };
+    TestBed.configureTestingModule({
+      providers: [...provideI18n("it"), { provide: IpcService, useValue: ipc }],
+    });
+
+    await settleAppearance(TestBed.inject(IpcService), TestBed.inject(TranslocoService));
+
+    // Named, not absent: daisyUI picks a theme by attribute, and no attribute
+    // means whatever it considers the default — which is not a decision anyone
+    // in this application made.
+    expect(document.documentElement.dataset["theme"]).toBe("babelbook");
   });
 
   it("still applies the stored language when the theme cannot be read", async () => {
@@ -69,16 +84,16 @@ describe("settling the appearance", () => {
 
     await settleAppearance(TestBed.inject(IpcService), transloco);
 
-    expect(document.documentElement.classList.contains("theme-dark")).toBe(true);
+    expect(document.documentElement.dataset["theme"]).toBe("babelbook-dark");
   });
 
   it("leaves the guesses standing when there is no bridge at all", async () => {
     const { transloco } = scene(["ui.theme", "settings.get"]);
-    document.documentElement.classList.remove("theme-dark");
+    document.documentElement.dataset["theme"] = "";
 
     await settleAppearance(TestBed.inject(IpcService), transloco);
 
-    expect(document.documentElement.classList.contains("theme-dark")).toBe(false);
+    expect(document.documentElement.dataset["theme"]).toBe("babelbook");
     expect(transloco.getActiveLang()).toBe("it");
   });
 });
