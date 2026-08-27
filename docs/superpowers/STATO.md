@@ -38,7 +38,8 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
 | 5. Gate, glossari, report | **completo**, 8/8 | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
 | 6. CI e pacchetti | **6 task su 8**, CI verde su GitHub | `.github/`, `app/electron-builder.yml` |
-| 7. Catalogo provider e modelli locali | scritto, non iniziato | — |
+| 7. Catalogo provider e modelli locali | **completo**, 9/9 | `app/main/catalog/` |
+| 8. Interfaccia | scritto, non iniziato | — |
 
 Suite: **574 test verdi** (260 core, 255 app, 59 componenti) piu' **11 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
