@@ -137,58 +137,105 @@ describe("Providers", () => {
     }
   });
 
-  it("shows the models the endpoint serves, without a field for any id", async () => {
+  it("asks for a key and nothing else when the catalogue knows the address", async () => {
+    const { fixture } = mount(bridge({ "catalog.search": [entry] }));
+    await fixture.whenStable();
+    fixture.componentInstance.search("acm");
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector("[data-testid=entry-acme]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Connecting is one act. The model comes later, on a provider that has a
+    // key — which is the only moment its models exist at all.
+    expect(fixture.nativeElement.querySelector("[data-testid=provider-api-key]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=model-list]")).toBeNull();
+  });
+
+  it("asks for an address too when the catalogue knows none", async () => {
+    const bare: CatalogEntry = { ...entry, id: "bare", name: "Bare", baseUrl: null, envVar: null };
+    const { fixture } = mount(bridge({ "catalog.search": [bare] }));
+    await fixture.whenStable();
+    fixture.componentInstance.search("bar");
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector("[data-testid=entry-bare]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).not.toBeNull();
+  });
+
+  it("connects with the models the endpoint serves, without a field for any id", async () => {
     const { fixture, invoke } = mount(bridge({
       "catalog.models": [priced, unpriced],
     }));
     await fixture.whenStable();
 
     fixture.componentInstance.pick(entry);
-    await fixture.componentInstance.findModels();
     fixture.detectChanges();
-
-    expect(calls(invoke, "catalog.models")[0]![1]).toEqual({ entryId: "acme", apiKey: null });
-    expect(fixture.componentInstance.draft()?.models).toEqual([priced, unpriced]);
-
     const form = fixture.nativeElement.querySelector("[data-testid=provider-form]") as HTMLElement;
-    for (const absent of ["add-model", "find-model"] /* , anything model-editable */) {
+
+    // The module asks for nothing but the key: no id to invent, no list to
+    // browse — the models are not its to show anymore.
+    for (const absent of ["add-model", "find-models", "model-list"]) {
       expect(form.querySelector(`[data-testid=${absent}]`)).toBeNull();
     }
     expect(form.querySelector("input:not([data-testid=provider-api-key])")).toBeNull();
+
+    await fixture.componentInstance.save();
+
+    // The models arrive while the key is still in hand, which is the one
+    // moment they can: at save, straight onto the provider being created.
+    expect(calls(invoke, "catalog.models")[0]![1]).toEqual({ entryId: "acme", apiKey: null });
+    const body = calls(invoke, "provider.create")[0]![1] as Record<string, unknown>;
+    expect(body["models"]).toEqual([priced, unpriced]);
   });
 
-  it("carries price and context next to each model, when they are known", async () => {
-    const { fixture } = mount(bridge({ "catalog.models": [priced, unpriced] }));
+  it("carries price and context with each model into the provider, when they are known", async () => {
+    const { fixture, invoke } = mount(bridge({ "catalog.models": [priced, unpriced] }));
     await fixture.whenStable();
 
     fixture.componentInstance.pick(entry);
-    await fixture.componentInstance.findModels();
-    fixture.detectChanges();
+    await fixture.componentInstance.save();
 
-    const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain("Acme Mini");
-    expect(text).toContain("128000");
-    expect(text).toContain("0.5");
-    expect(text).toContain("2");
-    // The unpriced model says so, rather than showing nothing: a missing
-    // number is a fact the reader deserves to see named.
-    expect(text).toContain(catalog.providers["priceUnknown"]!);
+    const body = calls(invoke, "provider.create")[0]![1] as { models: ProviderModel[] };
+    const stored = body.models.find((m) => m.id === "acme-mini")!;
+    expect(stored.displayName).toBe("Acme Mini");
+    expect(stored.contextWindow).toBe(128_000);
+    expect(stored.priceIn).toBe(0.5);
+    expect(stored.priceOut).toBe(2);
+    // The unpriced model keeps its nulls rather than a number someone would
+    // believe: a missing price is a fact, not a zero.
+    const unpricedStored = body.models.find((m) => m.id === "acme-other")!;
+    expect(unpricedStored.priceIn).toBeNull();
+    expect(unpricedStored.priceOut).toBeNull();
   });
 
-  it("says a rejected key with its own words, not the provider's", async () => {
-    const { fixture } = mount(bridge({
+  it("says a rejected key with its own words, and connects nothing", async () => {
+    const { fixture, invoke } = mount(bridge({
       "catalog.models": failureOf("unauthorized"),
     }));
     await fixture.whenStable();
 
     fixture.componentInstance.pick(entry);
     fixture.componentInstance.patch("apiKey", "sk-wrong");
-    await fixture.componentInstance.findModels();
+    await fixture.componentInstance.save();
     fixture.detectChanges();
 
+    // The typed key crossed to the main process exactly once, to be refused.
+    expect(calls(invoke, "catalog.models")[0]![1]).toEqual({ entryId: "acme", apiKey: "sk-wrong" });
     expect(fixture.componentInstance.failure()).toBe("unauthorized");
     const said = fixture.nativeElement.querySelector("[data-testid=provider-failure]") as HTMLElement;
     expect(said.textContent).toContain(catalog.discover["unauthorized"]!);
+    // A key that cannot reach the models is not a provider: connecting
+    // half-modelled is the dead end this refuses.
+    expect(calls(invoke, "provider.create")).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector("[data-testid=provider-form]")).not.toBeNull();
   });
 
   it("keeps the compatible endpoint as the declared way to what the catalogue does not know", async () => {
@@ -198,14 +245,18 @@ describe("Providers", () => {
     await fixture.whenStable();
 
     fixture.componentInstance.pickCompatible();
-    fixture.componentInstance.patch("compatUrl", "https://gateway.internal/v1");
-    await fixture.componentInstance.findModels();
     fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).not.toBeNull();
+
+    fixture.componentInstance.patch("name", "Gateway");
+    fixture.componentInstance.patch("baseUrl", "https://gateway.internal/v1");
+    await fixture.componentInstance.save();
 
     expect(calls(invoke, "provider.discover")[0]![1])
       .toEqual({ baseUrl: "https://gateway.internal/v1", apiKey: null });
-    expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).not.toBeNull();
-    expect(fixture.componentInstance.draft()?.models).toEqual([unpriced]);
+    const body = calls(invoke, "provider.create")[0]![1] as Record<string, unknown>;
+    expect(body["baseUrl"]).toBe("https://gateway.internal/v1");
+    expect(body["models"]).toEqual([unpriced]);
   });
 
   it("loads the catalogue's own list when the entry declares no endpoint to ask", async () => {
@@ -214,12 +265,37 @@ describe("Providers", () => {
     await fixture.whenStable();
 
     fixture.componentInstance.pick(noUrl);
-    await fixture.whenStable();
     fixture.detectChanges();
+    // Nothing is asked of the network while the form is open: the list waits
+    // for the save, when the key — if there is one — is in hand.
+    expect(calls(invoke, "catalog.models")).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).not.toBeNull();
+
+    fixture.componentInstance.patch("baseUrl", "https://self-hosted.acme.test/v1");
+    await fixture.componentInstance.save();
 
     // The list came from the catalogue entry itself, key or no key.
     expect(calls(invoke, "catalog.models")[0]![1]).toEqual({ entryId: "acme", apiKey: null });
-    expect(fixture.componentInstance.draft()?.models).toEqual([priced]);
+    const body = calls(invoke, "provider.create")[0]![1] as Record<string, unknown>;
+    expect(body["models"]).toEqual([priced]);
+  });
+
+  it("connects a local runtime with the models the server already listed", async () => {
+    const { fixture, invoke } = mount(bridge());
+    await fixture.whenStable();
+
+    fixture.componentInstance.pickLocal(runtime);
+    await fixture.componentInstance.save();
+
+    // A runtime on this machine is not asked anything twice: its models came
+    // with it, and no endpoint is discovered behind the form's back.
+    expect(calls(invoke, "provider.discover")).toHaveLength(0);
+    expect(calls(invoke, "catalog.models")).toHaveLength(0);
+    const body = calls(invoke, "provider.create")[0]![1] as Record<string, unknown>;
+    expect(body["models"]).toEqual([{
+      id: "gemma3:12b", displayName: "gemma3:12b", contextWindow: null,
+      priceIn: null, priceOut: null, capabilities: null,
+    }]);
   });
 
   it("says how old the catalogue is, in one line", async () => {

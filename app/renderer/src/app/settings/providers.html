@@ -136,14 +136,16 @@
   @if (draft(); as form) {
     <form class="draft" data-testid="provider-form" (ngSubmit)="save()">
       <h2>
-        @switch (form.kind) {
-          @case ('compatible') { {{ t('providers.compatibleTitle') }} }
-          @case ('edit') { {{ t('providers.editTitle') }} }
-          @default { {{ form.name }} }
+        @if (form.id !== null) {
+          {{ t('providers.editTitle') }}
+        } @else if (form.catalogId === null) {
+          {{ t('providers.compatibleTitle') }}
+        } @else {
+          {{ form.name }}
         }
       </h2>
 
-      @if (form.kind === 'compatible' || form.kind === 'edit') {
+      @if (form.id !== null || (form.catalogId === null && form.needsUrl)) {
         <label>
           {{ t('providers.name') }}
           <input
@@ -156,23 +158,34 @@
         </label>
       }
 
-      @if (form.kind === 'compatible') {
+      @if (form.needsUrl) {
         <label>
           {{ t('providers.baseUrl') }}
           <input
             type="url"
             class="input"
             data-testid="provider-base-url"
-            [ngModel]="form.compatUrl"
+            [ngModel]="form.baseUrl"
             [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="patch('compatUrl', $event)" />
+            (ngModelChange)="patch('baseUrl', $event)" />
           <small>{{ t('providers.compatibleHint') }}</small>
         </label>
       }
 
-      @if (form.kind !== 'local') {
+      @if (form.needsKey) {
         <label>
-          @if (form.kind === 'catalog') {
+          @if (form.id !== null) {
+            {{ t('providers.apiKey') }}
+            <input
+              type="password"
+              class="input"
+              autocomplete="off"
+              [attr.placeholder]="form.hadKey ? t('providers.apiKeyUnchanged') : null"
+              data-testid="provider-api-key"
+              [ngModel]="form.apiKey"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="patch('apiKey', $event)" />
+          } @else if (form.catalogId !== null) {
             {{ t('providers.apiKey') }}
             <small>{{ t('providers.apiKeyHint') }}</small>
             <input
@@ -183,7 +196,7 @@
               [ngModel]="form.apiKey"
               [ngModelOptions]="{ standalone: true }"
               (ngModelChange)="patch('apiKey', $event)" />
-          } @else if (form.kind === 'compatible') {
+          } @else {
             {{ t('providers.apiKeyOptional') }}
             <input
               type="password"
@@ -193,66 +206,10 @@
               [ngModel]="form.apiKey"
               [ngModelOptions]="{ standalone: true }"
               (ngModelChange)="patch('apiKey', $event)" />
-          } @else {
-            {{ t('providers.apiKey') }}
-            <input
-              type="password"
-              class="input"
-              autocomplete="off"
-              [placeholder]="t('providers.apiKeyUnchanged')"
-              data-testid="provider-api-key"
-              [ngModel]="form.apiKey"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="patch('apiKey', $event)" />
           }
         </label>
       } @else {
         <p class="draft__nokey" data-testid="no-key-needed">{{ t('providers.noKeyNeeded') }}</p>
-      }
-
-      @if (form.kind === 'catalog' && form.baseUrl !== null) {
-        <button
-          type="button"
-          class="btn"
-          data-testid="find-models"
-          [disabled]="finding()"
-          (click)="findModels()">
-          {{ finding() ? t('providers.finding') : t('providers.findModels') }}
-        </button>
-      }
-      @if (form.kind === 'compatible') {
-        <button
-          type="button"
-          class="btn"
-          data-testid="find-models"
-          [disabled]="finding() || form.compatUrl.trim() === ''"
-          (click)="findModels()">
-          {{ finding() ? t('providers.finding') : t('providers.findModels') }}
-        </button>
-      }
-
-      @if (form.models.length > 0) {
-        <ul class="draft__models" data-testid="model-list">
-          @for (model of form.models; track model.id) {
-            <li class="draft__model" [attr.data-testid]="'model-' + model.id">
-              <span class="draft__model-name">{{ model.displayName }}</span>
-              @if (model.contextWindow !== null) {
-                <span class="draft__model-context">
-                  {{ t('providers.contextOf', { context: model.contextWindow }) }}
-                </span>
-              }
-              @if (model.priceIn !== null && model.priceOut !== null) {
-                <span class="draft__model-price">
-                  {{ t('providers.priceOf', { in: model.priceIn, out: model.priceOut }) }}
-                </span>
-              } @else {
-                <span class="draft__model-price draft__model-price--unknown">
-                  {{ t('providers.priceUnknown') }}
-                </span>
-              }
-            </li>
-          }
-        </ul>
       }
 
       @if (failure(); as code) {

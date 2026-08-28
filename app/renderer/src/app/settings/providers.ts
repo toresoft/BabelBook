@@ -7,19 +7,19 @@ import type {
 import { IpcService } from "../core/ipc.service";
 
 /**
- * A provider being written.
+ * A provider being connected.
  *
- * `kind` decides what the form asks for: a catalogue entry wants the key and
- * nothing else, a local runtime wants nothing at all, the compatible endpoint
- * wants a URL and, if the gateway has one, a key. No kind ever asks for a
- * model id: the models arrive, or they do not.
+ * What the form asks is a property of the provider, not a mode of the form.
+ * The four kinds this replaced — catalogue, local, compatible, edit — cost
+ * five conditions in the template to ask, in the end, for a key and sometimes
+ * an address. An address is wanted when the catalogue knows none; a key is
+ * wanted unless the endpoint runs on this machine.
  *
  * `apiKey` starts empty on every open and is never filled from the store: the
  * renderer is not allowed to read a key, so there is nothing to prefill with.
  */
 interface Draft {
   id: string | null;
-  kind: "catalog" | "local" | "compatible" | "edit";
   name: string;
   route: string;
   baseUrl: string | null;
@@ -28,9 +28,21 @@ interface Draft {
   options: Record<string, unknown>;
   catalogId: string | null;
   catalogAt: string | null;
-  /** The compatible endpoint's URL, typed by hand because nobody knows it. */
-  compatUrl: string;
+  /** Carried, not asked: a runtime's own models, or an edit's untouched list. */
   models: ProviderModel[];
+  /** The catalogue declared no address, so someone has to give one. */
+  needsUrl: boolean;
+  /** A runtime on this machine wants no key; everything else does. */
+  needsKey: boolean;
+  /**
+   * The variable this provider's key usually lives in, carried from the
+   * catalogue entry so Task 6 can ask whether it holds anything. Null for a
+   * local runtime and for a hand-typed endpoint, which have no documentation
+   * to name one.
+   */
+  envVar: string | null;
+  /** Whether the edited provider already had a key: "leave empty to keep it". */
+  hadKey: boolean;
 }
 
 /**
@@ -47,9 +59,9 @@ const FAILURE_KEYS: Record<string, string> = {
 };
 
 const BLANK: Draft = {
-  id: null, kind: "compatible", name: "", route: "openai-compatible", baseUrl: null,
+  id: null, name: "", route: "openai-compatible", baseUrl: null,
   apiKey: "", headers: {}, options: {}, catalogId: null, catalogAt: null,
-  compatUrl: "", models: [],
+  models: [], needsUrl: true, needsKey: true, envVar: null, hadKey: false,
 };
 
 @Component({
@@ -64,9 +76,8 @@ export class Providers implements OnDestroy {
   readonly providers = signal<Provider[]>([]);
   readonly draft = signal<Draft | null>(null);
   readonly saving = signal(false);
-  /** Why finding models failed, as a code: the interface owns the words. */
+  /** Why the last connect or find failed, as a code: the interface owns the words. */
   readonly failure = signal<string | null>(null);
-  readonly finding = signal(false);
 
   readonly query = signal("");
   readonly entries = signal<CatalogEntry[]>([]);
@@ -162,7 +173,6 @@ export class Providers implements OnDestroy {
     this.failure.set(null);
     this.draft.set({
       ...BLANK,
-      kind: "catalog",
       name: entry.name,
       route: entry.route,
       baseUrl: entry.baseUrl,
@@ -171,17 +181,15 @@ export class Providers implements OnDestroy {
       // The date of the metadata this provider will carry, which is the
       // catalogue's date: the answer to "how old is this price?".
       catalogAt: this.catalogState()?.at ?? null,
+      needsUrl: entry.baseUrl === null,
+      envVar: entry.envVar,
     });
-    // An entry with no URL to ask carries its list in the catalogue itself;
-    // for a cloud provider that is the publisher's own list.
-    if (entry.baseUrl === null) void this.findModels();
   }
 
   pickLocal(runtime: LocalRuntime): void {
     this.failure.set(null);
     this.draft.set({
       ...BLANK,
-      kind: "local",
       name: runtime.name,
       route: "openai-compatible",
       baseUrl: runtime.baseUrl,
@@ -189,19 +197,20 @@ export class Providers implements OnDestroy {
       models: runtime.models.map((id) => ({
         id, displayName: id, contextWindow: null, priceIn: null, priceOut: null, capabilities: null,
       })),
+      needsUrl: false,
+      needsKey: false,
     });
   }
 
   pickCompatible(): void {
     this.failure.set(null);
-    this.draft.set({ ...BLANK, kind: "compatible" });
+    this.draft.set({ ...BLANK });
   }
 
   edit(provider: Provider): void {
     this.failure.set(null);
     this.draft.set({
       ...BLANK,
-      kind: "edit",
       id: provider.id,
       name: provider.name,
       route: provider.route,
@@ -211,6 +220,9 @@ export class Providers implements OnDestroy {
       catalogId: provider.catalogId,
       catalogAt: provider.catalogAt,
       models: provider.models.map((model) => ({ ...model })),
+      // An edit never re-asks the address; it may still set a first key.
+      needsUrl: false,
+      hadKey: provider.hasKey,
     });
   }
 
@@ -241,38 +253,16 @@ export class Providers implements OnDestroy {
   }
 
   /**
-   * The one network act of the form: the models arrive, or a code says why
-   * they did not. The typed key crosses to the main process here, exactly as
-   * it does at save, and never comes back.
+   * What the form demands before it can save: a name for the endpoints nobody
+   * else can name, an address for the ones the catalogue does not know. The
+   * key is never demanded — some gateways want none — and no model id ever is:
+   * the models come from somewhere else; the form can only carry them.
    */
-  async findModels(): Promise<void> {
-    const draft = this.draft();
-    if (draft === null || this.finding()) return;
-
-    this.finding.set(true);
-    this.failure.set(null);
-    try {
-      const key = draft.apiKey.trim() === "" ? null : draft.apiKey;
-      const models = draft.kind === "catalog"
-        ? await this.#ipc.invoke("catalog.models", { entryId: draft.catalogId!, apiKey: key })
-        : await this.#ipc.invoke("provider.discover", {
-          baseUrl: draft.kind === "compatible" ? draft.compatUrl : draft.baseUrl!,
-          apiKey: key,
-        });
-      this.draft.update((form) => form === null ? form : { ...form, models });
-    } catch (error) {
-      this.failure.set((error as { code?: string }).code ?? "unknown");
-    } finally {
-      this.finding.set(false);
-    }
-  }
-
-  /** The models come from somewhere else; the form can only wait for them. */
   invalid(draft: Draft): boolean {
-    if (draft.kind === "compatible") {
-      return draft.name.trim() === "" || draft.compatUrl.trim() === "";
+    if (draft.id !== null) return draft.name.trim() === "";
+    if (draft.needsUrl) {
+      return draft.name.trim() === "" || draft.baseUrl === null || draft.baseUrl.trim() === "";
     }
-    if (draft.kind === "edit") return draft.name.trim() === "";
     return false;
   }
 
@@ -293,22 +283,36 @@ export class Providers implements OnDestroy {
           ...(draft.apiKey === "" ? {} : { apiKey: draft.apiKey }),
         });
       } else {
-        const baseUrl = draft.kind === "compatible" ? draft.compatUrl.trim() : draft.baseUrl;
+        // The models are asked for here, at the one moment the key is still
+        // in hand: once the provider exists the key is written away for good,
+        // and a list that needs it can no longer be fetched. A runtime on
+        // this machine is the exception — its models arrived with it, and no
+        // network is asked behind the form's back.
+        const key = draft.apiKey.trim() === "" ? null : draft.apiKey;
+        const models = draft.catalogId !== null
+          ? await this.#ipc.invoke("catalog.models", { entryId: draft.catalogId, apiKey: key })
+          : draft.needsUrl && draft.baseUrl !== null
+            ? await this.#ipc.invoke("provider.discover", { baseUrl: draft.baseUrl.trim(), apiKey: key })
+            : draft.models;
         await this.#ipc.invoke("provider.create", {
           name: draft.name.trim(),
           route: draft.route,
-          baseUrl: baseUrl === null || baseUrl === "" ? null : baseUrl,
+          baseUrl: draft.baseUrl === null || draft.baseUrl.trim() === ""
+            ? null
+            : draft.baseUrl.trim(),
           headers: draft.headers,
           options: draft.options,
           catalogId: draft.catalogId,
           catalogAt: draft.catalogAt,
-          models: draft.models,
-          ...(draft.apiKey === "" ? {} : { apiKey: draft.apiKey }),
+          models,
+          ...(key === null ? {} : { apiKey: draft.apiKey }),
         });
       }
       this.draft.set(null);
       await this.reload();
     } catch (error) {
+      // A fetch that failed left nothing created: a provider connected
+      // without its models is the half-state this screen refuses.
       this.failure.set((error as { code?: string }).code ?? "unknown");
     } finally {
       this.saving.set(false);
