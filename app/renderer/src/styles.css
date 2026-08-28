@@ -192,12 +192,21 @@ body {
 }
 
 /*
- * The pointing hand is for links that leave, and nothing here is one:
- * the arrow stays on everything that acts inside the application.
- * daisyUI ships pointer on its controls (and not-allowed on the disabled
- * ones), so this holds the line: unlayered, it beats the library's layers
- * without a specificity fight — and it says button.btn because the anchors
- * dressed as buttons are the ones leaving, and their hand was theirs before
- * the port and stays theirs.
+ * The pointing hand is for links that leave, and nothing here is one: the
+ * arrow stays on what acts inside the application. daisyUI puts the hand
+ * on the button, the tab and the checkbox — and on nothing else the app
+ * uses: the enabled select gets no cursor from the library at all, and the
+ * enabled input wears its cursor: text, so the counter names exactly the
+ * three that were handed the hand, unlayered, where it beats the library's
+ * layers without a specificity fight. It says button.btn because the
+ * anchors dressed as buttons are the ones leaving, and their hand was
+ * theirs before the port and stays theirs.
+ *
+ * Text fields are the other half of the fidelity: an enabled .input keeps
+ * daisyUI's cursor: text and an enabled .textarea the browser's own — the
+ * I-beam they had before the port, which is not a hand and was never the
+ * mistake. The disabled fields are counted instead, because daisyUI hands
+ * them not-allowed and before the port a disabled field showed the arrow.
  */
-button.btn, .tab, .checkbox, .select, .textarea, .input { cursor: default; }
+button.btn, .tab, .checkbox { cursor: default; }
+.input:disabled, .select:disabled, .textarea:disabled { cursor: default; }
