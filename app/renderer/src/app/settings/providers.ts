@@ -95,6 +95,15 @@ export class Providers implements OnDestroy {
   readonly verified = signal<Record<string, { ok: boolean; code?: VerifyCode; latencyMs?: number }>>({});
   readonly verifying = signal<string | null>(null);
   readonly chosenModel = signal<Record<string, string>>({});
+  /**
+   * Whether the variable the current draft's entry names holds a key. Asked
+   * once per draft, and only of drafts that name a variable; false for every
+   * other draft. What it never holds is the key itself: the answer is the
+   * channel's boolean, and the value stays on the main side.
+   */
+  readonly foundInEnv = signal(false);
+  /** Whether the user accepted the offer to save the key the environment holds. */
+  readonly useEnvKey = signal(false);
 
   #ipc = inject(IpcService);
   #unsubscribe: Array<() => void> = [];
@@ -229,6 +238,7 @@ export class Providers implements OnDestroy {
     // A choice closes the list: what follows belongs to the form, not to it.
     this.connecting.set(false);
     this.failure.set(null);
+    this.#resetEnvOffer();
     this.draft.set({
       ...BLANK,
       name: entry.name,
@@ -242,11 +252,15 @@ export class Providers implements OnDestroy {
       needsUrl: entry.baseUrl === null,
       envVar: entry.envVar,
     });
+    // The gift, when there is one: the variable the entry documents may
+    // already hold a key, and the form says so instead of asking for a paste.
+    if (entry.envVar !== null) void this.#askEnv(entry.envVar);
   }
 
   pickLocal(runtime: LocalRuntime): void {
     this.connecting.set(false);
     this.failure.set(null);
+    this.#resetEnvOffer();
     this.draft.set({
       ...BLANK,
       name: runtime.name,
@@ -264,11 +278,13 @@ export class Providers implements OnDestroy {
   pickCompatible(): void {
     this.connecting.set(false);
     this.failure.set(null);
+    this.#resetEnvOffer();
     this.draft.set({ ...BLANK });
   }
 
   edit(provider: Provider): void {
     this.failure.set(null);
+    this.#resetEnvOffer();
     this.draft.set({
       ...BLANK,
       id: provider.id,
@@ -301,6 +317,38 @@ export class Providers implements OnDestroy {
     return outcome === "updated" ? "providers.catalogUpdated"
       : outcome === "badImport" ? "providers.catalogBadImport"
       : "providers.catalogRefreshFailed";
+  }
+
+  /** Every draft starts with the environment's gift unopened. */
+  #resetEnvOffer(): void {
+    this.foundInEnv.set(false);
+    this.useEnvKey.set(false);
+  }
+
+  /**
+   * Asks, for the draft just opened, whether the variable its entry names
+   * holds anything. Once per draft, and only of drafts that name a variable:
+   * a compatible endpoint and a local runtime have no documentation to name
+   * one, and the question would be about nothing.
+   *
+   * What is never asked is the opposite — whether a variable is *missing*.
+   * An application launched from the desktop menu inherits no shell
+   * environment, so absence says nothing about the user, and a sentence
+   * about it would read as a reproach for something done right. The offer
+   * appears when it is there, and the key field stands alone otherwise.
+   */
+  async #askEnv(envVar: string): Promise<void> {
+    let found: boolean;
+    try {
+      found = await this.#ipc.invoke("env.hasKey", { name: envVar });
+    } catch {
+      // The offer is a gift, not a mechanism: a question that failed leaves
+      // the form exactly as it was, key field and all.
+      return;
+    }
+    // A draft opened while the question was in flight keeps its own answer:
+    // the offer belongs to this draft, not to whichever draft was open last.
+    if (this.draft()?.envVar === envVar) this.foundInEnv.set(found);
   }
 
   cancel(): void {
@@ -349,10 +397,18 @@ export class Providers implements OnDestroy {
         // this machine is the exception — its models arrived with it, and no
         // network is asked behind the form's back.
         const key = draft.apiKey.trim() === "" ? null : draft.apiKey;
+        // The environment's key, when its offer was accepted: named, not
+        // read. The window sends the variable's name and the main process
+        // reads the value, because a key the window could read is a key it
+        // could leak — and a name is documentation, not a secret. The typed
+        // key still wins: a paste is the more deliberate act.
+        const fromEnv = key === null && this.useEnvKey() && draft.envVar !== null
+          ? { apiKeyFromEnv: draft.envVar }
+          : {};
         const models = draft.catalogId !== null
-          ? await this.#ipc.invoke("catalog.models", { entryId: draft.catalogId, apiKey: key })
+          ? await this.#ipc.invoke("catalog.models", { entryId: draft.catalogId, apiKey: key, ...fromEnv })
           : draft.needsUrl && draft.baseUrl !== null
-            ? await this.#ipc.invoke("provider.discover", { baseUrl: draft.baseUrl.trim(), apiKey: key })
+            ? await this.#ipc.invoke("provider.discover", { baseUrl: draft.baseUrl.trim(), apiKey: key, ...fromEnv })
             : draft.models;
         await this.#ipc.invoke("provider.create", {
           name: draft.name.trim(),
@@ -365,7 +421,7 @@ export class Providers implements OnDestroy {
           catalogId: draft.catalogId,
           catalogAt: draft.catalogAt,
           models,
-          ...(key === null ? {} : { apiKey: draft.apiKey }),
+          ...(key === null ? fromEnv : { apiKey: draft.apiKey }),
         });
       }
       this.draft.set(null);

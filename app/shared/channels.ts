@@ -61,6 +61,11 @@ export interface Invocations {
    * with the chosen path. Null when the dialog was dismissed.
    */
   "ui.chooseSave": { req: { defaultName: string; kind: "glossary" | "epub" }; res: string | null };
+  /**
+   * Whether a named environment variable holds anything. A boolean and never
+   * the value: a key shown in the window is a key the window can leak.
+   */
+  "env.hasKey": { req: { name: string }; res: boolean };
   "projects.list": { req: { filter?: string; bucket?: Bucket }; res: ProjectSummary[] };
   "projects.counts": { req: undefined; res: Record<Bucket, number> };
   "project.chooseEpub": { req: undefined; res: { path: string; name: string } | null };
@@ -150,10 +155,24 @@ export interface Invocations {
    * What one catalogue entry serves: the endpoint's list when the entry
    * declares a URL to ask, its own otherwise. The key crosses renderer→main
    * exactly once, like `provider.create`, and never comes back.
+   *
+   * `apiKeyFromEnv` names the variable the key lives in instead of carrying
+   * the key: a variable's name is documentation, not a secret, and the main
+   * process is the only side allowed to read what it holds.
    */
-  "catalog.models": { req: { entryId: string; apiKey: string | null }; res: ProviderModel[] };
-  /** Asks any OpenAI-compatible URL what it serves, with no metadata to add. */
-  "provider.discover": { req: { baseUrl: string; apiKey: string | null }; res: ProviderModel[] };
+  "catalog.models": {
+    req: { entryId: string; apiKey: string | null; apiKeyFromEnv?: string | null };
+    res: ProviderModel[];
+  };
+  /**
+   * Asks any OpenAI-compatible URL what it serves, with no metadata to add.
+   * `apiKeyFromEnv` names a variable read main-side, as in `catalog.models`:
+   * a name, never a value.
+   */
+  "provider.discover": {
+    req: { baseUrl: string; apiKey: string | null; apiKeyFromEnv?: string | null };
+    res: ProviderModel[];
+  };
   /** How old the catalogue in use is. One line, no alarm. */
   "catalog.state": { req: undefined; res: CatalogState };
   /**
@@ -182,6 +201,7 @@ export const INVOCATIONS = [
   "ui.confirm",
   "ui.theme",
   "ui.chooseSave",
+  "env.hasKey",
   "projects.list", "projects.counts", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "project.export", "project.get", "units.list",
   "run.start", "run.pause", "run.approve",

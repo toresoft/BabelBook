@@ -218,6 +218,15 @@
               (ngModelChange)="patch('apiKey', $event)" />
           }
         </label>
+
+        @if (foundInEnv()) {
+          <label class="label cursor-default gap-2">
+            <input class="checkbox checkbox-sm" type="checkbox" data-testid="use-env-key"
+                   [ngModel]="useEnvKey()" [ngModelOptions]="{ standalone: true }"
+                   (ngModelChange)="useEnvKey.set($event)" />
+            <span>{{ t('providers.foundInEnv', { name: draft()!.envVar }) }}</span>
+          </label>
+        }
       } @else {
         <p class="draft__nokey" data-testid="no-key-needed">{{ t('providers.noKeyNeeded') }}</p>
       }

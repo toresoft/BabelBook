@@ -326,8 +326,18 @@ export interface Provider {
   hasKey: boolean;
 }
 
-/** A provider as it is proposed: everything but the id, plus the key once. */
-export type ProviderInput = Omit<Provider, "id" | "hasKey"> & { apiKey?: string | null };
+/**
+ * A provider as it is proposed: everything but the id, plus the key once.
+ *
+ * `apiKeyFromEnv` names the environment variable to read the key from, when
+ * the environment already holds the one the entry documents: a name, never a
+ * value — the window may say which variable to read, and only the main
+ * process may read it. A typed `apiKey` wins over the named variable.
+ */
+export type ProviderInput = Omit<Provider, "id" | "hasKey"> & {
+  apiKey?: string | null;
+  apiKeyFromEnv?: string | null;
+};
 
 /**
  * A partial edit.

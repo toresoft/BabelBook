@@ -134,6 +134,27 @@ function workspaceOf(db: DatabaseSync, id: string): Workspace {
 }
 
 /**
+ * The key a request actually carries: the typed one, or the one the named
+ * environment variable holds.
+ *
+ * `apiKeyFromEnv` is a variable's name, never a value — a name is public
+ * documentation, and the reading happens here, on the one side that may. The
+ * typed key wins, because a paste is the more deliberate act; a variable that
+ * turns out to hold nothing is answered as "no key", which the caller treats
+ * like any other keyless request.
+ */
+function resolveKey(
+  apiKey: string | null | undefined,
+  apiKeyFromEnv: string | null | undefined,
+): string | null {
+  if (apiKey !== undefined && apiKey !== null && apiKey !== "") return apiKey;
+  if (apiKeyFromEnv === undefined || apiKeyFromEnv === null) return null;
+
+  const fromEnv = process.env[apiKeyFromEnv];
+  return fromEnv === undefined || fromEnv === "" ? null : fromEnv;
+}
+
+/**
  * The question a destructive act is asked before it happens.
  *
  * The cancel comes first, and with it travel the Return and the Escape: the
@@ -197,6 +218,8 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     "ui.theme": async () => deps.theme(),
 
     "ui.chooseSave": async ({ defaultName, kind }) => deps.chooseSave(defaultName, kind),
+
+    "env.hasKey": async ({ name }) => (process.env[name] ?? "") !== "",
 
     "projects.list": async ({ filter, bucket }) =>
       listProjects(deps.db, { ...(filter === undefined ? {} : { search: filter }), ...(bucket === undefined ? {} : { bucket }) }),
@@ -287,9 +310,11 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "catalog.search": async ({ query }) => deps.catalog.search(query),
 
-    "catalog.models": async ({ entryId, apiKey }) => deps.catalog.modelsFor(entryId, apiKey),
+    "catalog.models": async ({ entryId, apiKey, apiKeyFromEnv }) =>
+      deps.catalog.modelsFor(entryId, resolveKey(apiKey, apiKeyFromEnv)),
 
-    "provider.discover": async ({ baseUrl, apiKey }) => deps.catalog.discover(baseUrl, apiKey),
+    "provider.discover": async ({ baseUrl, apiKey, apiKeyFromEnv }) =>
+      deps.catalog.discover(baseUrl, resolveKey(apiKey, apiKeyFromEnv)),
 
     "catalog.state": async () => deps.catalog.state(),
 
@@ -395,7 +420,12 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     "providers.presets": async () => PRESETS,
 
     "provider.create": async (input) => {
-      const created = createProvider(deps.db, deps.crypto, input);
+      // The environment may hold the key: the request names the variable, and
+      // only this process reads it. A typed key wins over the named one.
+      const created = createProvider(deps.db, deps.crypto, {
+        ...input,
+        apiKey: resolveKey(input.apiKey, input.apiKeyFromEnv),
+      });
       deps.broadcast("providers.changed", {});
       return created;
     },

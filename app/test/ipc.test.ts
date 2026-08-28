@@ -320,6 +320,106 @@ describe("the provider channels", () => {
   });
 });
 
+describe("env.hasKey", () => {
+  it("says whether a named variable holds something, never what it holds", async () => {
+    process.env["BABELBOOK_TEST_KEY"] = "sk-secret";
+    const handlers = buildHandlers((await deps()).deps);
+
+    const present = await handlers["env.hasKey"]({ name: "BABELBOOK_TEST_KEY" });
+    const absent = await handlers["env.hasKey"]({ name: "BABELBOOK_TEST_MISSING" });
+
+    // A boolean, and only a boolean: a key that crossed to the window to be
+    // shown would be a key the window could leak.
+    expect(present).toBe(true);
+    expect(absent).toBe(false);
+    delete process.env["BABELBOOK_TEST_KEY"];
+  });
+});
+
+/**
+ * A key the environment already holds, asked for by naming the variable.
+ *
+ * The window never reads the value: it sends a name — which is documentation,
+ * not a secret — and this process does the reading. What these tests pin is
+ * that the crossing happens exactly here and nowhere else.
+ */
+describe("the environment offer", () => {
+  const input = {
+    name: "Acme", route: "openai-compatible", baseUrl: "https://api.acme.test/v1",
+    headers: {}, options: {}, catalogId: null, catalogAt: null,
+    models: [],
+  };
+
+  it("stores the key the named variable holds, and never says it back", async () => {
+    process.env["BABELBOOK_TEST_KEY"] = "sk-from-env";
+    const { deps: d } = await deps();
+
+    const created = await buildHandlers(d)["provider.create"]({
+      ...input, apiKeyFromEnv: "BABELBOOK_TEST_KEY",
+    });
+
+    // The reply carries the fact of the key; the keyring carries the key.
+    expect(created.hasKey).toBe(true);
+    expect(JSON.stringify(created)).not.toContain("sk-from-env");
+    expect(readKey(d.db, testCrypto, created.id)).toBe("sk-from-env");
+    delete process.env["BABELBOOK_TEST_KEY"];
+  });
+
+  it("lets a typed key win over the variable the request names", async () => {
+    process.env["BABELBOOK_TEST_KEY"] = "sk-from-env";
+    const { deps: d } = await deps();
+
+    const created = await buildHandlers(d)["provider.create"]({
+      ...input, apiKey: "sk-typed", apiKeyFromEnv: "BABELBOOK_TEST_KEY",
+    });
+
+    // A paste is the more deliberate act: both were offered, and the typed
+    // one is the one the user just made.
+    expect(readKey(d.db, testCrypto, created.id)).toBe("sk-typed");
+    delete process.env["BABELBOOK_TEST_KEY"];
+  });
+
+  it("connects no key when the named variable holds nothing", async () => {
+    const { deps: d } = await deps();
+
+    const created = await buildHandlers(d)["provider.create"]({
+      ...input, apiKeyFromEnv: "BABELBOOK_TEST_MISSING",
+    });
+
+    expect(created.hasKey).toBe(false);
+  });
+
+  it("resolves the variable before the endpoint is asked for its models", async () => {
+    process.env["BABELBOOK_TEST_KEY"] = "sk-from-env";
+    const asked: Array<string | null> = [];
+    const catalogState = {
+      at: "2026-08-27T00:00:00.000Z", providers: 0, models: 0, bundled: true, checkedAt: null,
+    };
+    const { deps: d } = await deps({
+      catalog: {
+        search: () => [],
+        modelsFor: async (_entryId: string, apiKey: string | null) => {
+          asked.push(apiKey);
+          return [];
+        },
+        discover: async () => [],
+        state: () => catalogState,
+        refresh: async () => catalogState,
+        importFile: async () => catalogState,
+      },
+    });
+
+    await buildHandlers(d)["catalog.models"]({
+      entryId: "acme", apiKey: null, apiKeyFromEnv: "BABELBOOK_TEST_KEY",
+    });
+
+    // The fetch-at-save asks with the resolved key: the endpoint must not be
+    // asked twice, once keyless and once not.
+    expect(asked).toEqual(["sk-from-env"]);
+    delete process.env["BABELBOOK_TEST_KEY"];
+  });
+});
+
 describe("handing a file to the desktop", () => {
   async function withProject() {
     const { dir, db, deps: d } = await deps();

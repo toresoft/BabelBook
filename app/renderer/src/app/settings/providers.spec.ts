@@ -370,6 +370,73 @@ describe("Providers", () => {
     }]);
   });
 
+  it("offers the key the environment already holds, when the variable has one", async () => {
+    const { fixture, invoke } = mount(bridge({ "env.hasKey": true }));
+    await fixture.whenStable();
+
+    fixture.componentInstance.pick(entry);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // One question per draft, about the variable the entry names — and a
+    // boolean back, never the key itself.
+    expect(calls(invoke, "env.hasKey")).toEqual([["env.hasKey", { name: "ACME_API_KEY" }]]);
+    const offer = fixture.nativeElement.querySelector("[data-testid=use-env-key]");
+    expect(offer).not.toBeNull();
+    const said = (offer as HTMLElement).closest("label")!.textContent as string;
+    expect(said).toContain(catalog.providers["foundInEnv"]!.replace("{{name}}", "ACME_API_KEY"));
+  });
+
+  it("asks nothing of the environment when the draft names no variable", async () => {
+    const { fixture, invoke } = mount(bridge({ "env.hasKey": true }));
+    await fixture.whenStable();
+
+    fixture.componentInstance.pickCompatible();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // A compatible endpoint and a local runtime have no documentation to
+    // name a variable: the question is not asked, so no answer can put words
+    // in the form.
+    expect(calls(invoke, "env.hasKey")).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector("[data-testid=use-env-key]")).toBeNull();
+  });
+
+  it("says nothing when the variable holds no key: a gift, never a reproach", async () => {
+    const { fixture } = mount(bridge({ "env.hasKey": false }));
+    await fixture.whenStable();
+
+    fixture.componentInstance.pick(entry);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // An app launched from the desktop menu inherits no shell environment:
+    // absence is not the user's doing, and the interface never mentions it.
+    expect(fixture.nativeElement.querySelector("[data-testid=use-env-key]")).toBeNull();
+  });
+
+  it("saves the key the environment holds when the offer is accepted", async () => {
+    const { fixture, invoke } = mount(bridge({
+      "env.hasKey": true,
+      "catalog.models": [priced],
+    }));
+    await fixture.whenStable();
+
+    fixture.componentInstance.pick(entry);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector("[data-testid=use-env-key]")!.click();
+    await fixture.componentInstance.save();
+
+    // The window names the variable and types no key: the value is read on
+    // the main side, the only side allowed to hold it.
+    expect(calls(invoke, "catalog.models")[0]![1])
+      .toEqual({ entryId: "acme", apiKey: null, apiKeyFromEnv: "ACME_API_KEY" });
+    const body = calls(invoke, "provider.create")[0]![1] as Record<string, unknown>;
+    expect(body["apiKeyFromEnv"]).toBe("ACME_API_KEY");
+    expect("apiKey" in body).toBe(false);
+  });
+
   it("says how old the catalogue is, in one line", async () => {
     const { fixture } = mount();
     await fixture.whenStable();

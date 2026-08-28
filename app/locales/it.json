@@ -81,6 +81,7 @@
     "apiKey": "Chiave API",
     "apiKeyHint": "Viene cifrata con il portachiavi del sistema operativo. Nessuno può rileggerla da qui.",
     "apiKeyUnchanged": "Lasciare vuoto per non cambiarla",
+    "foundInEnv": "Ho trovato una chiave in `{{name}}`. La uso?",
     "authKey": "Chiave API",
     "authNone": "Nessuna chiave",
     "authLocal": "Locale",

@@ -81,6 +81,7 @@
     "apiKey": "API key",
     "apiKeyHint": "Encrypted with the operating system keyring. Nothing can read it back from here.",
     "apiKeyUnchanged": "Leave empty to keep it",
+    "foundInEnv": "I found a key in `{{name}}`. Use it?",
     "authKey": "API key",
     "authNone": "No key",
     "authLocal": "Local",
