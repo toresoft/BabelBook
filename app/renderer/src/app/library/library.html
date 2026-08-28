@@ -8,7 +8,6 @@
       [placeholder]="t('library.search')"
       [ngModel]="filter()"
       (ngModelChange)="onFilter($event)" />
-    <a class="library__settings" data-testid="settings" routerLink="/settings">{{ t('app.settings') }}</a>
     <a class="btn btn-primary" data-testid="new-project" routerLink="/new">{{ t('library.newProject') }}</a>
   </header>
 

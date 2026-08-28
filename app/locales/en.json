@@ -4,6 +4,18 @@
     "library": "Library",
     "settings": "Settings"
   },
+  "nav": {
+    "all": "Projects",
+    "to-approve": "To approve",
+    "running": "Running",
+    "paused": "Paused",
+    "done": "Finished",
+    "settings": "Settings",
+    "providers": "Providers",
+    "glossaries": "Glossaries",
+    "translation": "Translation",
+    "application": "Application"
+  },
   "library": {
     "empty": "No projects yet. Start from an EPUB.",
     "newProject": "New project",

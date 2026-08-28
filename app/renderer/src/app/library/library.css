@@ -4,7 +4,6 @@
 .library__search { flex: 1; max-width: 22rem; }
 .tile__title { text-decoration: none; color: inherit; }
 .tile__title h2 { margin: 0.4rem 0 0.2rem; font-size: 0.95rem; }
-.library__settings { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; }
 .library__empty { color: var(--text-muted); }
 /* auto-fit collapses the tracks nobody needs: a shelf of two still reads as
    a full window, centred, instead of two tiles pinned to the left of an empty

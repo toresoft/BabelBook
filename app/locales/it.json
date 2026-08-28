@@ -4,6 +4,18 @@
     "library": "Libreria",
     "settings": "Impostazioni"
   },
+  "nav": {
+    "all": "Progetti",
+    "to-approve": "Da approvare",
+    "running": "In corso",
+    "paused": "In pausa",
+    "done": "Conclusi",
+    "settings": "Impostazioni",
+    "providers": "Provider",
+    "glossaries": "Glossari",
+    "translation": "Traduzione",
+    "application": "Applicazione"
+  },
   "library": {
     "empty": "Nessun progetto. Comincia da un EPUB.",
     "newProject": "Nuovo progetto",

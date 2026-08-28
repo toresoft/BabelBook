@@ -1,1 +1,36 @@
-<router-outlet />
+<div class="flex h-screen" *transloco="let t">
+  <aside class="w-56 shrink-0 overflow-y-auto border-r border-base-300 bg-base-200"
+         data-testid="shell-nav">
+    <ul class="menu w-full">
+      @for (bucket of buckets; track bucket) {
+        <li>
+          <a [routerLink]="['/projects', bucket]" routerLinkActive="menu-active"
+             [attr.data-testid]="'nav-' + bucket">
+            <span class="grow">{{ t('nav.' + bucket) }}</span>
+            <span class="badge badge-sm" [attr.data-testid]="'count-' + bucket">
+              {{ counts()[bucket] }}
+            </span>
+          </a>
+        </li>
+      }
+    </ul>
+
+    <div class="divider my-1"></div>
+
+    <ul class="menu w-full">
+      <li class="menu-title">{{ t('nav.settings') }}</li>
+      @for (section of sections; track section) {
+        <li>
+          <a [routerLink]="['/settings', section]" routerLinkActive="menu-active"
+             [attr.data-testid]="'nav-' + section">
+            {{ t('nav.' + section) }}
+          </a>
+        </li>
+      }
+    </ul>
+  </aside>
+
+  <main class="grow overflow-y-auto p-6">
+    <router-outlet />
+  </main>
+</div>
