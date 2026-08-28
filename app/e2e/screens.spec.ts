@@ -122,8 +122,12 @@ const READABLE = (): string[] => {
 
 /** The walk back to the shelf, from whichever screen the walk left us on. */
 async function home(window: Page): Promise<void> {
+  // A project or a settings section has a back; a group of the shelf has
+  // none, because it is the shelf — and the way back to every project is
+  // the column's own first link.
   const back = window.locator(".project__back, .settings__back").first();
   if (await back.count()) await back.click();
+  else await window.getByTestId("nav-all").click();
   await window.getByTestId("library").waitFor();
 }
 
@@ -141,9 +145,23 @@ const tab = (name: string, panel: string) => async (window: Page): Promise<void>
 
 const section = (name: string, panel: string) => async (window: Page): Promise<void> => {
   await home(window);
-  await window.getByTestId("settings").click();
-  await window.getByTestId(`section-${name}`).click();
+  await window.getByTestId(`nav-${name}`).click();
   await window.getByTestId(panel).waitFor();
+};
+
+/**
+ * A group of the shelf, reached the only way it now is: from the column.
+ *
+ * The walk's single book never stops at a gate, so `to-approve` is honestly
+ * empty — an empty grid is what that page must show, and the column's own
+ * link wearing the active class is the witness the page was reached at all.
+ */
+const bucket = (name: string) => async (window: Page): Promise<void> => {
+  await home(window);
+  await window.getByTestId(`nav-${name}`).click();
+  await window.getByTestId("library").waitFor();
+  await expect(window.getByTestId(`nav-${name}`)).toHaveClass(/menu-active/);
+  await window.locator(".library__empty").waitFor();
 };
 
 test("every screen, in both themes, saying what it must", async () => {
@@ -196,8 +214,8 @@ test("every screen, in both themes, saying what it must", async () => {
   await window.getByTestId("library").waitFor();
 
   // One glossary, so the section it lives in is not photographed empty.
-  await window.getByTestId("settings").click();
-  await window.getByTestId("section-glossaries").click();
+  await window.getByTestId("nav-glossaries").click();
+  await window.getByTestId("glossaries").waitFor();
   await window.getByTestId("new-glossary").click();
   await window.getByTestId("glossary-name").fill("fantasy");
   await window.getByTestId("glossary-description").fill("Epic fantasy with invented names");
@@ -207,6 +225,7 @@ test("every screen, in both themes, saying what it must", async () => {
 
   const screens: Array<{ name: string; open: (window: Page) => Promise<void> }> = [
     { name: "library", open: home },
+    { name: "library-to-approve", open: bucket("to-approve") },
     { name: "project-overview", open: openBook },
     { name: "project-units", open: tab("units", "units") },
     { name: "project-terms", open: tab("terms", "terms") },
@@ -222,6 +241,11 @@ test("every screen, in both themes, saying what it must", async () => {
     await setTheme(app, window, theme);
     for (const screen of screens) {
       await screen.open(window);
+      // daisyUI's menu moves a column link's colour from the active white
+      // back to the page's text over 200ms, and a checker reading
+      // mid-flight sees a grey that exists in no stylesheet — a frame of
+      // the change, not the screen. The screen is measured at rest.
+      await window.waitForTimeout(300);
       const found = await window.evaluate(READABLE);
       expect(found, `${screen.name} (${theme})`).toEqual([]);
       await window.screenshot({ path: join(SHOTS, `${screen.name}-${theme}.png`) });
