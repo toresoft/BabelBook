@@ -7,15 +7,17 @@ import { _electron as electron, expect, test, type ElectronApplication } from "@
 import { mainWindow } from "./support.ts";
 
 /**
- * Adding a provider through the interface, which is the only thing that makes
- * the encrypted store reachable by a user.
+ * Connecting a provider through the interface, which is the only thing that
+ * makes the encrypted store reachable by a user.
  *
  * The catalogue is a file this test writes and the main process serves, and
  * the endpoints are HTTP servers this test runs: nothing here reaches the
- * network or needs a real provider. What is proved is the wiring — search,
- * choose, paste, and the models arrive; the key reaches the keyring and never
- * the window. The encryption itself is the unit suite's claim, with a fake
- * keyring that really hides the bytes.
+ * network or needs a real provider. What is proved is the wiring, in the two
+ * acts the screen now separates — open the list, search, choose, paste the
+ * key, close; and then, on the connected card, choose the model. The models
+ * arrive in between, silently, at the one moment the key is still in hand;
+ * the key reaches the keyring and never the window. The encryption itself is
+ * the unit suite's claim, with a fake keyring that really hides the bytes.
  */
 interface Bridge {
   invoke(channel: string, payload: unknown): Promise<unknown>;
@@ -64,7 +66,7 @@ async function launch(
   return app;
 }
 
-test("search, choose, paste: the models arrive and the key never does", async () => {
+test("connect, close, and only then choose: the walk does both acts", async () => {
   const endpoint = await serving(["acme-mini"]);
   const userData = await mkdtemp(join(tmpdir(), "babelbook-providers-"));
   const app = await launch(userData, {
@@ -76,47 +78,68 @@ test("search, choose, paste: the models arrive and the key never does", async ()
   await expect(window.getByTestId("providers-empty")).toBeVisible();
   await expect(window.getByTestId("catalog-state")).toContainText("2026-08-26");
 
+  // The list lives behind a button now: opening it is the first gesture, and
+  // it is a gesture of its own — connecting and choosing are two acts, and
+  // this is where the first one starts. The custom endpoint is one more entry
+  // in the list, not a button beside it.
+  await window.getByTestId("open-connect").click();
+  await expect(window.getByTestId("connect-modal")).toBeVisible();
+  await expect(window.getByTestId("entry-custom")).toBeVisible();
+
   // 203 entries do not scroll: typing narrows the catalogue to the one entry.
+  // It comes from the tail, so it carries its own facts — how many models it
+  // serves, and which variable its key usually lives in — not a bare name.
   await window.getByTestId("catalog-query").fill("acme");
-  await expect(window.getByTestId("entry-acme")).toBeVisible();
-  await window.getByTestId("entry-acme").click();
+  const entry = window.getByTestId("entry-acme");
+  await expect(entry).toBeVisible();
+  await expect(entry).toContainText(/1 (modelli|models)/);
+  await expect(entry).toContainText("ACME_API_KEY");
+  await entry.click();
 
-  // One field, the key. No name to invent, no route to know, no model id to
-  // type: the endpoint will say what it serves.
-  await window.getByTestId("provider-api-key").fill("sk-typed-by-the-user");
-  await window.getByTestId("find-models").click();
-
-  const model = window.getByTestId("model-acme-mini");
-  await expect(model).toBeVisible();
-  await expect(model).toContainText("Acme Mini");
-  // Price and window are on the row, because the catalogue knows them.
-  await expect(model).toContainText("128000");
-  await expect(model).toContainText("0.5");
-
+  // The choice closed the list; what follows belongs to the form. One field,
+  // the key. No name to invent, no route to know — and no model chooser: the
+  // models are fetched when the form is saved, not picked inside it.
   const form = window.getByTestId("provider-form");
+  await expect(form).toBeVisible();
+  await expect(window.getByTestId("connect-modal")).toBeHidden();
   await expect(form.locator("input")).toHaveCount(1); // the key, and nothing else
+  await expect(form.locator("select")).toHaveCount(0); // and no list to choose from
 
+  await window.getByTestId("provider-api-key").fill("sk-typed-by-the-user");
   await window.getByTestId("save-provider").click();
+
+  // Connected providers stand apart, under their own title, above the list
+  // the next connection would open.
+  await expect(window.getByTestId("connected-title")).toBeVisible();
   const row = window.getByTestId("providers").locator("li.provider").first();
   await expect(row).toContainText("Acme");
-  await expect(row.getByTestId("key-set")).toBeVisible();
+  await expect(row.locator("[data-testid^='auth-']")).toBeVisible();
+
+  // The second act, on the card: choose the model. The list arrived with the
+  // save — while the key was still in hand, which is the only moment it could
+  // be fetched — and the option carries the catalogue's own name for it.
+  const model = row.locator("select");
+  await expect(model.locator("option")).toHaveText(["Acme Mini"]);
+  await model.selectOption("acme-mini");
+  await expect(model).toHaveValue("acme-mini");
 
   // The reply that built this screen is the one the renderer actually got: if
   // the key rode along in it, it would be here. `hasKey` is all it says.
   const listed = await window.evaluate(() =>
     (window as unknown as { babelbook: Bridge }).babelbook.invoke("providers.list", undefined));
   expect(JSON.stringify(listed)).not.toContain("sk-typed-by-the-user");
-  expect(JSON.stringify(listed)).toContain("hasKey");
+  expect(JSON.stringify(listed)).toContain('"hasKey":true');
 
   await app.close();
   endpoint.server.closeAllConnections?.();
   await new Promise<void>((resolve) => endpoint.server.close(() => resolve()));
 });
 
-test("a local runtime appears on its own, with its own models and no key field", async () => {
+test("a local runtime is one more entry in the list, and needs no key", async () => {
   // A server on "Ollama's" port — which the test, not the machine, chose: a
   // developer with a real Ollama running must not make this test say
-  // something about that one.
+  // something about that one. The catalogue is the bundled one, so the modal
+  // opens on the recommended ten — which the runtime's entry precedes.
   const fakeOllama = await serving(["gemma3:12b", "my-own-finetune"]);
   const userData = await mkdtemp(join(tmpdir(), "babelbook-providers-local-"));
   const app = await launch(userData, {
@@ -125,22 +148,39 @@ test("a local runtime appears on its own, with its own models and no key field",
   const window = await mainWindow(app);
 
   await window.getByTestId("nav-providers").click();
-  const local = window.getByTestId("local-ollama");
+  await window.getByTestId("open-connect").click();
+
+  // The machine's runtimes are known before any search is typed, so they come
+  // first in the list — ahead of the recommended, which the modal opened on.
+  const local = window.getByTestId("entry-ollama");
   await expect(local).toBeVisible();
   await expect(local).toContainText("Ollama");
+  const firstEntry = window.getByTestId("connect-modal").locator("a").first();
+  await expect(firstEntry).toHaveAttribute("data-testid", "entry-ollama");
   await local.click();
 
   // No key to type: the runtime runs on this machine. And the models are the
-  // server's own list, not anything a catalogue guessed.
-  await expect(window.getByTestId("provider-form")).toBeVisible();
+  // server's own list, not anything a catalogue guessed — they arrive with
+  // the choice, so the form holds no chooser either.
+  const form = window.getByTestId("provider-form");
+  await expect(form).toBeVisible();
+  await expect(window.getByTestId("no-key-needed")).toBeVisible();
   await expect(window.getByTestId("provider-api-key")).toHaveCount(0);
-  await expect(window.getByTestId("model-gemma3:12b")).toBeVisible();
-  await expect(window.getByTestId("model-my-own-finetune")).toBeVisible();
+  await expect(form.locator("select")).toHaveCount(0);
 
   await window.getByTestId("save-provider").click();
   const row = window.getByTestId("providers").locator("li.provider").first();
   await expect(row).toContainText("Ollama");
-  await expect(row.getByTestId("key-missing")).toBeVisible();
+  // The card says how this one authenticates: an endpoint on this machine,
+  // with no key to hold.
+  await expect(row.locator("[data-testid^='auth-']")).toContainText("Locale");
+
+  // The second act is the same gesture as for any provider: choose the model
+  // on the card, from the list the runtime itself declared.
+  const model = row.locator("select");
+  await expect(model.locator("option")).toHaveText(["gemma3:12b", "my-own-finetune"]);
+  await model.selectOption("my-own-finetune");
+  await expect(model).toHaveValue("my-own-finetune");
   await app.close();
 
   fakeOllama.server.closeAllConnections?.();

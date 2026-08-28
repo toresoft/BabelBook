@@ -122,6 +122,11 @@ const READABLE = (): string[] => {
 
 /** The walk back to the shelf, from whichever screen the walk left us on. */
 async function home(window: Page): Promise<void> {
+  // The connect dialog, when it is open, covers the column and everything
+  // else: closing it is the only way out the interface offers, so the walk
+  // takes that way before looking for any other.
+  const close = window.getByTestId("close-connect");
+  if (await close.isVisible()) await close.click();
   // A project or a settings section has a back; a group of the shelf has
   // none, because it is the shelf — and the way back to every project is
   // the column's own first link.
@@ -147,6 +152,20 @@ const section = (name: string, panel: string) => async (window: Page): Promise<v
   await home(window);
   await window.getByTestId(`nav-${name}`).click();
   await window.getByTestId(panel).waitFor();
+};
+
+/**
+ * The connect modal, reached the only way it opens: from the providers screen.
+ *
+ * Opening it asks the empty question, and the ten recommended arrive with the
+ * answer — the modal is not at rest until the last of them has, or the shot
+ * would catch the frame before the list lands.
+ */
+const connect = async (window: Page): Promise<void> => {
+  await section("providers", "providers")(window);
+  await window.getByTestId("open-connect").click();
+  await window.getByTestId("connect-modal").waitFor();
+  await window.getByTestId("entry-cerebras").waitFor(); // the last of the ten
 };
 
 /**
@@ -238,6 +257,7 @@ test("every screen, in both themes, saying what it must", async () => {
     { name: "project-exclusions", open: tab("exclusions", "exclusions") },
     { name: "project-report", open: tab("report", "report") },
     { name: "settings-providers", open: section("providers", "providers") },
+    { name: "settings-providers-connect", open: connect },
     { name: "settings-glossaries", open: section("glossaries", "glossaries") },
     { name: "settings-translation", open: section("translation", "prefs-translation") },
     { name: "settings-application", open: section("application", "prefs-application") },
