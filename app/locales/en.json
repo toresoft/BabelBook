@@ -119,6 +119,18 @@
     "catalogRefreshFailed": "No update: the catalogue stays as it was.",
     "catalogBadImport": "The file is not a catalogue: nothing was installed."
   },
+  "popular": {
+    "anthropic": "The Claude models, straight from their maker.",
+    "openai": "The GPT models, straight from their maker.",
+    "google": "The Gemini models, straight from their maker.",
+    "openrouter": "One account, hundreds of models from different providers.",
+    "mistral": "European models, with good results on the Romance languages.",
+    "groq": "Very fast responses on open models.",
+    "xai": "The Grok models, straight from their maker.",
+    "deepseek": "Inexpensive models with good results on long texts.",
+    "togetherai": "Many open models on a single endpoint.",
+    "cerebras": "Open models served with very low latency."
+  },
   "glossaries": {
     "title": "Glossaries",
     "lead": "A glossary applies to every book that uses it. Changing its terms invalidates translations made under the previous version.",

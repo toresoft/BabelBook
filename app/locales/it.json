@@ -119,6 +119,18 @@
     "catalogRefreshFailed": "Nessun aggiornamento: il catalogo resta quello che era.",
     "catalogBadImport": "Il file non è un catalogo: nulla è stato installato."
   },
+  "popular": {
+    "anthropic": "I modelli Claude, direttamente da chi li fa.",
+    "openai": "I modelli GPT, direttamente da chi li fa.",
+    "google": "I modelli Gemini, direttamente da chi li fa.",
+    "openrouter": "Un solo accesso a centinaia di modelli di provider diversi.",
+    "mistral": "Modelli europei, con buona resa sulle lingue romanze.",
+    "groq": "Risposte molto rapide su modelli aperti.",
+    "xai": "I modelli Grok, direttamente da chi li fa.",
+    "deepseek": "Modelli economici con buona resa sui testi lunghi.",
+    "togetherai": "Molti modelli aperti su un solo endpoint.",
+    "cerebras": "Modelli aperti serviti con latenza molto bassa."
+  },
   "glossaries": {
     "title": "Glossari",
     "lead": "Un glossario vale per tutti i libri che lo usano. Cambiarne i termini invalida le traduzioni fatte con la versione precedente.",
