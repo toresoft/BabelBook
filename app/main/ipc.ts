@@ -21,7 +21,7 @@ import {
 } from "./glossaries/store.ts";
 import { buildReport } from "./report/build.ts";
 import { projectDetail } from "./projects/detail.ts";
-import { listProjects } from "./projects/query.ts";
+import { countProjects, listProjects } from "./projects/query.ts";
 import { listUnits } from "./units/list.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
@@ -191,7 +191,10 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "ui.theme": async () => deps.theme(),
 
-    "projects.list": async ({ filter }) => listProjects(deps.db, filter),
+    "projects.list": async ({ filter, bucket }) =>
+      listProjects(deps.db, { ...(filter === undefined ? {} : { search: filter }), ...(bucket === undefined ? {} : { bucket }) }),
+
+    "projects.counts": async () => countProjects(deps.db),
 
     "project.chooseEpub": async () => deps.chooseEpub(),
 

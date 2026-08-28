@@ -4,6 +4,7 @@ import type {
   Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
   ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome, LocalRuntime,
 } from "./dto.ts";
+import type { Bucket } from "./buckets.ts";
 
 export type {
   CatalogEntry, CatalogState,
@@ -55,7 +56,8 @@ export interface Invocations {
    * hears the system change (electron#22211), so nativeTheme tells it.
    */
   "ui.theme": { req: undefined; res: { dark: boolean } };
-  "projects.list": { req: { filter?: string }; res: ProjectSummary[] };
+  "projects.list": { req: { filter?: string; bucket?: Bucket }; res: ProjectSummary[] };
+  "projects.counts": { req: undefined; res: Record<Bucket, number> };
   "project.chooseEpub": { req: undefined; res: { path: string; name: string } | null };
   "project.create": { req: CreateProjectRequest; res: CreatedProject };
   "project.update": { req: UpdateProjectRequest; res: void };
@@ -166,7 +168,7 @@ export interface Events {
 export const INVOCATIONS = [
   "ui.confirm",
   "ui.theme",
-  "projects.list", "project.chooseEpub", "project.create", "project.update", "project.delete",
+  "projects.list", "projects.counts", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "project.get", "units.list",
   "run.start", "run.pause", "run.approve",
   "terms.list", "terms.decide", "terms.add", "terms.promote",

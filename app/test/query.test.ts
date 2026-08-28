@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
-import { listProjects } from "../main/projects/query.ts";
+import { BUCKETS, statesOf } from "../shared/buckets.ts";
+import { countProjects, listProjects } from "../main/projects/query.ts";
 
 function seeded() {
   const db = openDatabase(":memory:");
@@ -36,13 +37,39 @@ function withUnits(db: ReturnType<typeof openDatabase>, translated: number, tota
   }
 }
 
+/**
+ * The whole machine in one library: eleven projects, one per state.
+ *
+ * Every group then holds exactly the members the map gives it, so a state
+ * that quietly falls out of its group shows up as a count that is wrong by
+ * one, not as a screen that looks plausible.
+ */
+async function aLibraryOfEveryState() {
+  const db = openDatabase(":memory:");
+  migrate(db, loadMigrations("app/main/db/migrations"));
+
+  const states = [
+    "new", "needs-language", "ready", "running", "waiting-terms", "waiting-code",
+    "composing", "paused", "done", "incomplete", "failed",
+  ];
+  const insert = db.prepare(`
+    INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                         target_language, state)
+    VALUES (?,?,?,?,?,?,?,?)
+  `);
+  for (const [n, state] of states.entries()) {
+    insert.run(`p${n}`, `${state}.epub`, state, `/w/p${n}`, "h", "2026-08-01", "it", state);
+  }
+  return db;
+}
+
 describe("listProjects", () => {
   it("returns the newest first", () => {
     expect(listProjects(seeded()).map((p) => p.id)).toEqual(["p2", "p1"]);
   });
 
   it("filters by title, case-insensitively", () => {
-    expect(listProjects(seeded(), "alp").map((p) => p.id)).toEqual(["p1"]);
+    expect(listProjects(seeded(), { search: "alp" }).map((p) => p.id)).toEqual(["p1"]);
   });
 
   it("carries what the library needs to draw a tile", () => {
@@ -99,5 +126,47 @@ describe("listProjects", () => {
 
     listProjects(db);
     expect(prepared).toBe(1);
+  });
+});
+
+/**
+ * Eleven states, five names.
+ *
+ * The grouping is the only thing the column teaches, so it is the thing worth
+ * pinning: a state that quietly falls out of its group makes a project
+ * invisible to the person looking for it.
+ */
+describe("the groups of the library", () => {
+  it("puts the two gates together, and nothing else with them", () => {
+    expect([...statesOf("to-approve")].sort()).toEqual(["waiting-code", "waiting-terms"]);
+  });
+
+  it("counts composing as running, because the book is still moving", () => {
+    expect([...statesOf("running")].sort()).toEqual(["composing", "running"]);
+  });
+
+  it("filters the library to the group asked for", async () => {
+    const db = await aLibraryOfEveryState();
+
+    const gates = listProjects(db, { bucket: "to-approve" });
+    const all = listProjects(db, { bucket: "all" });
+
+    expect(gates.map((p) => p.state).sort()).toEqual(["waiting-code", "waiting-terms"]);
+    expect(all).toHaveLength(11);
+  });
+
+  it("counts each group, and counts every project under Projects", async () => {
+    const db = await aLibraryOfEveryState();
+
+    const counts = countProjects(db);
+
+    expect(counts.all).toBe(11);
+    expect(counts["to-approve"]).toBe(2);
+    expect(counts.running).toBe(2);
+    expect(counts.paused).toBe(1);
+    expect(counts.done).toBe(1);
+    // The groups do not partition, and that is deliberate: five of the eleven
+    // live only under Projects.
+    expect(BUCKETS.reduce((n, b) => n + (b === "all" ? 0 : counts[b]), 0)).toBe(6);
   });
 });
