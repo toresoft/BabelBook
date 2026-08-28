@@ -3,7 +3,7 @@
     <h2>{{ t('units.title') }}</h2>
 
     <select
-      class="units__state"
+      class="select units__state"
       data-testid="unit-state"
       [ngModel]="state()"
       (ngModelChange)="onState($event)">
@@ -14,7 +14,7 @@
     </select>
 
     <input
-      class="units__search"
+      class="input units__search"
       type="search"
       data-testid="unit-search"
       [placeholder]="t('units.search')"
@@ -63,11 +63,17 @@
 
   @if (total() > pageSize) {
     <div class="units__pager">
-      <button type="button" data-testid="units-back" [disabled]="offset() === 0" (click)="back()">
+      <button
+        type="button"
+        class="btn"
+        data-testid="units-back"
+        [disabled]="offset() === 0"
+        (click)="back()">
         {{ t('units.previous') }}
       </button>
       <button
         type="button"
+        class="btn"
         data-testid="units-more"
         [disabled]="offset() + units().length >= total()"
         (click)="more()">

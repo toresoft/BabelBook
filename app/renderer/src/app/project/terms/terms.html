@@ -13,10 +13,10 @@
         </p>
       }
       <div class="terms__warningActions">
-        <button type="button" data-testid="confirm-invalidation" (click)="save()">
+        <button type="button" class="btn" data-testid="confirm-invalidation" (click)="save()">
           {{ t('terms.confirmChange') }}
         </button>
-        <button type="button" data-testid="dismiss-invalidation" (click)="dismiss()">
+        <button type="button" class="btn" data-testid="dismiss-invalidation" (click)="dismiss()">
           {{ t('terms.cancel') }}
         </button>
       </div>
@@ -48,6 +48,7 @@
           <label>
             {{ t('terms.rule') }}
             <select
+              class="select"
               [attr.data-testid]="'rule-' + term.id"
               [ngModel]="view(term).rule"
               (ngModelChange)="edit(term.id, { rule: $event })">
@@ -62,6 +63,7 @@
               {{ t('terms.target') }}
               <input
                 type="text"
+                class="input"
                 [attr.data-testid]="'target-' + term.id"
                 [ngModel]="view(term).target ?? ''"
                 (ngModelChange)="edit(term.id, { target: $event })" />
@@ -70,15 +72,16 @@
         </div>
 
         <div class="term__actions">
-          <button type="button" [attr.data-testid]="'approve-' + term.id" (click)="decide(term.id, 'approved')">
+          <button type="button" class="btn" [attr.data-testid]="'approve-' + term.id" (click)="decide(term.id, 'approved')">
             {{ t('terms.approve') }}
           </button>
-          <button type="button" [attr.data-testid]="'reject-' + term.id" (click)="decide(term.id, 'rejected')">
+          <button type="button" class="btn" [attr.data-testid]="'reject-' + term.id" (click)="decide(term.id, 'rejected')">
             {{ t('terms.reject') }}
           </button>
 
           @if (glossaries().length > 0 && term.approval === 'approved') {
             <select
+              class="select"
               [attr.data-testid]="'promote-' + term.id"
               (change)="promote(term.id, $any($event.target).value)">
               <option value="">{{ t('terms.promote') }}</option>
@@ -97,13 +100,13 @@
   }
 
   <div class="terms__footer">
-    <button type="button" data-testid="approve-all" [disabled]="saving()" (click)="approveAll()">
+    <button type="button" class="btn" data-testid="approve-all" [disabled]="saving()" (click)="approveAll()">
       {{ t('terms.approveAll') }}
     </button>
-    <button type="button" data-testid="save-terms" [disabled]="saving() || decided() === 0" (click)="save()">
+    <button type="button" class="btn" data-testid="save-terms" [disabled]="saving() || decided() === 0" (click)="save()">
       {{ t('terms.save', { count: decided() }) }}
     </button>
-    <button type="button" data-testid="approve-gate" [disabled]="saving()" (click)="approveGate()">
+    <button type="button" class="btn" data-testid="approve-gate" [disabled]="saving()" (click)="approveGate()">
       {{ t('terms.approveGate') }}
     </button>
   </div>

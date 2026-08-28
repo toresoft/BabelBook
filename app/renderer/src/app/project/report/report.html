@@ -122,10 +122,10 @@
 
     @if (found.outputPath; as path) {
       <div class="report__actions">
-        <button type="button" data-testid="open-epub" (click)="open(path)">
+        <button type="button" class="btn" data-testid="open-epub" (click)="open(path)">
           {{ t('report.openEpub') }}
         </button>
-        <button type="button" data-testid="reveal-epub" (click)="reveal(path)">
+        <button type="button" class="btn" data-testid="reveal-epub" (click)="reveal(path)">
           {{ t('report.revealEpub') }}
         </button>
       </div>

@@ -26,12 +26,14 @@
               <span class="unit__verdict">{{ t('unitState.' + verdict(unit.unitId, group.state)) }}</span>
               <button
                 type="button"
+                class="btn"
                 [attr.data-testid]="'free-' + unit.unitId"
                 (click)="force(unit.unitId, 'translate')">
                 {{ t('exclusions.free') }}
               </button>
               <button
                 type="button"
+                class="btn"
                 [attr.data-testid]="'protect-' + unit.unitId"
                 (click)="force(unit.unitId, 'code')">
                 {{ t('exclusions.protect') }}
@@ -39,6 +41,7 @@
               @if (staged()[unit.unitId]) {
                 <button
                   type="button"
+                  class="btn"
                   [attr.data-testid]="'undo-' + unit.unitId"
                   (click)="unstage(unit.unitId)">
                   {{ t('exclusions.undo') }}
@@ -46,6 +49,7 @@
               } @else if (unit.forced) {
                 <button
                   type="button"
+                  class="btn"
                   [attr.data-testid]="'clear-' + unit.unitId"
                   (click)="clear(unit.unitId)">
                   {{ t('exclusions.clearForced') }}
@@ -63,10 +67,10 @@
   }
 
   <div class="exclusions__footer">
-    <button type="button" data-testid="save-exclusions" [disabled]="saving() || changes() === 0" (click)="save()">
+    <button type="button" class="btn" data-testid="save-exclusions" [disabled]="saving() || changes() === 0" (click)="save()">
       {{ t('exclusions.save', { count: changes() }) }}
     </button>
-    <button type="button" data-testid="approve-exclusions" [disabled]="saving()" (click)="approveGate()">
+    <button type="button" class="btn" data-testid="approve-exclusions" [disabled]="saving()" (click)="approveGate()">
       {{ t('exclusions.approveGate') }}
     </button>
   </div>

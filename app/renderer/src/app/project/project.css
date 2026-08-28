@@ -12,18 +12,6 @@
 .project__phase { color: var(--accent); }
 .project__actions { display: flex; gap: 0.5rem; }
 
-.project__progress { height: 0.4rem; background: var(--line); border-radius: 999px; overflow: hidden; }
-.project__bar { display: block; height: 100%; background: var(--accent); }
-
-.project__tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.project__tab {
-  border: none; background: none; padding: 0.45rem 0.7rem;
-  font-size: 0.9rem; color: var(--text-muted); border-bottom: 2px solid transparent;
-}
-.project__tab--on { color: var(--text); border-bottom-color: var(--accent); }
-/* The arrow never changes over a tab, so the tab changes instead. */
-.project__tab:hover { color: var(--text); background: var(--surface-raised); }
-
 .project__panel { padding-top: 0.5rem; }
 
 .overview { display: grid; gap: 0.6rem; }
