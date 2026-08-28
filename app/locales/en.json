@@ -286,6 +286,7 @@
     "overlaysRemoved": "Removed {{overlays}} overlays and {{audio}} audio files.",
     "openEpub": "Open the EPUB",
     "revealEpub": "Show in the folder",
+    "exportEpub": "Export the translated book",
     "neverRun": "This project has never been run.",
     "money": "about {{amount}} USD"
   },

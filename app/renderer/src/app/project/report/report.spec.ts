@@ -21,9 +21,11 @@ const base: Report = {
   outputPath: "/w/projects/p1/output/a.it.epub",
 };
 
-function bridge(report: Report | null = base) {
+function bridge(report: Report | null = base, answers: Record<string, unknown> = {}) {
   return vi.fn(async (channel: string, _payload?: unknown) =>
-    channel === "report.get" ? report : undefined);
+    channel in answers ? answers[channel]
+      : channel === "report.get" ? report
+      : undefined);
 }
 
 function mount(invoke = bridge()) {
@@ -50,6 +52,9 @@ const catalogue = it_IT as unknown as {
   report: Record<string, string>;
   codes: Record<string, string>;
 };
+
+const calls = (invoke: ReturnType<typeof bridge>, channel: string) =>
+  invoke.mock.calls.filter(([name]) => name === channel);
 
 describe("ReportView", () => {
   it("turns a code into a sentence from the catalogue", async () => {
@@ -122,6 +127,22 @@ describe("ReportView", () => {
   it("offers nothing to open when no file was produced", async () => {
     expect(await render({ ...base, outputPath: null }))
       .not.toContain(catalogue.report["openEpub"]);
+  });
+
+  it("saves the translated book where it is asked to, and leaves the project alone", async () => {
+    const invoke = bridge(base, { "ui.chooseSave": "/home/somebody/book.it.epub" });
+    const { fixture } = mount(invoke);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector("[data-testid=export-epub]")!.click();
+    await fixture.whenStable();
+
+    expect(calls(invoke, "ui.chooseSave")[0]![1]).toMatchObject({ kind: "epub" });
+    expect(calls(invoke, "project.export")[0]![1])
+      .toMatchObject({ to: "/home/somebody/book.it.epub" });
+    // Exporting is not a branch of deleting: nothing is destroyed by saving.
+    expect(calls(invoke, "project.delete")).toHaveLength(0);
   });
 
   it("says a project was never run instead of showing an empty report", async () => {

@@ -1,4 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { copyFile, readdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import {
   DEFAULT_SETTINGS, EVENTS, INVOCATIONS,
@@ -48,7 +49,7 @@ export interface IpcDeps {
    * process — which owns the dialog — decides what that means.
    */
   chooseOpen(kind: "glossary" | "jar" | "catalog"): Promise<string | null>;
-  chooseSave(defaultName: string): Promise<string | null>;
+  chooseSave(defaultName: string, kind: "glossary" | "epub"): Promise<string | null>;
   /** Puts a project in the machine's hands, and the machine's verdict on screen. */
   startRun(projectId: string): Promise<void>;
   pauseRun(projectId: string): Promise<void>;
@@ -191,6 +192,8 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "ui.theme": async () => deps.theme(),
 
+    "ui.chooseSave": async ({ defaultName, kind }) => deps.chooseSave(defaultName, kind),
+
     "projects.list": async ({ filter, bucket }) =>
       listProjects(deps.db, { ...(filter === undefined ? {} : { search: filter }), ...(bucket === undefined ? {} : { bucket }) }),
 
@@ -233,6 +236,16 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       // it: the schema owns that, not this handler.
       deps.db.prepare("DELETE FROM project WHERE id = ?").run(id);
       deps.broadcast("project.changed", { id });
+    },
+
+    "project.export": async ({ id, to }) => {
+      // The same copy `deleteWorkspace` would make on its way out, offered at
+      // the moment someone actually wants it rather than as a side effect of
+      // destroying the project around it.
+      const workspace = workspaceOf(deps.db, id);
+      const produced = await readdir(workspace.outputDir);
+      if (produced[0] === undefined) throw new Error("NOTHING_TO_EXPORT");
+      await copyFile(join(workspace.outputDir, produced[0]), to);
     },
 
     "run.start": async ({ projectId }) => {
@@ -321,7 +334,7 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       // Serialised before the dialog opens: a glossary that cannot be written
       // must not first ask the user where to put it.
       const markdown = exportGlossary(deps.db, id);
-      const path = await deps.chooseSave(`${getGlossary(deps.db, id)?.name ?? "glossary"}.md`);
+      const path = await deps.chooseSave(`${getGlossary(deps.db, id)?.name ?? "glossary"}.md`, "glossary");
       if (path === null) return null;
 
       await writeFile(path, markdown, "utf8");

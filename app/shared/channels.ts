@@ -56,12 +56,19 @@ export interface Invocations {
    * hears the system change (electron#22211), so nativeTheme tells it.
    */
   "ui.theme": { req: undefined; res: { dark: boolean } };
+  /**
+   * Asks the user where to save something the window produced, and answers
+   * with the chosen path. Null when the dialog was dismissed.
+   */
+  "ui.chooseSave": { req: { defaultName: string; kind: "glossary" | "epub" }; res: string | null };
   "projects.list": { req: { filter?: string; bucket?: Bucket }; res: ProjectSummary[] };
   "projects.counts": { req: undefined; res: Record<Bucket, number> };
   "project.chooseEpub": { req: undefined; res: { path: string; name: string } | null };
   "project.create": { req: CreateProjectRequest; res: CreatedProject };
   "project.update": { req: UpdateProjectRequest; res: void };
   "project.delete": { req: { id: string; keepOutput?: string }; res: void };
+  /** Copies the translated book out of the workspace, which stays as it was. */
+  "project.export": { req: { id: string; to: string }; res: void };
   /** Null when the project is gone: another window may have deleted it. */
   "project.get": { req: { id: string }; res: ProjectDetail | null };
   "units.list": {
@@ -168,8 +175,9 @@ export interface Events {
 export const INVOCATIONS = [
   "ui.confirm",
   "ui.theme",
+  "ui.chooseSave",
   "projects.list", "projects.counts", "project.chooseEpub", "project.create", "project.update", "project.delete",
-  "project.get", "units.list",
+  "project.export", "project.get", "units.list",
   "run.start", "run.pause", "run.approve",
   "terms.list", "terms.decide", "terms.add", "terms.promote",
   "terms.previewInvalidation", "terms.invalidate",

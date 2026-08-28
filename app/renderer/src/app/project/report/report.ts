@@ -59,4 +59,17 @@ export class ReportView {
   async reveal(path: string): Promise<void> {
     await this.#ipc.invoke("file.reveal", { path });
   }
+
+  /** The name the book was produced under, offered as where to save it. */
+  suggestedName(): string {
+    return this.report()?.outputPath?.split("/").pop() ?? "book.epub";
+  }
+
+  async exportEpub(): Promise<void> {
+    const to = await this.#ipc.invoke("ui.chooseSave", {
+      defaultName: this.suggestedName(), kind: "epub",
+    });
+    if (to === null) return;
+    await this.#ipc.invoke("project.export", { id: this.projectId(), to });
+  }
 }

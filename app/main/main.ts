@@ -364,10 +364,12 @@ app.whenReady().then(async () => {
       });
       return chosen.canceled ? null : chosen.filePaths[0] ?? null;
     },
-    chooseSave: async (defaultName) => {
+    chooseSave: async (defaultName, kind) => {
       const chosen = await dialog.showSaveDialog({
         defaultPath: defaultName,
-        filters: [{ name: "Glossary", extensions: ["md"] }],
+        filters: kind === "epub"
+          ? [{ name: "EPUB", extensions: ["epub"] }]
+          : [{ name: "Glossary", extensions: ["md"] }],
       });
       return chosen.canceled || chosen.filePath === undefined ? null : chosen.filePath;
     },
