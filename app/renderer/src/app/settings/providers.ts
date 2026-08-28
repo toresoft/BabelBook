@@ -98,6 +98,8 @@ export class Providers implements OnDestroy {
 
   #ipc = inject(IpcService);
   #unsubscribe: Array<() => void> = [];
+  /** Monotonic id of the newest search: an older answer must not land. */
+  #searchSeq = 0;
 
   constructor() {
     void this.reload();
@@ -169,13 +171,24 @@ export class Providers implements OnDestroy {
    */
   async search(text: string): Promise<void> {
     this.query.set(text);
-    this.entries.set(await this.#ipc.invoke("catalog.search", { query: text }));
+    // Latest call wins: the answer to an older query — the modal's opening
+    // empty one, or a query the user already replaced — must not land.
+    const seq = ++this.#searchSeq;
+    try {
+      const found = await this.#ipc.invoke("catalog.search", { query: text });
+      if (seq === this.#searchSeq) this.entries.set(found);
+    } catch {
+      // A failed search keeps the list it had; the field still holds the
+      // query that failed, and typing again retries it.
+    }
   }
 
   /**
    * Opening the modal asks its opening question — the empty query — so the
    * ten are there before anything is typed, and the field starts over on
-   * every open, like the key field below it does.
+   * every open, like the key field below it does. The question rides the
+   * same latest-wins guard as a typed one: a slow empty answer cannot
+   * overwrite what the user already typed over it.
    */
   openConnect(): void {
     this.connecting.set(true);

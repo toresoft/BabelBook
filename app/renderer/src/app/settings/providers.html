@@ -133,6 +133,7 @@
           @for (entry of others(); track entry.id) {
             <li><a [attr.data-testid]="'entry-' + entry.id"
                    [class.menu-disabled]="entry.route === null"
+                   [attr.title]="entry.route === null ? t('providers.unserved') : null"
                    (click)="pick(entry)">
               <span class="grow">{{ entry.name }}</span>
               <small class="opacity-60">

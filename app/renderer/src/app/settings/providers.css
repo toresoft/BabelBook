@@ -11,16 +11,13 @@
 .provider__verdict { margin: 0; font-size: 0.85rem; color: var(--danger); }
 .provider__verdict--ok { color: var(--ok); }
 
-/* The add section is a picker first: a search box, the local runtimes above
-   the results, and the compatible endpoint as the declared last resort. */
+/* The add section is one button: the picker it opens lives in the modal. */
 .providers__add { display: grid; gap: 0.5rem; }
-.providers__add label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
-.providers__add small { color: var(--text-muted); font-size: 0.8rem; }
-.providers__runtimes-title { margin: 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.providers__runtime, .providers__entry, .providers__preset { justify-self: start; }
-.providers__runtime { border-color: var(--ok-line); }
-.providers__entry--unserved { color: var(--text-faint); border-style: dashed; }
-.providers__preset { color: var(--accent); }
+
+/* daisyUI styles .menu-disabled only inside the :active/.menu-active branch,
+   so at rest it renders nothing: the inert affordance is stated here instead. */
+.menu a.menu-disabled { pointer-events: none; opacity: 0.5; }
+
 .providers__catalog-row { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
 .providers__catalog { color: var(--text-muted); font-size: 0.8rem; margin: 0; }
 .providers__catalog-outcome { color: var(--text-muted); font-size: 0.8rem; }
