@@ -107,9 +107,10 @@ describe("Providers", () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // The runtime sits above the catalogue results, and says it is local.
-    const buttons = fixture.nativeElement.querySelectorAll("button");
-    const labels = Array.from(buttons as NodeListOf<HTMLElement>, (b) => b.textContent);
+    // The runtime sits above the catalogue results, and says it is local. The
+    // dialog's own DOM holds both, closed or not.
+    const rows = fixture.nativeElement.querySelectorAll("[data-testid=connect-modal] a");
+    const labels = Array.from(rows as NodeListOf<HTMLElement>, (a) => a.textContent);
     expect(labels.findIndex((t) => t?.includes("Ollama")))
       .toBeLessThan(labels.findIndex((t) => t?.includes("Acme")));
     expect(labels.find((t) => t?.includes("Ollama"))).toContain(catalog.providers["local"]!);
@@ -120,6 +121,47 @@ describe("Providers", () => {
     expect(fixture.nativeElement.querySelector("[data-testid=provider-api-key]")).toBeNull();
     // Its models are the running server's, ready before any key exists.
     expect(fixture.componentInstance.draft()?.models.map((m) => m.id)).toEqual(["gemma3:12b"]);
+  });
+
+  it("puts what runs on this machine above what asks for money", async () => {
+    const { fixture } = mount(bridge({ "catalog.search": [entry] }));
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector("[data-testid=open-connect]").click();
+    await fixture.whenStable();
+    fixture.componentInstance.search("a");
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.querySelector("[data-testid=connect-modal]").textContent as string;
+
+    // Local runtimes are the only group that asks nobody for a key. Someone with
+    // a model on their own machine should meet it first, not after eight paid
+    // services.
+    expect(text.indexOf("Ollama")).toBeLessThan(text.indexOf("Acme"));
+  });
+
+  it("offers the custom endpoint as an entry of the list, not a mode beside it", async () => {
+    const { fixture } = mount(bridge({ "catalog.search": [entry] }));
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector("[data-testid=open-connect]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=entry-custom]")).not.toBeNull();
+  });
+
+  it("says of an entry how many models it serves and where its key usually lives", async () => {
+    const { fixture } = mount(bridge({ "catalog.search": [entry] }));
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector("[data-testid=open-connect]").click();
+    await fixture.whenStable();
+    fixture.componentInstance.search("acm");
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector("[data-testid=entry-acme]").textContent as string;
+    expect(row).toContain("12");
+    expect(row).toContain("ACME_API_KEY");
   });
 
   it("asks for one thing only: the key", async () => {
@@ -426,16 +468,18 @@ describe("Providers", () => {
     fixture.detectChanges();
 
     const served = fixture.nativeElement
-      .querySelector("[data-testid=entry-acme]") as HTMLButtonElement;
+      .querySelector("[data-testid=entry-acme]") as HTMLElement;
     const refused = fixture.nativeElement
-      .querySelector("[data-testid=entry-venice]") as HTMLButtonElement | null;
+      .querySelector("[data-testid=entry-venice]") as HTMLElement | null;
 
     // Visible, because a name that vanishes from the list teaches nothing;
     // unpressable, because the sentence about it belongs here and not three
     // steps later, after a key has been pasted.
-    expect(served.disabled).toBe(false);
+    expect(served.classList.contains("menu-disabled")).toBe(false);
     expect(refused).not.toBeNull();
-    expect(refused!.disabled).toBe(true);
-    expect(refused!.getAttribute("title")).toBe(catalog.providers["unserved"]);
+    expect(refused!.classList.contains("menu-disabled")).toBe(true);
+    refused!.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.draft()).toBeNull();
   });
 });

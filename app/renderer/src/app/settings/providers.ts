@@ -4,6 +4,7 @@ import { TranslocoDirective } from "@jsverse/transloco";
 import type {
   CatalogEntry, CatalogState, LocalRuntime, Provider, ProviderModel, ProviderPreset, VerifyCode,
 } from "../../../../shared/dto.js";
+import { POPULAR } from "../../../../main/catalog/popular.js";
 import { IpcService } from "../core/ipc.service";
 
 /**
@@ -82,6 +83,8 @@ export class Providers implements OnDestroy {
   readonly query = signal("");
   readonly entries = signal<CatalogEntry[]>([]);
   readonly runtimes = signal<LocalRuntime[]>([]);
+  /** Whether the connect dialog is showing. */
+  readonly connecting = signal(false);
   readonly catalogState = signal<CatalogState | null>(null);
   readonly refreshing = signal(false);
   readonly importing = signal(false);
@@ -166,10 +169,44 @@ export class Providers implements OnDestroy {
       : await this.#ipc.invoke("catalog.search", { query: text }));
   }
 
+  openConnect(): void {
+    this.connecting.set(true);
+  }
+
+  closeConnect(): void {
+    this.connecting.set(false);
+  }
+
+  /**
+   * The recommended few, in the order they are recommended.
+   *
+   * The partition works on what the search returned, and the service refuses
+   * an empty query — nothing comes back until something is typed — so this
+   * group grows only out of results. Showing the ten before any search would
+   * need a channel the interface does not have, and inventing one is not this
+   * screen's to do.
+   */
+  popular(): CatalogEntry[] {
+    const found = new Map(this.entries().map((entry) => [entry.id, entry]));
+    return POPULAR.flatMap((id) => {
+      const entry = found.get(id);
+      return entry === undefined ? [] : [entry];
+    });
+  }
+
+  /** Everything the search found that is not one of the recommended, by name. */
+  others(): CatalogEntry[] {
+    return [...this.entries()]
+      .filter((entry) => !POPULAR.includes(entry.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   pick(entry: CatalogEntry): void {
-    // The button is disabled, and this is the same fact said where the type
-    // can hold it: a draft has a route, and an entry may not have one.
+    // The row is marked unservable, and this is the same fact said where the
+    // type can hold it: a draft has a route, and an entry may not have one.
     if (entry.route === null) return;
+    // A choice closes the list: what follows belongs to the form, not to it.
+    this.connecting.set(false);
     this.failure.set(null);
     this.draft.set({
       ...BLANK,
@@ -187,6 +224,7 @@ export class Providers implements OnDestroy {
   }
 
   pickLocal(runtime: LocalRuntime): void {
+    this.connecting.set(false);
     this.failure.set(null);
     this.draft.set({
       ...BLANK,
@@ -203,6 +241,7 @@ export class Providers implements OnDestroy {
   }
 
   pickCompatible(): void {
+    this.connecting.set(false);
     this.failure.set(null);
     this.draft.set({ ...BLANK });
   }

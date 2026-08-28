@@ -8,6 +8,7 @@ import { Settings } from "./settings";
 function bridge() {
   return vi.fn(async (channel: string, _payload?: unknown) => {
     if (channel === "providers.list" || channel === "providers.presets") return [];
+    if (channel === "local.runtimes") return [];
     if (channel === "glossaries.list") return [];
     if (channel === "settings.get") {
       return {
