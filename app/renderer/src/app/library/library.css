@@ -15,6 +15,9 @@
   justify-content: center;
 }
 .tile__cover { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
+/* the bare daisyUI .card has no padding of its own: without this the tile's
+   content sits flush against its border. 0.75rem matches .provider's box. */
+.tile { padding: 0.75rem; }
 .tile__cover--none {
   display: grid; place-items: center; background: var(--line); color: var(--text-muted); font-size: 0.8rem;
 }
