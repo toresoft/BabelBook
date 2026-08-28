@@ -197,6 +197,10 @@ test("every screen, in both themes, saying what it must", async () => {
     getComputedStyle(document.querySelector("button.btn")!).cursor)).toBe("default");
 
   const lightBody = await setTheme(app, window, "light");
+  // The walk arrived here by leaving /projects/all, so nav-all wears the
+  // same mid-flight colour change the loop below waits out of every
+  // screen — this one is measured at rest too.
+  await window.waitForTimeout(300);
   let problems = await window.evaluate(READABLE);
   expect(problems).toEqual([]);
   await window.screenshot({ path: join(SHOTS, "new-project-light.png") });
@@ -204,6 +208,7 @@ test("every screen, in both themes, saying what it must", async () => {
   const darkBody = await setTheme(app, window, "dark");
   // The dark theme is not a rumour: the floor under everything changes.
   expect(darkBody).not.toEqual(lightBody);
+  await window.waitForTimeout(300);
   problems = await window.evaluate(READABLE);
   expect(problems).toEqual([]);
   await window.screenshot({ path: join(SHOTS, "new-project-dark.png") });
