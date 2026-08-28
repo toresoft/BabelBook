@@ -26,6 +26,8 @@ async function cssFiles(dir: string): Promise<string[]> {
 describe("the stylesheets", () => {
   it("keep every colour in the global sheet, where the themes are", async () => {
     const files = (await cssFiles("app/renderer/src")).filter((path) => path !== STYLES);
+    // The walk above is only a check if there was something to walk.
+    expect(files.length).toBeGreaterThan(0);
 
     const offenders: string[] = [];
     for (const path of files) {
@@ -45,6 +47,12 @@ describe("the stylesheets", () => {
     }
 
     expect(offenders).toEqual([]);
+
+    // The library's sheets point, though: daisyUI ships the hand on its
+    // controls, so the global sheet must carry the counter-rule that holds
+    // the arrow — unlayered, where it beats the library's layers.
+    const global = await readFile(STYLES, "utf8");
+    expect(global).toMatch(/button\.btn[^{]*\{[^}]*cursor: default/);
   });
 
   it("gives the window a background that matches the theme it opens in", async () => {

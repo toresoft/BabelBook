@@ -42,13 +42,22 @@ async function setTheme(app: ElectronApplication, window: Page, theme: Theme): P
  * and "the same colour twice" cannot hide behind an inherited value.
  */
 const READABLE = (): string[] => {
-  // The controls now speak oklab — a hover colour arrives as color-mix — and
-  // the browser will not say it back in rgb, so it is converted here, with
-  // the same arithmetic the contrast below is made of.
+  // The controls now speak oklab, and their mixes settle in oklch — a
+  // disabled button's colour is one of those — and the browser will not
+  // say either back in rgb, so both are converted here, with the same
+  // arithmetic the contrast below is made of.
   const parse = (color: string): [number, number, number] => {
     const numbers = (color.match(/-?[\d.]+/g) ?? ["0", "0", "0"]).map(Number);
-    if (!color.startsWith("oklab(")) return [numbers[0], numbers[1], numbers[2]];
-    const [l, a, b] = numbers;
+    // oklch's second and third numbers are chroma and hue — an angle in
+    // degrees — which become oklab's a and b as their cosine and sine.
+    let [l, a, b] = numbers;
+    if (color.startsWith("oklch(")) {
+      const hue = (numbers[2] * Math.PI) / 180;
+      a = numbers[1] * Math.cos(hue);
+      b = numbers[1] * Math.sin(hue);
+    } else if (!color.startsWith("oklab(")) {
+      return [numbers[0], numbers[1], numbers[2]];
+    }
     const cube = (v: number): number => v ** 3;
     const lms = [
       cube(l + 0.3963377774 * a + 0.2158037573 * b),
@@ -79,7 +88,14 @@ const READABLE = (): string[] => {
   const paints = (el: Element): string => {
     for (let at = el; at instanceof Element; at = at.parentElement) {
       const bg = getComputedStyle(at).backgroundColor;
-      if (bg !== "rgba(0, 0, 0, 0)") return bg;
+      // A colour with alpha is a wash, not a surface: it tints what is
+      // below instead of covering it, so the text is read against the
+      // first opaque colour up the tree — a disabled button's colour-mix
+      // is a wash, and the card behind it is the surface.
+      const alpha = bg.startsWith("rgba(") || bg.includes("/")
+        ? Number(bg.match(/(?:,|\/)\s*([\d.]+)\s*\)$/)?.[1] ?? 1)
+        : 1;
+      if (bg !== "rgba(0, 0, 0, 0)" && alpha >= 1) return bg;
     }
     return "rgb(255, 255, 255)";
   };
@@ -156,6 +172,11 @@ test("every screen, in both themes, saying what it must", async () => {
   await window.getByTestId("new-project").click();
   await window.getByTestId("choose-epub").click();
   await window.getByTestId("estimate").waitFor();
+
+  // The arrow is the application's character: daisyUI ships the pointing
+  // hand, and this holds the line the foundation must not cross.
+  expect(await window.evaluate(() =>
+    getComputedStyle(document.querySelector("button.btn")!).cursor)).toBe("default");
 
   const lightBody = await setTheme(app, window, "light");
   let problems = await window.evaluate(READABLE);
