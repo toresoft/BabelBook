@@ -161,16 +161,25 @@ export class Providers implements OnDestroy {
     }
   }
 
-  /** 203 entries do not scroll: the list arrives only when something is typed. */
+  /**
+   * The list follows the query, and the empty query is a question too: the
+   * service answers it with the ten recommended, so clearing the field is a
+   * return to the recommendation, not to nothing. 203 entries still do not
+   * scroll: a typed query keeps getting a short list back.
+   */
   async search(text: string): Promise<void> {
     this.query.set(text);
-    this.entries.set(text.trim() === ""
-      ? []
-      : await this.#ipc.invoke("catalog.search", { query: text }));
+    this.entries.set(await this.#ipc.invoke("catalog.search", { query: text }));
   }
 
+  /**
+   * Opening the modal asks its opening question — the empty query — so the
+   * ten are there before anything is typed, and the field starts over on
+   * every open, like the key field below it does.
+   */
   openConnect(): void {
     this.connecting.set(true);
+    void this.search("");
   }
 
   closeConnect(): void {
@@ -180,11 +189,10 @@ export class Providers implements OnDestroy {
   /**
    * The recommended few, in the order they are recommended.
    *
-   * The partition works on what the search returned, and the service refuses
-   * an empty query — nothing comes back until something is typed — so this
-   * group grows only out of results. Showing the ten before any search would
-   * need a channel the interface does not have, and inventing one is not this
-   * screen's to do.
+   * The partition works on what the search returned; since the modal's
+   * opening search is the empty one, this group holds all ten the moment it
+   * opens. A typed query narrows it to the recommended that match, and an
+   * entry the answer did not carry is skipped, not invented.
    */
   popular(): CatalogEntry[] {
     const found = new Map(this.entries().map((entry) => [entry.id, entry]));

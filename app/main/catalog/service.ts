@@ -2,6 +2,7 @@ import type { CatalogEntry, CatalogState, ProviderModel } from "../../shared/dto
 import { routeDefaults } from "../providers/store.ts";
 import { enrichModels } from "./enrich.ts";
 import { discoverModels } from "./discover.ts";
+import { POPULAR } from "./popular.ts";
 import { routeOf, type Catalog, type CatalogProvider } from "./shape.ts";
 
 /**
@@ -29,10 +30,24 @@ function toEntry(provider: CatalogProvider): CatalogEntry {
   };
 }
 
-/** Matches on id and name, case-insensitively; an empty query matches nothing. */
+/**
+ * Matches on id and name, case-insensitively. An empty (or blank) query is
+ * not a search but the connect dialog's opening question, and is answered
+ * with the recommended ten in the order they are recommended — the modal
+ * opens on a recommendation, not on a list of two hundred nobody scrolls.
+ * An id the catalogue no longer carries is skipped, not fatal: the
+ * recommendation says what to try, and one vanished entry does not make the
+ * other nine unknowable.
+ */
 export function searchCatalog(catalog: Catalog, query: string): CatalogEntry[] {
   const needle = query.trim().toLowerCase();
-  if (needle === "") return [];
+  if (needle === "") {
+    const byId = new Map(catalog.providers.map((provider) => [provider.id, provider]));
+    return POPULAR.flatMap((id) => {
+      const provider = byId.get(id);
+      return provider === undefined ? [] : [toEntry(provider)];
+    });
+  }
 
   return catalog.providers
     .filter((provider) =>

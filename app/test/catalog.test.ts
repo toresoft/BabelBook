@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { routeForPackage } from "../engine/backends/registry.ts";
+import { POPULAR } from "../main/catalog/popular.ts";
 import { pruneCatalog, routeOf, type CatalogProvider } from "../main/catalog/shape.ts";
 import { searchCatalog } from "../main/catalog/service.ts";
 import { CATALOG_URL, readCatalog, refreshCatalog } from "../main/catalog/load.ts";
@@ -143,6 +144,32 @@ describe("the route a catalogue entry takes", () => {
 /** A catalogue as the search reads it: the date it was produced, and entries. */
 const aCatalog = (providers: CatalogProvider[]) =>
   ({ at: "2026-08-27T00:00:00.000Z", providers });
+
+describe("the connect dialog's opening question", () => {
+  it("answers an empty query with the recommended ten, in their order", () => {
+    // The catalogue lists them in its own order and carries two hundred more;
+    // the answer is the recommendation, not the catalogue.
+    const of = (id: string): CatalogProvider => ({
+      id, name: id.toUpperCase(), npm: "@ai-sdk/openai-compatible",
+      env: [], api: `https://${id}.test/v1`, models: [],
+    });
+    const catalog = aCatalog([...POPULAR.map(of).reverse(), of("zzz-last"), of("aaa-first")]);
+
+    for (const query of ["", "   "]) {
+      expect(searchCatalog(catalog, query).map((entry) => entry.id)).toEqual([...POPULAR]);
+    }
+  });
+
+  it("skips a recommended id the catalogue no longer carries, rather than failing the nine", () => {
+    const providers = POPULAR.slice(1).map((id) => ({
+      id, name: id, npm: "@ai-sdk/openai-compatible",
+      env: [], api: `https://${id}.test/v1`, models: [],
+    }));
+    expect(providers).not.toContain(POPULAR[0]);
+    expect(searchCatalog(aCatalog(providers), "").map((entry) => entry.id))
+      .toEqual(POPULAR.slice(1));
+  });
+});
 
 describe("what an entry says about itself", () => {
   it("carries the name of the variable its key is usually in", () => {

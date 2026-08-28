@@ -4,6 +4,7 @@ import it_IT from "../../../../locales/it.json";
 import type {
   CatalogEntry, CatalogState, LocalRuntime, Provider, ProviderModel,
 } from "../../../../shared/dto.js";
+import { POPULAR } from "../../../../main/catalog/popular.js";
 import { IpcService } from "../core/ipc.service";
 import { provideI18n } from "../core/i18n";
 import { Providers } from "./providers";
@@ -98,6 +99,24 @@ describe("Providers", () => {
 
     expect(calls(invoke, "catalog.search")[0]![1]).toEqual({ query: "acm" });
     expect(fixture.nativeElement.querySelector("[data-testid=entry-acme]")).not.toBeNull();
+  });
+
+  it("opens on the ten recommended, before anything is typed", async () => {
+    const ten: CatalogEntry[] = POPULAR.map((id) => ({ ...entry, id, name: id }));
+    const { fixture, invoke } = mount(bridge({ "catalog.search": () => ten }));
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector("[data-testid=open-connect]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The modal's first question is the empty one; the service answers it
+    // with the ten, so the popular group is the opening state, not a reward
+    // for typing.
+    expect(calls(invoke, "catalog.search")[0]![1]).toEqual({ query: "" });
+    expect(fixture.nativeElement.querySelector("[data-testid=entry-anthropic]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=entry-cerebras]")).not.toBeNull();
+    // All ten are the recommended: "others" holds none of them.
+    expect(fixture.componentInstance.others()).toEqual([]);
   });
 
   it("puts local runtimes first, marked as local and without a key field", async () => {
