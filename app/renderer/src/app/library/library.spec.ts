@@ -44,7 +44,7 @@ describe("Library", () => {
 
     const entry = fixture.nativeElement.querySelector("[data-testid=new-project]");
     expect(entry).not.toBeNull();
-    expect(entry.className).toContain("btn--primary");
+    expect(entry.className).toContain("btn-primary");
   });
 
   it("reads a tile top to bottom: title, then languages and state, then the progress", async () => {
@@ -72,8 +72,12 @@ describe("Library", () => {
 
     const state = fixture.nativeElement.querySelector(".tile__state");
     expect(state).not.toBeNull();
-    // A class of its own per state is the hook the stylesheet needs: "failed"
-    // can carry another colour than "done", without the template knowing why.
-    expect(state.className).toMatch(/tile__state--[\w-]+/);
+    // The badge is the hook the tone needs: "failed" can carry another colour
+    // than "done" through daisyUI's tone modifiers, without the template
+    // knowing why. The fixture's book is running, which asks for the primary
+    // tone — the colour of the accent.
+    expect(state.className).toContain("badge");
+    expect(state.className).toMatch(/badge-(primary|success|error|warning|neutral)/);
+    expect(state.className).toContain("badge-primary");
   });
 });

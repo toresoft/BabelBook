@@ -42,9 +42,28 @@ async function setTheme(app: ElectronApplication, window: Page, theme: Theme): P
  * and "the same colour twice" cannot hide behind an inherited value.
  */
 const READABLE = (): string[] => {
+  // The controls now speak oklab — a hover colour arrives as color-mix — and
+  // the browser will not say it back in rgb, so it is converted here, with
+  // the same arithmetic the contrast below is made of.
   const parse = (color: string): [number, number, number] => {
-    const [r, g, b] = color.match(/[\d.]+/g)!.map(Number);
-    return [r, g, b];
+    const numbers = (color.match(/-?[\d.]+/g) ?? ["0", "0", "0"]).map(Number);
+    if (!color.startsWith("oklab(")) return [numbers[0], numbers[1], numbers[2]];
+    const [l, a, b] = numbers;
+    const cube = (v: number): number => v ** 3;
+    const lms = [
+      cube(l + 0.3963377774 * a + 0.2158037573 * b),
+      cube(l - 0.1055613458 * a - 0.0638541728 * b),
+      cube(l - 0.0894841775 * a - 1.291485548 * b),
+    ];
+    const linear = [
+      4.0767416621 * lms[0] - 3.3077115913 * lms[1] + 0.2309699292 * lms[2],
+      -1.2684380046 * lms[0] + 2.6097574011 * lms[1] - 0.3413193965 * lms[2],
+      -0.0041960863 * lms[0] - 0.7034186147 * lms[1] + 1.707614701 * lms[2],
+    ];
+    return linear.map((c) => {
+      const srgb = c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+      return Math.round(Math.min(1, Math.max(0, srgb)) * 255);
+    }) as [number, number, number];
   };
   const channel = (v: number): number => {
     const s = v / 255;

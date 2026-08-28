@@ -146,8 +146,8 @@ describe("NewProject", () => {
     // invited the click that throws the analysis away.
     const create = fixture.nativeElement.querySelector("[data-testid=create]");
     const cancel = fixture.nativeElement.querySelector("[data-testid=cancel]");
-    expect(create.className).toContain("btn--primary");
-    expect(cancel.className).not.toContain("btn--primary");
+    expect(create.className).toContain("btn-primary");
+    expect(cancel.className).not.toContain("btn-primary");
   });
 
   it("puts the estimate first after the title, before the form it decides about", async () => {

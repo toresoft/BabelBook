@@ -2,14 +2,14 @@
   <header class="library__bar">
     <h1>{{ t('app.library') }}</h1>
     <input
-      class="library__search"
+      class="input library__search"
       type="search"
       data-testid="library-search"
       [placeholder]="t('library.search')"
       [ngModel]="filter()"
       (ngModelChange)="onFilter($event)" />
     <a class="library__settings" data-testid="settings" routerLink="/settings">{{ t('app.settings') }}</a>
-    <a class="btn btn--primary" data-testid="new-project" routerLink="/new">{{ t('library.newProject') }}</a>
+    <a class="btn btn-primary" data-testid="new-project" routerLink="/new">{{ t('library.newProject') }}</a>
   </header>
 
   @if (projects().length === 0 && !loading()) {
@@ -18,7 +18,7 @@
 
   <ul class="library__grid">
     @for (project of projects(); track project.id) {
-      <li class="tile" [attr.data-testid]="'project-' + project.id">
+      <li class="tile card bg-base-100 border border-base-300" [attr.data-testid]="'project-' + project.id">
         @if (project.coverPath) {
           <img class="tile__cover" [src]="project.coverPath" [alt]="project.title" />
         } @else {
@@ -30,7 +30,7 @@
         </a>
         <p class="tile__meta">
           <span>{{ project.sourceLanguage ?? '—' }} → {{ project.targetLanguage }}</span>
-          <span class="tile__state tile__state--{{ project.state }}">{{ t('state.' + project.state) }}</span>
+          <span class="tile__state badge badge-outline badge-{{ tone(project.state) }}">{{ t('state.' + project.state) }}</span>
           @if (project.layout !== 'reflowable') {
             <span class="tile__layout" title="{{ t('layout.' + project.layout) }}">
               {{ t('layout.' + project.layout) }}
@@ -38,9 +38,7 @@
           }
         </p>
 
-        <div class="tile__progress" role="progressbar" [attr.aria-valuenow]="percent(project)">
-          <span class="tile__bar" [style.width.%]="percent(project)"></span>
-        </div>
+        <progress class="tile__progress progress progress-primary" max="100" [value]="percent(project)"></progress>
         <p class="tile__counts">
           {{ t('library.progress', { done: project.progress.done, total: project.progress.total }) }}
         </p>

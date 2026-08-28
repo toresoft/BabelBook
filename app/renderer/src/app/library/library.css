@@ -21,19 +21,5 @@
 .tile__title { font-size: 1rem; font-weight: 600; margin: 0.6rem 0 0.2rem; }
 .tile__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-muted); margin: 0; }
 .tile__layout { color: var(--warning); }
-/* The state is a badge, not a word among words: seen first, read second. The
-   quiet states keep the neutral line; the ones that ask for the user's eye
-   carry the colour of what they mean. */
-.tile__state {
-  border: 1px solid var(--line-strong); color: var(--text-muted);
-  border-radius: 999px; padding: 0.05rem 0.5rem; font-size: 0.72rem;
-}
-.tile__state--ready { border-color: var(--accent); color: var(--accent); }
-.tile__state--running { border-color: var(--accent); color: var(--accent); }
-.tile__state--composing { border-color: var(--accent); color: var(--accent); }
-.tile__state--done { border-color: var(--ok-line); color: var(--ok); }
-.tile__state--failed { border-color: var(--danger); color: var(--danger); }
-.tile__state--waiting-terms, .tile__state--waiting-code { border-color: var(--warning-line); color: var(--warning); }
-.tile__progress { height: 4px; background: var(--line); border-radius: 2px; margin-top: 0.5rem; }
-.tile__bar { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+.tile__progress { margin-top: 0.5rem; }
 .tile__counts { font-size: 0.72rem; color: var(--text-muted); margin: 0.3rem 0 0; }

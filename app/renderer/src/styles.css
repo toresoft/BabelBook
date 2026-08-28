@@ -4,6 +4,13 @@
 }
 
 /*
+ * The state badges choose their tone at runtime — badge-{{ tone }} — so no
+ * scanner can see the whole class names in a template. They are named here
+ * so the tones the library can wear are always in the build.
+ */
+@source inline("badge-primary badge-success badge-error badge-warning badge-neutral");
+
+/*
  * The palette, unchanged, in daisyUI's names.
  *
  * These are the values this application shipped before daisyUI existed here:
@@ -34,6 +41,18 @@
   --color-info: #2563eb;
   --color-info-content: #ffffff;
 
+  /* The variables every daisyUI theme owes its controls: without --depth the
+     button border's color-mix has nothing to mix and falls back to the text
+     colour, and without --noise the texture is whatever the default says. The
+     two tones this palette never told apart from their neighbours are mapped
+     to those neighbours rather than invented. */
+  --color-accent: #2563eb;
+  --color-accent-content: #ffffff;
+  --color-secondary: #4b5563;
+  --color-secondary-content: #ffffff;
+  --depth: 1;
+  --noise: 0;
+
   --radius-box: 6px;
   --radius-field: 6px;
   --radius-selector: 6px;
@@ -62,6 +81,13 @@
   --color-success-content: #0f172a;
   --color-info: #60a5fa;
   --color-info-content: #0f172a;
+
+  --color-accent: #60a5fa;
+  --color-accent-content: #0f172a;
+  --color-secondary: #cbd5e1;
+  --color-secondary-content: #0f172a;
+  --depth: 1;
+  --noise: 0;
 
   --radius-box: 6px;
   --radius-field: 6px;
@@ -167,68 +193,85 @@ body {
 }
 
 /*
- * The controls. The cursor is the arrow everywhere, including buttons: the
- * pointing hand is for links that leave, and nothing here is one.
+ * The controls the port has not reached yet.
  *
- * Three kinds of button — the quiet secondary is the plain `.btn` — and one
- * shape of field, so a select next to an input reads as a row made by one
- * application rather than two browsers.
+ * daisyUI dresses a control when a template gives it the class; these rules
+ * dress the bare elements that still wait for their screen's port. They live
+ * in the base layer, which daisyUI's utilities outrank: where a control wears
+ * both, daisyUI's shape and colour win, and these hold only what is left.
+ *
+ * The cursor is the arrow everywhere, including buttons: the pointing hand is
+ * for links that leave, and nothing here is one.
  */
-button {
-  font: inherit;
-  color: inherit;
+@layer base {
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  /*
+   * The element and the class wear the same shape.
+   *
+   * Only a handful of buttons need a class — the primary act, the destructive
+   * one. If the class were what made a button look like a button, the ordinary
+   * ones beside them would stay OS controls, and a single row would carry two
+   * heights, two radii and two backgrounds. The class says which button this
+   * is; it does not say that it is one.
+   */
+  button,
+  .btn {
+    font: inherit;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    /* The primary act of a screen may be a route, which is an anchor: it wears
+       the button and not the underline, whatever the browser's default says. */
+    text-decoration: none;
+  }
+
+  /*
+   * The pointer is answered by the surface, because it is not answered by the
+   * cursor: the arrow stays, like a native application, so hover is the only
+   * thing left that says a thing can be pressed.
+   */
+  button:hover,
+  .btn:hover {
+    background: var(--surface-raised);
+  }
+
+  button:disabled,
+  button:disabled:hover {
+    color: var(--text-faint);
+    background: var(--surface);
+  }
+
+  input:not([type="checkbox"]),
+  select,
+  textarea {
+    font: inherit;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+  }
 }
 
 /*
- * The element and the class wear the same shape.
- *
- * Only a handful of buttons need a class — the primary act, the destructive
- * one. If the class were what made a button look like a button, the ordinary
- * ones beside them would stay OS controls, and a single row would carry two
- * heights, two radii and two backgrounds. The class says which button this
- * is; it does not say that it is one.
+ * The two tones that still speak the old class names stay outside every layer:
+ * they are colours, not shape, and they must survive on buttons whose shape
+ * daisyUI has already won. They lose their subject when their screens are
+ * ported, and they are gone with it.
  */
-button,
-.btn {
-  font: inherit;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  /* The primary act of a screen may be a route, which is an anchor: it wears
-     the button and not the underline, whatever the browser's default says. */
-  text-decoration: none;
-}
-
-/*
- * The pointer is answered by the surface, because it is not answered by the
- * cursor: the arrow stays, like a native application, so hover is the only
- * thing left that says a thing can be pressed.
- */
-button:hover,
-.btn:hover {
-  background: var(--surface-raised);
-}
-
-.btn--primary:hover {
+.btn--primary {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
 }
 
-.btn--danger:hover {
-  background: var(--surface-raised);
-  color: var(--danger);
-}
-
-button:disabled,
-button:disabled:hover {
-  color: var(--text-faint);
-  background: var(--surface);
-}
-
-.btn--primary {
+.btn--primary:hover {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
@@ -239,13 +282,7 @@ button:disabled:hover {
   color: var(--danger);
 }
 
-input:not([type="checkbox"]),
-select,
-textarea {
-  font: inherit;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
+.btn--danger:hover {
+  background: var(--surface-raised);
+  color: var(--danger);
 }

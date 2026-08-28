@@ -59,7 +59,7 @@
 
     <label>
       {{ t('newProject.targetLanguage') }}
-      <select data-testid="target-language" [ngModel]="targetLanguage()"
+      <select class="select" data-testid="target-language" [ngModel]="targetLanguage()"
               (ngModelChange)="targetLanguage.set($event)">
         @for (language of languages; track language) {
           <option [value]="language">{{ language }}</option>
@@ -69,7 +69,7 @@
 
     <label>
       {{ t('newProject.provider') }}
-      <select data-testid="provider" [ngModel]="providerId()"
+      <select class="select" data-testid="provider" [ngModel]="providerId()"
               (ngModelChange)="pickProvider($event)">
         <option [value]="null">{{ t('newProject.noProvider') }}</option>
         @for (provider of providers(); track provider.id) {
@@ -81,7 +81,7 @@
     @if (chosenProvider(); as provider) {
       <label>
         {{ t('newProject.model') }}
-        <select data-testid="model" [ngModel]="modelId()"
+        <select class="select" data-testid="model" [ngModel]="modelId()"
                 (ngModelChange)="pickModel($event)">
           @for (model of provider.models; track model.id) {
             <option [value]="model.id">{{ model.displayName }}</option>
@@ -92,19 +92,19 @@
 
     <label>
       {{ t('newProject.sourceLanguage') }}
-      <input data-testid="source-language" [ngModel]="sourceLanguage()"
+      <input class="input" data-testid="source-language" [ngModel]="sourceLanguage()"
              (ngModelChange)="sourceLanguage.set($event)" />
     </label>
 
     <label>
       {{ t('newProject.description') }}
-      <textarea data-testid="description" rows="3" [ngModel]="description()"
+      <textarea class="textarea" data-testid="description" rows="3" [ngModel]="description()"
                 (ngModelChange)="description.set($event)"></textarea>
       <small>{{ t('newProject.descriptionHint') }}</small>
     </label>
 
     <div class="new__actions">
-      <button type="button" class="btn btn--primary" data-testid="create" (click)="create()">
+      <button type="button" class="btn btn-primary" data-testid="create" (click)="create()">
         {{ t('newProject.create') }}
       </button>
       <button type="button" class="btn" data-testid="cancel" (click)="cancel()">
