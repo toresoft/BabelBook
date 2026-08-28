@@ -1,5 +1,19 @@
 # B1 — La fondazione daisyUI — piano di implementazione
 
+**Stato: in corso al 2026-08-28 — task 1–5 completati e rivisti, task 6 committato con review da fare, task 7 da fare.**
+
+Commits: `966cb3d` (T1), `da356fc` (T2), `0e664ab` (T3), `5f4129e` (T4), `63b86aa` (T5), `08436b9` (T6). Suite verde a ogni commit. Ripresa: review del T6 (il pacchetto è già in `.superpowers/sdd/2026-08-27-babelbook-b1-fondazione-daisyui/review-63b86aa..08436b9.diff`), poi T7, review finale (base `2318a22`), aggiornamento di questa intestazione.
+
+Cosa l'esecuzione ha cambiato o scoperto, rispetto al piano scritto:
+
+- **Le schermate non si committano.** `app/.gitignore` ignora `e2e/screenshots/` dalla nascita del repo: le righe `git add app/e2e/screenshots` dei task 4–7 erano ineseguibili. Le PNG si rigenerano a ogni corsa e2e e restano non tracciate.
+- **Il task 3 è corso in ordine**, senza slittare in fondo: i fogli dei componenti non contenevano esadecimali nemmeno prima del porto.
+- **Estensioni necessarie che il piano non vedeva.** Nel T2: il selettore `:root.theme-dark` del blocco scuro è diventato `:root[data-theme="babelbook-dark"]` e il testimone di `setTheme` in `screens.spec.ts` è passato all'attributo, altrimenti ogni e2e moriva al primo cambio tema; più `wear(false)` nel catch (imposto dal test «Named, not absent»). Nel T4: `@source inline(...)` per le classi tono interpolate a runtime, `--depth`/`--noise`/`--color-accent`/`--color-secondary` nei temi (valori presi dalla tavolozza esistente), il parser e2e che impara a leggere oklab, il blocco `@layer base` transitorio per gli elementi nudi (poi svuotato dal T6 quando più nessun controllo è rimasto senza classe).
+- **Il piano diceva che le spec cercano per testid e testo, non per classe:** falso per tre asserzioni (`btn--primary` in library e new-project, l'aggancio `tile__state--`), aggiornate mantenendone l'intenzione.
+- **Slot di tavolozza che si spostano sui controlli daisyUI** (riempimento del bottone quieto da bianco a base-200, `btn-error` pieno, binario della progress a tinta del primario, sottolineatura della tab attiva da accent a base-content): identità dei controlli della libreria, valori sempre nel tema. Nessun valore hex nuovo.
+- **Per il futuro (B2/C):** il bordo tratteggiato della voce non servita è invisibile sotto `.btn:disabled`; il warning `initial` del budget Angular (524 kB > 500 kB) scende da daisyUI.
+- **Ambiente:** `xvfb-run` non è installato su questa Fedora — l'e2e gira su `DISPLAY=:0` con lo stesso esito. Per tutto il piano ha lavorato in parallelo un altro worker su `core/` e `app/engine/` (reasoning-tokens, non committato): i commit B1 lo escludono.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Tailwind e daisyUI diventano la fondazione dei controlli, le dodici schermate passano alle sue classi, e l'applicazione fa esattamente quello che faceva prima.
