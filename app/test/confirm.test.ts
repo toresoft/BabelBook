@@ -90,6 +90,17 @@ describe("ui.confirm", () => {
     }
   });
 
+  it("disconnects a provider rather than deleting it, and says what goes with it", async () => {
+    const { deps, questions } = await scene(true);
+
+    await buildHandlers(deps)["ui.confirm"]({ kind: "deleteProvider", detail: { name: "OpenRouter" } });
+
+    // The act is undoing a connection, not destroying a thing that was made
+    // here: the verb has to match, or the question describes something else.
+    expect(questions[0]!.verify).toBe("Disconnetti");
+    expect(questions[0]!.message).toContain("OpenRouter");
+  });
+
   it("answers no, and touches nothing when it does", async () => {
     const { db, deps } = await scene(false);
     const handlers = buildHandlers(deps);

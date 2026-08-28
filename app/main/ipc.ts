@@ -155,7 +155,11 @@ export function confirmQuestion(
 ): ConfirmQuestion {
   const base = {
     cancel: t("confirm.cancel"),
-    verify: t(kind === "abandonProject" ? "confirm.abandon" : "confirm.delete"),
+    verify: t(
+      kind === "abandonProject" ? "confirm.abandon"
+      : kind === "deleteProvider" ? "confirm.disconnect"
+      : "confirm.delete",
+    ),
   };
 
   if (kind === "deleteGlossary") {

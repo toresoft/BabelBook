@@ -46,6 +46,17 @@ const state: CatalogState = {
   checkedAt: null,
 };
 
+/**
+ * A provider as it comes back from the store: connected, keyed, priced. The
+ * row tests spread it, so they differ in exactly the fact each one pins.
+ */
+const saved: Provider = {
+  id: "p1", name: "Acme", route: "acme-compatible",
+  baseUrl: "https://api.acme.test/v1", headers: {}, options: {},
+  catalogId: "acme", catalogAt: "2026-08-20T10:00:00.000Z",
+  models: [priced], hasKey: true,
+};
+
 /** A rejection the way the preload delivers it: packed in a marker message. */
 const failureOf = (code: string) =>
   new Error(`babelbook-failure:${JSON.stringify({ code })}`);
@@ -437,12 +448,6 @@ describe("Providers", () => {
   });
 
   it("never sends the key back when saving an edit", async () => {
-    const saved: Provider = {
-      id: "p1", name: "Acme", route: "acme-compatible",
-      baseUrl: "https://api.acme.test/v1", headers: {}, options: {},
-      catalogId: "acme", catalogAt: "2026-08-20T10:00:00.000Z",
-      models: [priced], hasKey: true,
-    };
     const { fixture, invoke } = mount(bridge({ "providers.list": [saved] }));
     await fixture.whenStable();
 
@@ -459,16 +464,10 @@ describe("Providers", () => {
   });
 
   it("asks before a provider goes, and a refusal keeps it", async () => {
-    const stored: Provider = {
-      id: "p1", name: "Acme", route: "acme-compatible",
-      baseUrl: "https://api.acme.test/v1", headers: {}, options: {},
-      catalogId: "acme", catalogAt: "2026-08-20T10:00:00.000Z",
-      models: [priced], hasKey: true,
-    };
     const { fixture, invoke } = mount(bridge({ "ui.confirm": { confirmed: false } }));
     await fixture.whenStable();
 
-    await fixture.componentInstance.remove(stored);
+    await fixture.componentInstance.remove(saved);
 
     // The provider and its encrypted key go together; the question says which
     // one it is about to take.
@@ -476,6 +475,53 @@ describe("Providers", () => {
       kind: "deleteProvider", detail: { name: "Acme" },
     });
     expect(calls(invoke, "provider.delete")).toHaveLength(0);
+  });
+
+  it("says of a connected provider how it is authenticated", async () => {
+    const { fixture } = mount(bridge({ "providers.list": [{ ...saved, hasKey: true }] }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=auth-p1]").textContent)
+      .toContain(catalog.providers["authKey"]);
+  });
+
+  it("says a provider on this machine is local, not one that merely lacks a key", async () => {
+    const home: Provider = {
+      ...saved, id: "p2", route: "openai-compatible",
+      baseUrl: "http://127.0.0.1:11434/v1", catalogId: null, catalogAt: null, hasKey: false,
+    };
+    const bare: Provider = { ...saved, id: "p3", hasKey: false };
+    const { fixture } = mount(bridge({ "providers.list": [home, bare] }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The store keeps no marker of the runtime a provider came from: the
+    // loopback address is the one fact left, and an endpoint on this machine
+    // is what "Locale" says — never "Nessuna chiave", which reads as a lack.
+    expect(fixture.nativeElement.querySelector("[data-testid=auth-p2]").textContent)
+      .toContain(catalog.providers["authLocal"]);
+    // A remote endpoint without a key is not local: it is a key nobody set.
+    expect(fixture.nativeElement.querySelector("[data-testid=auth-p3]").textContent)
+      .toContain(catalog.providers["authNone"]);
+  });
+
+  it("titles the connected as what they are", async () => {
+    const { fixture } = mount(bridge({ "providers.list": [saved] }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=connected-title]").textContent)
+      .toContain(catalog.providers["connectedTitle"]);
+  });
+
+  it("says nothing of connected providers when there are none", async () => {
+    const { fixture } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // No title over nothing: the empty line already says the one true thing.
+    expect(fixture.nativeElement.querySelector("[data-testid=connected-title]")).toBeNull();
   });
 
   it("shows an entry it cannot serve, and refuses to let it be chosen", async () => {

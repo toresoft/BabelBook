@@ -379,10 +379,20 @@ export class Providers implements OnDestroy {
     }
   }
 
-  /** Clearing is deliberate and separate: no edit does it as a side effect. */
-  async clearKey(provider: Provider): Promise<void> {
-    await this.#ipc.invoke("provider.update", { id: provider.id, apiKey: null });
-    await this.reload();
+  /**
+   * How a connected provider authenticates, as a translation key.
+   *
+   * The store keeps no marker of the runtime a provider came from: all it has
+   * is a route and an address. What a runtime does keep is the loopback
+   * address it was probed on — and an endpoint on this machine is what
+   * "Locale" means, whether the probe found it or a hand typed it. A remote
+   * endpoint is its key, or the absence of one, and the absence is a fact
+   * worth saying, not a lack to fix.
+   */
+  authKeyOf(provider: Provider): string {
+    const base = provider.baseUrl ?? "";
+    if (base.includes("//localhost") || base.includes("//127.")) return "providers.authLocal";
+    return provider.hasKey ? "providers.authKey" : "providers.authNone";
   }
 
   /** The provider and its encrypted key go together, and only after the question. */

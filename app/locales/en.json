@@ -73,6 +73,7 @@
     "title": "Providers",
     "lead": "A provider is an endpoint that serves models. The key stays encrypted on your machine and never reaches this window.",
     "empty": "No providers yet. Search for one below, or use a compatible endpoint.",
+    "connectedTitle": "Connected providers",
     "editTitle": "Edit provider",
     "name": "Name",
     "baseUrl": "Base URL",
@@ -80,16 +81,16 @@
     "apiKey": "API key",
     "apiKeyHint": "Encrypted with the operating system keyring. Nothing can read it back from here.",
     "apiKeyUnchanged": "Leave empty to keep it",
-    "keySet": "Key set",
-    "keyMissing": "No key",
-    "clearKey": "Remove the key",
+    "authKey": "API key",
+    "authNone": "No key",
+    "authLocal": "Local",
     "models": "Models",
     "modelCount": "{{count}} models",
     "verify": "Verify",
     "verifying": "Verifying…",
     "reachable": "Reachable, {{ms}} ms",
     "edit": "Edit",
-    "delete": "Delete",
+    "disconnect": "Disconnect",
     "save": "Save",
     "cancel": "Cancel",
     "failed": "The provider could not be saved.",
@@ -382,6 +383,7 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "abandon": "Abandon",
+    "disconnect": "Disconnect",
     "deleteProject": {
       "message": "Delete “{{title}}”? The project, its workspace and the translated EPUB will be removed."
     },
@@ -389,7 +391,7 @@
       "message": "Abandon creating “{{title}}”? The project just analysed and its workspace will be removed."
     },
     "deleteProvider": {
-      "message": "Delete the provider “{{name}}”? Its encrypted key is removed with it."
+      "message": "Disconnect “{{name}}”? Its encrypted key will be removed too."
     },
     "deleteGlossary": {
       "message": "Delete the glossary “{{name}}”? {{count}} projects will lose its terminology.",

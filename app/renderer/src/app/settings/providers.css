@@ -2,6 +2,10 @@
 .providers h2 { margin: 0; font-size: 1rem; }
 .providers__lead, .providers__empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
 
+/* The connected are a section of their own: it exists only when they do, so
+   the title never sits over an empty list. */
+.providers__connected { display: grid; gap: 0.5rem; }
+
 .providers__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
 .provider { border: 1px solid var(--line); border-radius: 6px; padding: 0.85rem; display: grid; gap: 0.4rem; }
 .provider__head { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }

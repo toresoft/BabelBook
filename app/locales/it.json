@@ -73,6 +73,7 @@
     "title": "Provider",
     "lead": "Un provider è un endpoint che serve modelli. La chiave resta cifrata sul tuo computer e non arriva mai a questa finestra.",
     "empty": "Nessun provider. Cercane uno qui sotto, oppure usa un endpoint compatibile.",
+    "connectedTitle": "Provider connessi",
     "editTitle": "Modifica provider",
     "name": "Nome",
     "baseUrl": "URL di base",
@@ -80,16 +81,16 @@
     "apiKey": "Chiave API",
     "apiKeyHint": "Viene cifrata con il portachiavi del sistema operativo. Nessuno può rileggerla da qui.",
     "apiKeyUnchanged": "Lasciare vuoto per non cambiarla",
-    "keySet": "Chiave impostata",
-    "keyMissing": "Senza chiave",
-    "clearKey": "Rimuovi la chiave",
+    "authKey": "Chiave API",
+    "authNone": "Nessuna chiave",
+    "authLocal": "Locale",
     "models": "Modelli",
     "modelCount": "{{count}} modelli",
     "verify": "Verifica",
     "verifying": "Verifica in corso…",
     "reachable": "Raggiungibile, {{ms}} ms",
     "edit": "Modifica",
-    "delete": "Elimina",
+    "disconnect": "Disconnetti",
     "save": "Salva",
     "cancel": "Annulla",
     "failed": "Non è stato possibile salvare il provider.",
@@ -382,6 +383,7 @@
     "cancel": "Annulla",
     "delete": "Elimina",
     "abandon": "Abbandona",
+    "disconnect": "Disconnetti",
     "deleteProject": {
       "message": "Eliminare «{{title}}»? Il progetto, il suo spazio di lavoro e l'EPUB tradotto verranno cancellati."
     },
@@ -389,7 +391,7 @@
       "message": "Abbandonare la creazione di «{{title}}»? Il progetto appena analizzato e il suo spazio di lavoro verranno cancellati."
     },
     "deleteProvider": {
-      "message": "Eliminare il provider «{{name}}»? Anche la sua chiave cifrata verrà rimossa."
+      "message": "Disconnettere «{{name}}»? Anche la sua chiave cifrata verrà rimossa."
     },
     "deleteGlossary": {
       "message": "Eliminare il glossario «{{name}}»? {{count}} progetti ne perderanno la terminologia.",

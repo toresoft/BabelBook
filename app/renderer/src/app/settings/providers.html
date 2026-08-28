@@ -7,80 +7,77 @@
     <p class="providers__empty" data-testid="providers-empty">{{ t('providers.empty') }}</p>
   }
 
-  <ul class="providers__list">
-    @for (provider of providers(); track provider.id) {
-      <li class="provider" [attr.data-testid]="'provider-' + provider.id">
-        <div class="provider__head">
-          <h2 class="provider__name">{{ provider.name }}</h2>
-          <span class="provider__route">{{ provider.route }}</span>
-          @if (provider.hasKey) {
-            <span class="badge badge-soft badge-success" data-testid="key-set">
-              {{ t('providers.keySet') }}
-            </span>
-          } @else {
-            <span class="badge badge-soft badge-warning" data-testid="key-missing">
-              {{ t('providers.keyMissing') }}
-            </span>
-          }
-        </div>
+  @if (providers().length > 0) {
+    <section class="providers__connected">
+      <h2 class="providers__connected-title" data-testid="connected-title">
+        {{ t('providers.connectedTitle') }}
+      </h2>
 
-        @if (provider.baseUrl) {
-          <p class="provider__url">{{ provider.baseUrl }}</p>
-        }
-        <p class="provider__models">{{ t('providers.modelCount', { count: provider.models.length }) }}</p>
+      <ul class="providers__list">
+        @for (provider of providers(); track provider.id) {
+          <li class="provider card" [attr.data-testid]="'provider-' + provider.id">
+            <div class="provider__head">
+              <h3 class="provider__name">{{ provider.name }}</h3>
+              <span class="provider__route">{{ provider.route }}</span>
+              <span class="badge badge-soft" [attr.data-testid]="'auth-' + provider.id">
+                {{ t(authKeyOf(provider)) }}
+              </span>
+            </div>
 
-        <div class="provider__actions">
-          @if (provider.models.length > 0) {
-            <select
-              class="select"
-              [attr.data-testid]="'verify-model-' + provider.id"
-              [ngModel]="modelFor(provider)"
-              (ngModelChange)="chooseModel(provider, $event)">
-              @for (model of provider.models; track model.id) {
-                <option [value]="model.id">{{ model.displayName || model.id }}</option>
-              }
-            </select>
-            <button
-              type="button"
-              class="btn"
-              [attr.data-testid]="'verify-' + provider.id"
-              [disabled]="verifying() === provider.id"
-              (click)="verify(provider)">
-              {{ verifying() === provider.id ? t('providers.verifying') : t('providers.verify') }}
-            </button>
-          }
-          <button type="button" class="btn" [attr.data-testid]="'edit-' + provider.id" (click)="edit(provider)">
-            {{ t('providers.edit') }}
-          </button>
-          @if (provider.hasKey) {
-            <button type="button" class="btn" [attr.data-testid]="'clear-key-' + provider.id" (click)="clearKey(provider)">
-              {{ t('providers.clearKey') }}
-            </button>
-          }
-          <button
-            type="button"
-            class="btn btn-error"
-            [attr.data-testid]="'delete-' + provider.id"
-            (click)="remove(provider)">
-            {{ t('providers.delete') }}
-          </button>
-        </div>
-
-        @if (verified()[provider.id]; as outcome) {
-          <p
-            class="provider__verdict"
-            [class.provider__verdict--ok]="outcome.ok"
-            [attr.data-testid]="'verdict-' + provider.id">
-            @if (outcome.ok) {
-              {{ t('providers.reachable', { ms: outcome.latencyMs ?? 0 }) }}
-            } @else {
-              {{ t('verify.' + (outcome.code ?? 'unknown')) }}
+            @if (provider.baseUrl) {
+              <p class="provider__url">{{ provider.baseUrl }}</p>
             }
-          </p>
+            <p class="provider__models">{{ t('providers.modelCount', { count: provider.models.length }) }}</p>
+
+            <div class="provider__actions">
+              @if (provider.models.length > 0) {
+                <select
+                  class="select"
+                  [attr.data-testid]="'verify-model-' + provider.id"
+                  [ngModel]="modelFor(provider)"
+                  (ngModelChange)="chooseModel(provider, $event)">
+                  @for (model of provider.models; track model.id) {
+                    <option [value]="model.id">{{ model.displayName || model.id }}</option>
+                  }
+                </select>
+                <button
+                  type="button"
+                  class="btn"
+                  [attr.data-testid]="'verify-' + provider.id"
+                  [disabled]="verifying() === provider.id"
+                  (click)="verify(provider)">
+                  {{ verifying() === provider.id ? t('providers.verifying') : t('providers.verify') }}
+                </button>
+              }
+              <button type="button" class="btn" [attr.data-testid]="'edit-' + provider.id" (click)="edit(provider)">
+                {{ t('providers.edit') }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-error"
+                [attr.data-testid]="'delete-' + provider.id"
+                (click)="remove(provider)">
+                {{ t('providers.disconnect') }}
+              </button>
+            </div>
+
+            @if (verified()[provider.id]; as outcome) {
+              <p
+                class="provider__verdict"
+                [class.provider__verdict--ok]="outcome.ok"
+                [attr.data-testid]="'verdict-' + provider.id">
+                @if (outcome.ok) {
+                  {{ t('providers.reachable', { ms: outcome.latencyMs ?? 0 }) }}
+                } @else {
+                  {{ t('verify.' + (outcome.code ?? 'unknown')) }}
+                }
+              </p>
+            }
+          </li>
         }
-      </li>
-    }
-  </ul>
+      </ul>
+    </section>
+  }
 
   @if (draft() === null) {
     <div class="providers__add">
