@@ -4,12 +4,12 @@
     <h1>{{ t('app.settings') }}</h1>
   </header>
 
-  <nav class="settings__sections">
+  <nav class="tabs tabs-border">
     @for (name of sections; track name) {
       <button
         type="button"
-        class="settings__section"
-        [class.settings__section--on]="section() === name"
+        class="tab"
+        [class.tab-active]="section() === name"
         [attr.data-testid]="'section-' + name"
         (click)="show(name)">
         {{ t('settings.sections.' + name) }}

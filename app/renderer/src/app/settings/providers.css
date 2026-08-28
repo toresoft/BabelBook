@@ -7,9 +7,6 @@
 .provider__head { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; }
 .provider__name { margin: 0; font-size: 1rem; }
 .provider__route, .provider__url, .provider__models { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
-.provider__key { font-size: 0.75rem; border-radius: 999px; padding: 0.1rem 0.5rem; }
-.provider__key--set { background: var(--ok-soft); color: var(--ok); }
-.provider__key--missing { background: var(--warning-soft); color: var(--warning-soft-text); }
 .provider__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
 .provider__verdict { margin: 0; font-size: 0.85rem; color: var(--danger); }
 .provider__verdict--ok { color: var(--ok); }
@@ -20,19 +17,12 @@
 .providers__add label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
 .providers__add small { color: var(--text-muted); font-size: 0.8rem; }
 .providers__runtimes-title { margin: 0; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.providers__runtime, .providers__entry, .providers__preset {
-  justify-self: start; padding: 0.35rem 0.75rem; border-radius: 999px;
-  border: 1px solid var(--line-strong); background: none;
-}
-.providers__runtime:hover, .providers__entry:hover, .providers__preset:hover {
-  background: var(--surface-raised);
-}
+.providers__runtime, .providers__entry, .providers__preset { justify-self: start; }
 .providers__runtime { border-color: var(--ok-line); }
 .providers__entry--unserved { color: var(--text-faint); border-style: dashed; }
 .providers__preset { color: var(--accent); }
 .providers__catalog-row { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
 .providers__catalog { color: var(--text-muted); font-size: 0.8rem; margin: 0; }
-.providers__catalog-row button { font-size: 0.8rem; padding: 0.15rem 0.5rem; }
 .providers__catalog-outcome { color: var(--text-muted); font-size: 0.8rem; }
 
 .draft { display: grid; gap: 0.75rem; border: 1px solid var(--line-strong); border-radius: 6px; padding: 1rem; }

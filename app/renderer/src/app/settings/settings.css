@@ -3,13 +3,4 @@
 .settings__bar h1 { margin: 0; font-size: 1.25rem; }
 .settings__back { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
 
-.settings__sections { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.settings__section {
-  border: none; background: none; padding: 0.45rem 0.7rem;
-  font-size: 0.9rem; color: var(--text-muted); border-bottom: 2px solid transparent;
-}
-.settings__section--on { color: var(--text); border-bottom-color: var(--accent); }
-/* The arrow never changes over a section, so the section changes instead. */
-.settings__section:hover { color: var(--text); background: var(--surface-raised); }
-
 .settings__panel { padding-top: 0.5rem; }

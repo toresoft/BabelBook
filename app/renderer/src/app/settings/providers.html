@@ -14,11 +14,11 @@
           <h2 class="provider__name">{{ provider.name }}</h2>
           <span class="provider__route">{{ provider.route }}</span>
           @if (provider.hasKey) {
-            <span class="provider__key provider__key--set" data-testid="key-set">
+            <span class="badge badge-soft badge-success" data-testid="key-set">
               {{ t('providers.keySet') }}
             </span>
           } @else {
-            <span class="provider__key provider__key--missing" data-testid="key-missing">
+            <span class="badge badge-soft badge-warning" data-testid="key-missing">
               {{ t('providers.keyMissing') }}
             </span>
           }
@@ -32,7 +32,7 @@
         <div class="provider__actions">
           @if (provider.models.length > 0) {
             <select
-              class="provider__model"
+              class="select"
               [attr.data-testid]="'verify-model-' + provider.id"
               [ngModel]="modelFor(provider)"
               (ngModelChange)="chooseModel(provider, $event)">
@@ -42,23 +42,24 @@
             </select>
             <button
               type="button"
+              class="btn"
               [attr.data-testid]="'verify-' + provider.id"
               [disabled]="verifying() === provider.id"
               (click)="verify(provider)">
               {{ verifying() === provider.id ? t('providers.verifying') : t('providers.verify') }}
             </button>
           }
-          <button type="button" [attr.data-testid]="'edit-' + provider.id" (click)="edit(provider)">
+          <button type="button" class="btn" [attr.data-testid]="'edit-' + provider.id" (click)="edit(provider)">
             {{ t('providers.edit') }}
           </button>
           @if (provider.hasKey) {
-            <button type="button" [attr.data-testid]="'clear-key-' + provider.id" (click)="clearKey(provider)">
+            <button type="button" class="btn" [attr.data-testid]="'clear-key-' + provider.id" (click)="clearKey(provider)">
               {{ t('providers.clearKey') }}
             </button>
           }
           <button
             type="button"
-            class="btn btn--danger"
+            class="btn btn-error"
             [attr.data-testid]="'delete-' + provider.id"
             (click)="remove(provider)">
             {{ t('providers.delete') }}
@@ -87,6 +88,7 @@
         {{ t('providers.search') }}
         <input
           type="search"
+          class="input"
           data-testid="catalog-query"
           [ngModel]="query()"
           [ngModelOptions]="{ standalone: true }"
@@ -100,7 +102,7 @@
       @for (runtime of runtimes(); track runtime.id) {
         <button
           type="button"
-          class="providers__runtime"
+          class="btn btn-sm rounded-full providers__runtime"
           [attr.data-testid]="'local-' + runtime.id"
           (click)="pickLocal(runtime)">
           {{ runtime.name }} · {{ t('providers.local') }} ·
@@ -111,7 +113,7 @@
       @for (entry of entries(); track entry.id) {
         <button
           type="button"
-          class="providers__entry"
+          class="btn btn-sm rounded-full providers__entry"
           [class.providers__entry--unserved]="entry.route === null"
           [disabled]="entry.route === null"
           [attr.title]="entry.route === null ? t('providers.unserved') : null"
@@ -123,7 +125,7 @@
 
       <button
         type="button"
-        class="providers__preset"
+        class="btn btn-sm rounded-full providers__preset"
         data-testid="add-compatible"
         (click)="pickCompatible()">
         {{ t('providers.compatible') }}
@@ -146,6 +148,7 @@
           {{ t('providers.name') }}
           <input
             type="text"
+            class="input"
             data-testid="provider-name"
             [ngModel]="form.name"
             [ngModelOptions]="{ standalone: true }"
@@ -158,6 +161,7 @@
           {{ t('providers.baseUrl') }}
           <input
             type="url"
+            class="input"
             data-testid="provider-base-url"
             [ngModel]="form.compatUrl"
             [ngModelOptions]="{ standalone: true }"
@@ -173,6 +177,7 @@
             <small>{{ t('providers.apiKeyHint') }}</small>
             <input
               type="password"
+              class="input"
               autocomplete="off"
               data-testid="provider-api-key"
               [ngModel]="form.apiKey"
@@ -182,6 +187,7 @@
             {{ t('providers.apiKeyOptional') }}
             <input
               type="password"
+              class="input"
               autocomplete="off"
               data-testid="provider-api-key"
               [ngModel]="form.apiKey"
@@ -191,6 +197,7 @@
             {{ t('providers.apiKey') }}
             <input
               type="password"
+              class="input"
               autocomplete="off"
               [placeholder]="t('providers.apiKeyUnchanged')"
               data-testid="provider-api-key"
@@ -206,6 +213,7 @@
       @if (form.kind === 'catalog' && form.baseUrl !== null) {
         <button
           type="button"
+          class="btn"
           data-testid="find-models"
           [disabled]="finding()"
           (click)="findModels()">
@@ -215,6 +223,7 @@
       @if (form.kind === 'compatible') {
         <button
           type="button"
+          class="btn"
           data-testid="find-models"
           [disabled]="finding() || form.compatUrl.trim() === ''"
           (click)="findModels()">
@@ -253,10 +262,10 @@
       }
 
       <div class="draft__actions">
-        <button type="submit" data-testid="save-provider" [disabled]="invalid(form) || saving()">
+        <button type="submit" class="btn" data-testid="save-provider" [disabled]="invalid(form) || saving()">
           {{ t('providers.save') }}
         </button>
-        <button type="button" data-testid="cancel-provider" (click)="cancel()">
+        <button type="button" class="btn" data-testid="cancel-provider" (click)="cancel()">
           {{ t('providers.cancel') }}
         </button>
       </div>
@@ -275,6 +284,7 @@
       </p>
       <button
         type="button"
+        class="btn btn-sm"
         data-testid="catalog-refresh"
         [disabled]="refreshing()"
         (click)="refreshCatalog()">
@@ -282,6 +292,7 @@
       </button>
       <button
         type="button"
+        class="btn btn-sm"
         data-testid="catalog-import"
         [disabled]="importing()"
         (click)="importCatalog()">
