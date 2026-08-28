@@ -72,7 +72,7 @@ test("search, choose, paste: the models arrive and the key never does", async ()
   });
   const window = await mainWindow(app);
 
-  await window.getByTestId("settings").click();
+  await window.getByTestId("nav-providers").click();
   await expect(window.getByTestId("providers-empty")).toBeVisible();
   await expect(window.getByTestId("catalog-state")).toContainText("2026-08-26");
 
@@ -124,7 +124,7 @@ test("a local runtime appears on its own, with its own models and no key field",
   });
   const window = await mainWindow(app);
 
-  await window.getByTestId("settings").click();
+  await window.getByTestId("nav-providers").click();
   const local = window.getByTestId("local-ollama");
   await expect(local).toBeVisible();
   await expect(local).toContainText("Ollama");

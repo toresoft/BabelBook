@@ -37,11 +37,11 @@ test("the four sections, and a setting that survives", async () => {
   const userData = await mkdtemp(join(tmpdir(), "babelbook-settings-"));
   const { app, window } = await launch(userData);
 
-  await window.getByTestId("settings").click();
+  await window.getByTestId("nav-providers").click();
   await expect(window.getByTestId("providers")).toBeVisible();
 
   // A glossary written by hand, with no dialog involved.
-  await window.getByTestId("section-glossaries").click();
+  await window.getByTestId("nav-glossaries").click();
   await expect(window.getByTestId("glossaries-empty")).toBeVisible();
   await window.getByTestId("new-glossary").click();
   await window.getByTestId("glossary-name").fill("fantasy");
@@ -55,24 +55,23 @@ test("the four sections, and a setting that survives", async () => {
   await expect(row).toContainText(label(it, "glossaries.terms").replace("{{count}}", "1"));
 
   // A gate skipped is a decision, and it has to persist.
-  await window.getByTestId("section-translation").click();
+  await window.getByTestId("nav-translation").click();
   await window.getByTestId("auto-terms").check();
   await expect.poll(async () => window.evaluate(() =>
     (window as unknown as { babelbook: Bridge }).babelbook.invoke("settings.get", undefined)))
     .toMatchObject({ autoAcceptTerms: true });
 
   // The interface language changes now, not at the next start.
-  await window.getByTestId("section-application").click();
+  await window.getByTestId("nav-application").click();
   await window.getByTestId("ui-language").selectOption("en");
-  await expect(window.getByTestId("section-glossaries"))
-    .toHaveText(label(en, "settings.sections.glossaries"));
+  await expect(window.getByTestId("nav-glossaries"))
+    .toHaveText(label(en, "nav.glossaries"));
 
   await app.close();
 
   // And it is still English when the window comes back.
   const again = await launch(userData);
-  await again.window.getByTestId("settings").click();
-  await expect(again.window.getByTestId("section-glossaries"))
-    .toHaveText(label(en, "settings.sections.glossaries"));
+  await expect(again.window.getByTestId("nav-glossaries"))
+    .toHaveText(label(en, "nav.glossaries"));
   await again.app.close();
 });

@@ -27,14 +27,13 @@ const isSection = (value: string): value is Section =>
   styleUrl: "./settings.css",
 })
 export class Settings {
-  readonly sections = SECTIONS;
   readonly section = input<string>("providers");
 
   /**
    * The section the URL names, or the one a new installation starts from.
    *
    * A URL may name anything; the panels are four, and a bogus parameter would
-   * otherwise open on an empty screen that no tab lights up.
+   * otherwise open on an empty screen that no column entry stands for.
    */
   readonly active = computed((): Section => {
     const section = this.section();

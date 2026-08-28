@@ -1,7 +1,6 @@
 import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
 import { describe, expect, it, vi } from "vitest";
-import it_IT from "../../../../locales/it.json";
 import { IpcService } from "../core/ipc.service";
 import { provideI18n } from "../core/i18n";
 import { Settings } from "./settings";
@@ -33,21 +32,26 @@ function mount() {
   return { fixture: TestBed.createComponent(Settings), invoke };
 }
 
-const catalogue = it_IT as unknown as {
-  settings: { sections: Record<string, string> };
-  glossaries: Record<string, string>;
-  prefs: Record<string, string>;
-};
-
 describe("Settings", () => {
-  it("offers the four sections", async () => {
+  // The column names the section; this component answers with its panel. What
+  // the choosing is no longer this component's to prove — the shell's spec and
+  // the e2e walk that — only that each name finds its panel.
+  const panels: Record<string, string> = {
+    providers: "providers",
+    glossaries: "glossaries",
+    translation: "prefs-translation",
+    application: "prefs-application",
+  };
+
+  it("offers the four sections, one panel per name", async () => {
     const { fixture } = mount();
     await fixture.whenStable();
-    fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent as string;
-    for (const section of ["providers", "glossaries", "translation", "application"]) {
-      expect(text).toContain(catalogue.settings.sections[section]);
+    for (const [section, panel] of Object.entries(panels)) {
+      fixture.componentRef.setInput("section", section);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector(`[data-testid=${panel}]`)).not.toBeNull();
     }
   });
 
