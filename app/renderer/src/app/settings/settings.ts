@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, input } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
 import { Glossaries } from "./glossaries";
@@ -7,6 +7,9 @@ import { Providers } from "./providers";
 
 const SECTIONS = ["providers", "glossaries", "translation", "application"] as const;
 type Section = (typeof SECTIONS)[number];
+
+const isSection = (value: string): value is Section =>
+  (SECTIONS as readonly string[]).includes(value);
 
 /**
  * The four sections of the settings, behind one door.
@@ -25,9 +28,16 @@ type Section = (typeof SECTIONS)[number];
 })
 export class Settings {
   readonly sections = SECTIONS;
-  readonly section = signal<Section>("providers");
+  readonly section = input<string>("providers");
 
-  show(section: Section): void {
-    this.section.set(section);
-  }
+  /**
+   * The section the URL names, or the one a new installation starts from.
+   *
+   * A URL may name anything; the panels are four, and a bogus parameter would
+   * otherwise open on an empty screen that no tab lights up.
+   */
+  readonly active = computed((): Section => {
+    const section = this.section();
+    return isSection(section) ? section : "providers";
+  });
 }

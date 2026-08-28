@@ -12,11 +12,22 @@ const book: ProjectSummary = {
   createdAt: "2026-08-27T00:00:00.000Z",
 };
 
-function mount(projects: ProjectSummary[] = [book]) {
-  const invoke = vi.fn(async (channel: string) => {
-    if (channel === "projects.list") return projects;
+function bridge(answers: Record<string, unknown> = {}) {
+  return vi.fn(async (channel: string, payload?: unknown) => {
+    // What the test asked for wins over the defaults. The other way round, an
+    // override of a channel that has a default is dropped in silence, and the
+    // test passes while measuring the fixture instead of its own case.
+    if (channel in answers) {
+      const answer = answers[channel];
+      if (answer instanceof Error) throw answer;
+      return typeof answer === "function" ? answer(payload) : answer;
+    }
+    if (channel === "projects.list") return [book] as ProjectSummary[];
     return undefined;
   });
+}
+
+function mount(invoke = bridge()) {
   TestBed.configureTestingModule({
     imports: [Library],
     providers: [
@@ -26,8 +37,11 @@ function mount(projects: ProjectSummary[] = [book]) {
     ],
   });
   const fixture = TestBed.createComponent(Library);
-  return { fixture };
+  return { fixture, invoke };
 }
+
+const calls = (invoke: ReturnType<typeof bridge>, channel: string) =>
+  invoke.mock.calls.filter(([name]) => name === channel);
 
 /**
  * The shelf, as a screen rather than a list of data.
@@ -79,5 +93,15 @@ describe("Library", () => {
     expect(state.className).toContain("badge");
     expect(state.className).toMatch(/badge-(primary|success|error|warning|neutral)/);
     expect(state.className).toContain("badge-primary");
+  });
+
+  it("asks the main process for the group it was routed to", async () => {
+    const { fixture, invoke } = mount();
+    fixture.componentRef.setInput("bucket", "to-approve");
+    await fixture.whenStable();
+
+    // The group travels to the database, not to a filter in the window: the
+    // counts in the column and the rows in the grid must be the same truth.
+    expect(calls(invoke, "projects.list").at(-1)![1]).toMatchObject({ bucket: "to-approve" });
   });
 });

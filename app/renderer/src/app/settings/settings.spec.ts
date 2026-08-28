@@ -67,7 +67,7 @@ describe("Settings", () => {
     // answer one.
     expect(invoke.mock.calls.some(([channel]) => channel === "glossaries.list")).toBe(false);
 
-    fixture.componentInstance.show("glossaries");
+    fixture.componentRef.setInput("section", "glossaries");
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -79,12 +79,12 @@ describe("Settings", () => {
     const { fixture } = mount();
     await fixture.whenStable();
 
-    fixture.componentInstance.show("translation");
+    fixture.componentRef.setInput("section", "translation");
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector("[data-testid=prefs-translation]")).not.toBeNull();
 
-    fixture.componentInstance.show("application");
+    fixture.componentRef.setInput("section", "application");
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector("[data-testid=prefs-application]")).not.toBeNull();

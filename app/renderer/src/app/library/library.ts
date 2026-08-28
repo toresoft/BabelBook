@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from "@angular/core";
+import {
+  ChangeDetectionStrategy, Component, effect, inject, input, OnDestroy, signal,
+} from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { RouterLink } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
+import { isBucket } from "../../../../shared/buckets.js";
 import type { ProjectSummary } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
 
@@ -35,12 +38,19 @@ export class Library implements OnDestroy {
   readonly projects = signal<ProjectSummary[]>([]);
   readonly filter = signal("");
   readonly loading = signal(true);
+  readonly bucket = input<string>("all");
 
   #ipc = inject(IpcService);
   #unsubscribe: Array<() => void> = [];
 
   constructor() {
-    void this.reload();
+    // A route change is a new question for the database, not a new component.
+    // The effect is also the first load's driver: the component is created
+    // with a bucket already, so an eager reload here would ask twice.
+    effect(() => {
+      this.bucket();
+      void this.reload();
+    });
     // The main process is the one that knows a project changed — a translation
     // finished, a project was deleted from another window. Polling would show
     // a stale library between ticks.
@@ -59,7 +69,9 @@ export class Library implements OnDestroy {
 
   async reload(): Promise<void> {
     this.loading.set(true);
-    this.projects.set(await this.#ipc.invoke("projects.list", { filter: this.filter() }));
+    const routeBucket = this.bucket();
+    const bucket = isBucket(routeBucket) ? routeBucket : "all";
+    this.projects.set(await this.#ipc.invoke("projects.list", { filter: this.filter(), bucket }));
     this.loading.set(false);
   }
 

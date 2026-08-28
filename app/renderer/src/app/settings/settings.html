@@ -9,16 +9,16 @@
       <button
         type="button"
         class="tab"
-        [class.tab-active]="section() === name"
+        [class.tab-active]="active() === name"
         [attr.data-testid]="'section-' + name"
-        (click)="show(name)">
+        [routerLink]="['/settings', name]">
         {{ t('settings.sections.' + name) }}
       </button>
     }
   </nav>
 
   <div class="settings__panel">
-    @switch (section()) {
+    @switch (active()) {
       @case ("providers") { <bb-providers /> }
       @case ("glossaries") { <bb-glossaries /> }
       @case ("translation") { <bb-preferences group="translation" /> }
