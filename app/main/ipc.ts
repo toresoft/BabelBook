@@ -238,14 +238,26 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       deps.broadcast("project.changed", { id });
     },
 
-    "project.export": async ({ id, to }) => {
+    "project.export": async ({ id, to, from }) => {
       // The same copy `deleteWorkspace` would make on its way out, offered at
       // the moment someone actually wants it rather than as a side effect of
       // destroying the project around it.
       const workspace = workspaceOf(deps.db, id);
       const produced = await readdir(workspace.outputDir);
       if (produced[0] === undefined) throw new Error("NOTHING_TO_EXPORT");
-      await copyFile(join(workspace.outputDir, produced[0]), to);
+
+      // A retranslation under a new language leaves the old EPUB beside the
+      // new one, and lexicographic order cannot tell them apart — the window
+      // names the file it showed. A name that reaches for another directory
+      // is refused outright: falling back here would copy a book the user is
+      // not looking at, which is the very defect `from` exists to close.
+      if (from !== undefined && (from.includes("/") || from.includes("\\") || from.includes(".."))) {
+        throw new Error(`BAD_EXPORT_FROM: ${from}`);
+      }
+      // `from` is only honoured when the directory actually holds it: an old
+      // request naming a file a later run replaced still deserves a copy.
+      const name = from !== undefined && produced.includes(from) ? from : produced[0];
+      await copyFile(join(workspace.outputDir, name), to);
     },
 
     "run.start": async ({ projectId }) => {

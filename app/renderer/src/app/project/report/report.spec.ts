@@ -139,8 +139,12 @@ describe("ReportView", () => {
     await fixture.whenStable();
 
     expect(calls(invoke, "ui.chooseSave")[0]![1]).toMatchObject({ kind: "epub" });
-    expect(calls(invoke, "project.export")[0]![1])
-      .toMatchObject({ to: "/home/somebody/book.it.epub" });
+    expect(calls(invoke, "project.export")[0]![1]).toMatchObject({
+      to: "/home/somebody/book.it.epub",
+      // The file is named, not guessed: a retranslation leaves two EPUBs in
+      // the folder, and the copy must be of the book this report shows.
+      from: "a.it.epub",
+    });
     // Exporting is not a branch of deleting: nothing is destroyed by saving.
     expect(calls(invoke, "project.delete")).toHaveLength(0);
   });

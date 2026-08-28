@@ -18,6 +18,7 @@
   },
   "library": {
     "empty": "No projects yet. Start from an EPUB.",
+    "emptyBucket": "No books in this group.",
     "newProject": "New project",
     "search": "Search by title",
     "noCover": "No cover",
@@ -117,14 +118,6 @@
     "catalogUpdated": "Updated.",
     "catalogRefreshFailed": "No update: the catalogue stays as it was.",
     "catalogBadImport": "The file is not a catalogue: nothing was installed."
-  },
-  "settings": {
-    "sections": {
-      "providers": "Providers",
-      "glossaries": "Glossaries",
-      "translation": "Translation",
-      "application": "Application"
-    }
   },
   "glossaries": {
     "title": "Glossaries",

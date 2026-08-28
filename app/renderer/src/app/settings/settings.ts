@@ -4,12 +4,7 @@ import { TranslocoDirective } from "@jsverse/transloco";
 import { Glossaries } from "./glossaries";
 import { Preferences } from "./preferences";
 import { Providers } from "./providers";
-
-const SECTIONS = ["providers", "glossaries", "translation", "application"] as const;
-type Section = (typeof SECTIONS)[number];
-
-const isSection = (value: string): value is Section =>
-  (SECTIONS as readonly string[]).includes(value);
+import { isSection, type Section } from "./sections";
 
 /**
  * The four sections of the settings, behind one door.

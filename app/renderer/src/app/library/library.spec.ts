@@ -1,6 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
 import { describe, expect, it, vi } from "vitest";
+import it_IT from "../../../../locales/it.json";
 import type { ProjectSummary } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
 import { provideI18n } from "../core/i18n";
@@ -104,6 +105,27 @@ describe("Library", () => {
     // The group travels to the database, not to a filter in the window: the
     // counts in the column and the rows in the grid must be the same truth.
     expect(calls(invoke, "projects.list").at(-1)![1]).toMatchObject({ bucket: "to-approve" });
+  });
+
+  it("says the group is empty, not that there is nothing to start from", async () => {
+    const { fixture } = mount({ "projects.list": [] });
+    fixture.componentRef.setInput("bucket", "to-approve");
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // A group's page is not the library: the column can say 1 while this grid
+    // holds nothing, and "no projects" there is a sentence about somewhere else.
+    expect(fixture.nativeElement.querySelector(".library__empty").textContent!.trim())
+      .toBe(it_IT.library.emptyBucket);
+  });
+
+  it("promises there is nothing to start from only on the page that holds every book", async () => {
+    const { fixture } = mount({ "projects.list": [] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector(".library__empty").textContent!.trim())
+      .toBe(it_IT.library.empty);
   });
 
   it("asks before deleting, naming the book", async () => {

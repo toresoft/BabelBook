@@ -152,16 +152,17 @@ const section = (name: string, panel: string) => async (window: Page): Promise<v
 /**
  * A group of the shelf, reached the only way it now is: from the column.
  *
- * The walk's single book never stops at a gate, so `to-approve` is honestly
- * empty — an empty grid is what that page must show, and the column's own
- * link wearing the active class is the witness the page was reached at all.
+ * The walk's single book never stops at a gate, so `to-approve` is empty while
+ * the library is not — and the page must say the group's truth, not the
+ * library's. The column's own link wearing the active class is the witness the
+ * page was reached at all.
  */
 const bucket = (name: string) => async (window: Page): Promise<void> => {
   await home(window);
   await window.getByTestId(`nav-${name}`).click();
   await window.getByTestId("library").waitFor();
   await expect(window.getByTestId(`nav-${name}`)).toHaveClass(/menu-active/);
-  await window.locator(".library__empty").waitFor();
+  await expect(window.locator(".library__empty")).toHaveText(/Nessun libro in questo gruppo/);
 };
 
 test("every screen, in both themes, saying what it must", async () => {

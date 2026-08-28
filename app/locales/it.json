@@ -18,6 +18,7 @@
   },
   "library": {
     "empty": "Nessun progetto. Comincia da un EPUB.",
+    "emptyBucket": "Nessun libro in questo gruppo.",
     "newProject": "Nuovo progetto",
     "search": "Cerca per titolo",
     "noCover": "Senza copertina",
@@ -117,14 +118,6 @@
     "catalogUpdated": "Aggiornato.",
     "catalogRefreshFailed": "Nessun aggiornamento: il catalogo resta quello che era.",
     "catalogBadImport": "Il file non è un catalogo: nulla è stato installato."
-  },
-  "settings": {
-    "sections": {
-      "providers": "Provider",
-      "glossaries": "Glossari",
-      "translation": "Traduzione",
-      "application": "Applicazione"
-    }
   },
   "glossaries": {
     "title": "Glossari",

@@ -70,6 +70,11 @@ export class ReportView {
       defaultName: this.suggestedName(), kind: "epub",
     });
     if (to === null) return;
-    await this.#ipc.invoke("project.export", { id: this.projectId(), to });
+    // The name travels with the request: a retranslation under a new language
+    // leaves the old EPUB in the same folder, and the copy must be of the
+    // book this report is about.
+    await this.#ipc.invoke("project.export", {
+      id: this.projectId(), to, from: this.suggestedName(),
+    });
   }
 }

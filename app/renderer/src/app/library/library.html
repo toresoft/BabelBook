@@ -12,7 +12,9 @@
   </header>
 
   @if (projects().length === 0 && !loading()) {
-    <p class="library__empty">{{ t('library.empty') }}</p>
+    <!-- The whole library empty and one group empty are two different silences:
+         only the first promises there is nothing to start from. -->
+    <p class="library__empty">{{ t(bucket() === 'all' ? 'library.empty' : 'library.emptyBucket') }}</p>
   }
 
   <ul class="library__grid">

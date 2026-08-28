@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -468,6 +468,75 @@ targetLanguage: it
     const { handlers } = await withFiles({ open: null });
 
     expect((await handlers["settings.chooseJar"](undefined)).epubcheckJar).toBeNull();
+  });
+});
+
+describe("project.export", () => {
+  /**
+   * A book that was translated twice, under two languages.
+   *
+   * The names are chosen so the lexicographic first is the *old* book: a
+   * handler that ignores `from` copies the stale one and the test catches it.
+   */
+  async function translatedTwice() {
+    const { dir, db, deps: d } = await deps();
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state)
+      VALUES ('p1','a.epub','A',?,'h','2026-08-24','fr','done')
+    `).run(`${dir}/projects/p1`);
+    const output = `${dir}/projects/p1/output`;
+    await mkdir(output, { recursive: true });
+    await writeFile(join(output, "a.en.epub"), "the first translation");
+    await writeFile(join(output, "a.fr.epub"), "the second translation");
+    return { dir, handlers: buildHandlers(d) };
+  }
+
+  it("copies the book the request names, not the lexicographic first", async () => {
+    const { dir, handlers } = await translatedTwice();
+    const out = join(dir, "exported.epub");
+
+    await handlers["project.export"]({ id: "p1", to: out, from: "a.fr.epub" });
+
+    expect(await readFile(out, "utf8")).toBe("the second translation");
+  });
+
+  it("falls back to the only book there is when no name was given", async () => {
+    const { dir, handlers } = await translatedTwice();
+    const out = join(dir, "exported.epub");
+
+    await handlers["project.export"]({ id: "p1", to: out });
+
+    expect(await readFile(out, "utf8")).toBe("the first translation");
+  });
+
+  it("refuses a name that reaches outside the folder, and copies nothing", async () => {
+    const { dir, handlers } = await translatedTwice();
+    const out = join(dir, "exported.epub");
+
+    // The guard is not paranoia about the renderer: a bad `from` that fell
+    // back to the first file would copy the wrong book in silence, which is
+    // the defect `from` exists to close. Nothing may reach copyFile.
+    for (const from of ["../a.en.epub", "elsewhere/a.en.epub", "..\\a.en.epub", ".."]) {
+      await expect(handlers["project.export"]({ id: "p1", to: out, from }))
+        .rejects.toThrow(/BAD_EXPORT_FROM/);
+    }
+
+    const { existsSync } = await import("node:fs");
+    expect(existsSync(out)).toBe(false);
+  });
+
+  it("refuses to export a project that produced nothing", async () => {
+    const { dir, db, deps: d } = await deps();
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state)
+      VALUES ('p1','a.epub','A',?,'h','2026-08-24','it','done')
+    `).run(`${dir}/projects/p1`);
+    await mkdir(`${dir}/projects/p1/output`, { recursive: true });
+
+    await expect(buildHandlers(d)["project.export"]({ id: "p1", to: join(dir, "x.epub") }))
+      .rejects.toThrow(/NOTHING_TO_EXPORT/);
   });
 });
 

@@ -34,8 +34,8 @@ function mount() {
 
 describe("Settings", () => {
   // The column names the section; this component answers with its panel. What
-  // the choosing is no longer this component's to prove — the shell's spec and
-  // the e2e walk that — only that each name finds its panel.
+  // the choosing is no longer this component's to prove — the e2e walk does
+  // that — only that each name finds its panel.
   const panels: Record<string, string> = {
     providers: "providers",
     glossaries: "glossaries",

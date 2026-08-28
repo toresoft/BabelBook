@@ -4,6 +4,7 @@ import { TranslocoDirective } from "@jsverse/transloco";
 import { BUCKETS } from "../../../shared/buckets.js";
 import type { Bucket } from "../../../shared/buckets.js";
 import { IpcService } from "./core/ipc.service";
+import { SECTIONS } from "./settings/sections";
 
 @Component({
   selector: "app-root",
@@ -14,7 +15,7 @@ import { IpcService } from "./core/ipc.service";
 })
 export class App implements OnDestroy {
   protected readonly buckets = BUCKETS;
-  protected readonly sections = ["providers", "glossaries", "translation", "application"] as const;
+  protected readonly sections = SECTIONS;
   protected readonly counts = signal<Record<Bucket, number>>(
     Object.fromEntries(BUCKETS.map((b) => [b, 0])) as Record<Bucket, number>,
   );

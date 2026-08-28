@@ -67,8 +67,14 @@ export interface Invocations {
   "project.create": { req: CreateProjectRequest; res: CreatedProject };
   "project.update": { req: UpdateProjectRequest; res: void };
   "project.delete": { req: { id: string; keepOutput?: string }; res: void };
-  /** Copies the translated book out of the workspace, which stays as it was. */
-  "project.export": { req: { id: string; to: string }; res: void };
+  /**
+   * Copies the translated book out of the workspace, which stays as it was.
+   *
+   * `from` names the produced file to copy, because a retranslation under a
+   * new language leaves the old EPUB beside the new one; absent, the choice
+   * falls back to whatever the workspace holds.
+   */
+  "project.export": { req: { id: string; to: string; from?: string }; res: void };
   /** Null when the project is gone: another window may have deleted it. */
   "project.get": { req: { id: string }; res: ProjectDetail | null };
   "units.list": {
