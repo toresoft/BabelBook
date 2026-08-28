@@ -101,4 +101,20 @@ export class Library implements OnDestroy {
   onPause(project: ProjectSummary): void {
     void this.#ipc.invoke("run.pause", { projectId: project.id }).catch(() => {});
   }
+
+  /**
+   * Deleting asks first, and the question names the book.
+   *
+   * The main process assembles the sentence and the platform draws the box;
+   * the window only says which act it is about to perform.
+   */
+  async remove(project: ProjectSummary): Promise<void> {
+    const { confirmed } = await this.#ipc.invoke("ui.confirm", {
+      kind: "deleteProject", detail: { title: project.title },
+    });
+    if (!confirmed) return;
+
+    await this.#ipc.invoke("project.delete", { id: project.id });
+    await this.reload();
+  }
 }

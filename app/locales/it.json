@@ -24,7 +24,8 @@
     "progress": "{{done}} di {{total}} unità",
     "translate": "Traduci",
     "pause": "Pausa",
-    "resume": "Riprendi"
+    "resume": "Riprendi",
+    "delete": "Elimina"
   },
   "project": {
     "tabs": {

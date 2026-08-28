@@ -6,7 +6,7 @@ import { IpcService } from "../core/ipc.service";
 import { provideI18n } from "../core/i18n";
 import { Library } from "./library";
 
-const book: ProjectSummary = {
+const summary: ProjectSummary = {
   id: "p1", title: "A Book", coverPath: null, sourceLanguage: "en", targetLanguage: "it",
   state: "running", progress: { done: 3, total: 9 }, layout: "reflowable",
   createdAt: "2026-08-27T00:00:00.000Z",
@@ -22,12 +22,13 @@ function bridge(answers: Record<string, unknown> = {}) {
       if (answer instanceof Error) throw answer;
       return typeof answer === "function" ? answer(payload) : answer;
     }
-    if (channel === "projects.list") return [book] as ProjectSummary[];
+    if (channel === "projects.list") return [summary] as ProjectSummary[];
     return undefined;
   });
 }
 
-function mount(invoke = bridge()) {
+function mount(answers: Record<string, unknown> = {}) {
+  const invoke = bridge(answers);
   TestBed.configureTestingModule({
     imports: [Library],
     providers: [
@@ -103,5 +104,31 @@ describe("Library", () => {
     // The group travels to the database, not to a filter in the window: the
     // counts in the column and the rows in the grid must be the same truth.
     expect(calls(invoke, "projects.list").at(-1)![1]).toMatchObject({ bucket: "to-approve" });
+  });
+
+  it("asks before deleting, naming the book", async () => {
+    const { fixture, invoke } = mount({ "projects.list": [summary], "ui.confirm": { confirmed: true } });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector("[data-testid=delete-p1]").click();
+    await fixture.whenStable();
+
+    expect(calls(invoke, "ui.confirm")[0]![1]).toMatchObject({
+      kind: "deleteProject", detail: { title: summary.title },
+    });
+    expect(calls(invoke, "project.delete")).toHaveLength(1);
+  });
+
+  it("deletes nothing when the answer is no", async () => {
+    const { fixture, invoke } = mount({ "projects.list": [summary], "ui.confirm": { confirmed: false } });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector("[data-testid=delete-p1]").click();
+    await fixture.whenStable();
+
+    // A refusal is an answer, and an answer that destroys nothing.
+    expect(calls(invoke, "project.delete")).toHaveLength(0);
   });
 });

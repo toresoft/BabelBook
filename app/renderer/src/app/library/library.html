@@ -69,6 +69,11 @@
               <span class="tile__busy">{{ t('state.waiting-code') }}</span>
             }
           }
+          <button type="button" class="btn btn-sm btn-error"
+                  [attr.data-testid]="'delete-' + project.id"
+                  (click)="remove(project)">
+            {{ t('library.delete') }}
+          </button>
         </div>
       </li>
     }
