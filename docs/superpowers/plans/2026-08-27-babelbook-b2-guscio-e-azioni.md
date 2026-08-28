@@ -1,5 +1,21 @@
 # B2 — Il guscio e le azioni — piano di implementazione
 
+**Stato: completo, 7 task su 7 + ondata finale di correzioni, al 2026-08-28.**
+
+Commits: `4a35255` (T1), `760fe14` (T2), `d48fd07` (T3), `cb8cd05` (T4), `3decc0b` (T5), `5128e1b` (T6), `e1b18c6`+`810f0a1` (T7 e quiescenza), `a32a867` (ondata finale). Chiusura verificata: typecheck pulito, suite verde (273 core, 338+104 app), e2e 12 superati + 1 saltato, ventiquattro schermate passate al setaccio (le due nuove del gruppo «Da approvare» comprese). La review finale dell'intero ramo aveva dato COMPLETE-WITH-FOLLOWUPS con due Important: lo stato vuoto della libreria mentiva nelle pagine di gruppo («Nessun progetto» accanto al conteggio 1) e `project.export` poteva copiare l'EPUB di una lingua vecchia se una ritraduzione ne lasciava due — perché prendeva il primo file in ordine lessicografico. L'ondata finale le ha chiuse (chiave `library.emptyBucket` per il vuoto di gruppo; il canale porta `from`, il basename noto, con guardia contro i percorsi relativi), e lungo la strada ha cancellato le chiavi locali morte della striscia, ha messo le sezioni a fonte singola e ha raddrizzato un commento. Ogni task ha avuto la sua review.
+
+Cosa l'esecuzione ha cambiato o scoperto, rispetto al piano scritto:
+
+- **Il piano dava per esistente il canale `ui.chooseSave`**: non c'era. Il T6 lo ha aggiunto (dichiarazione, array INVOCATIONS, delega a `deps.chooseSave` come `ui.theme`), allargando la firma di `chooseSave` in `main.ts` al tipo di file.
+- **Il piano aveva dimenticato `app/e2e/providers.spec.ts`**: navigava col collegamento Impostazioni dell'intestazione, che il T3 eliminava. Aggiornato nel T4 insieme alla spec delle impostazioni.
+- **`app.css` non esiste più** (cancellato in B1): il guscio usa utility Tailwind nel template, il file non è stato ricreato.
+- **La striscia era già cambiata forma** (T2 l'aveva portata alle classi tab di daisyUI): le regole CSS che il T4 diceva di cancellare non esistevano più; il RED component-level del T4 è risultato vacuo, quello vero stava nell'e2e.
+- **Il montaggio della spec della libreria è evoluto** alla forma a risposte-per-canale dei provider (bridge + `calls`), per i test di T2 e T5.
+- **La quiescenza nell'e2e**: daisyUI transita i colori del menu in 200ms e il controllo READABLE misurava a metà volo — ora misura a riposo (300ms), anche sui due punti di «Nuovo progetto».
+- **`home()` guadagna il ritorno via colonna**: le pagine di gruppo non hanno collegamenti di ritorno né tessere; il fallback è `nav-all`.
+- **Per il futuro:** `glossaries.terms` non pluralizza («1 termini», pre-esistente, vuole le ICU di transloco); la ricerca che non trova nulla nella pagina «Progetti» mostra il vuoto da libreria vuota; il budget warning di Angular cresce con daisyUI (544 kB > 500 kB, gate a 1 MB); `suggestedName` con `split("/")` non riduce path Windows (su Linux irrilevante, e il verso sicuro: l'esportazione fallirebbe, non copierebbe il libro sbagliato).
+- **Ambiente:** come in B1, `xvfb-run` assente (e2e su `DISPLAY=:0`), schermate mai committate (`app/.gitignore`), altro worker attivo in parallelo su `core/` e `app/engine/` (reasoning-tokens, non committato): tutti i commit B2 lo escludono.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Una colonna a sinistra che non se ne va mai, gli undici stati raccolti in cinque voci col loro conteggio, un progetto che si può eliminare e un libro tradotto che si può esportare.
