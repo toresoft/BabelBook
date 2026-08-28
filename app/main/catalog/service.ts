@@ -25,6 +25,7 @@ function toEntry(provider: CatalogProvider): CatalogEntry {
     baseUrl: provider.api,
     options: route === null ? {} : routeDefaults(route),
     models: provider.models.length,
+    envVar: provider.env[0] ?? null,
   };
 }
 

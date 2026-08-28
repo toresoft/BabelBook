@@ -17,10 +17,12 @@ import { Providers } from "./providers";
 const entry: CatalogEntry = {
   id: "acme", name: "Acme", route: "acme-compatible",
   baseUrl: "https://api.acme.test/v1", options: {}, models: 12,
+  envVar: "ACME_API_KEY",
 };
 
 const unserved: CatalogEntry = {
   id: "venice", name: "Venice AI", route: null, baseUrl: null, options: {}, models: 3,
+  envVar: null,
 };
 
 const priced: ProviderModel = {

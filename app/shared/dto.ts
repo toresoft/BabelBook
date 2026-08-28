@@ -375,6 +375,13 @@ export interface CatalogEntry {
   baseUrl: string | null;
   options: Record<string, unknown>;
   models: number;
+  /**
+   * The variable the provider's documentation names for its key, when it names
+   * one. Shown, never relied on: an application launched from a desktop menu
+   * on Linux does not inherit the shell's environment, so a key exported in a
+   * shell profile is simply not there.
+   */
+  envVar: string | null;
 }
 
 /** How old the catalogue in use is, said in one line. */

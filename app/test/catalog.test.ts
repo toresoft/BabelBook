@@ -5,6 +5,7 @@ import { gunzipSync, gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { routeForPackage } from "../engine/backends/registry.ts";
 import { pruneCatalog, routeOf, type CatalogProvider } from "../main/catalog/shape.ts";
+import { searchCatalog } from "../main/catalog/service.ts";
 import { CATALOG_URL, readCatalog, refreshCatalog } from "../main/catalog/load.ts";
 import { enrichModels } from "../main/catalog/enrich.ts";
 
@@ -136,6 +137,42 @@ describe("the route a catalogue entry takes", () => {
       .sort();
 
     expect(unserved).toEqual(["AIHubMix", "SAP AI Core", "Venice AI", "v0", "watsonx.ai"]);
+  });
+});
+
+/** A catalogue as the search reads it: the date it was produced, and entries. */
+const aCatalog = (providers: CatalogProvider[]) =>
+  ({ at: "2026-08-27T00:00:00.000Z", providers });
+
+describe("what an entry says about itself", () => {
+  it("carries the name of the variable its key is usually in", () => {
+    const [entry] = searchCatalog(aCatalog([
+      { id: "acme", name: "Acme", npm: "@ai-sdk/openai-compatible",
+        env: ["ACME_API_KEY"], api: "https://acme.test/v1", models: [] },
+    ]), "acme");
+
+    expect(entry!.envVar).toBe("ACME_API_KEY");
+  });
+
+  it("takes the first when a provider declares several", () => {
+    // Google declares three. One name on a line is information; three is a
+    // list nobody reads.
+    const [entry] = searchCatalog(aCatalog([
+      { id: "goog", name: "Goog", npm: "@ai-sdk/google",
+        env: ["GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "GEMINI_API_KEY"],
+        api: null, models: [] },
+    ]), "goog");
+
+    expect(entry!.envVar).toBe("GOOGLE_API_KEY");
+  });
+
+  it("says null when a provider declares none", () => {
+    const [entry] = searchCatalog(aCatalog([
+      { id: "bare", name: "Bare", npm: "@ai-sdk/openai-compatible",
+        env: [], api: "https://bare.test/v1", models: [] },
+    ]), "bare");
+
+    expect(entry!.envVar).toBeNull();
   });
 });
 
