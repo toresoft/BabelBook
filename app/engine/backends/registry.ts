@@ -19,6 +19,15 @@
  * rather than here.
  */
 
+/**
+ * The one route that is a protocol rather than a publisher.
+ *
+ * Every other route is a package, and a package is also a name. This one
+ * reaches anything that speaks OpenAI's dialect, so it is the only route that
+ * has to be told who is answering.
+ */
+export const GENERIC_ROUTE = "openai-compatible";
+
 export interface ProviderPackage {
   /** The npm specifier, which messages name and the catalogue is matched on. */
   readonly specifier: string;

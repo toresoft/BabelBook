@@ -4,8 +4,15 @@ import { parseSpec, resolveModel } from "../engine/backends/resolve.ts";
 import { sdkBackend } from "../engine/backends/sdk.ts";
 
 const fakeModule = { createAcme: (opts: unknown) => (id: string) => ({ id, opts }) };
+const genericModule = {
+  createOpenAICompatible: (opts: unknown) => (id: string) => ({ id, opts }),
+};
 const packages = {
   acme: { specifier: "@ai-sdk/acme", load: async () => fakeModule },
+  "openai-compatible": {
+    specifier: "@ai-sdk/openai-compatible",
+    load: async () => genericModule,
+  },
   broken: {
     specifier: "@ai-sdk/broken",
     load: async () => { throw new Error("Cannot find package '@ai-sdk/broken'"); },
@@ -55,6 +62,28 @@ describe("resolveModel", () => {
     });
     expect(resolved.modelId).toBe("acme:m1");
     expect(resolved.options).toMatchObject({ acme: { thinking: { type: "disabled" } } });
+  });
+
+  /**
+   * Production break: the generic route was built with no name, so the SDK
+   * read the call's options under `undefined` and every option written for a
+   * provider it serves — `reasoning off` first among them — reached nobody.
+   */
+  it("gives the generic route the name its options are keyed by", async () => {
+    const resolved = await resolveModel("openai-compatible:deepseek-v4-flash", {
+      packages, apiKey: "k", baseUrl: "https://api.deepseek.com", name: "deepseek",
+    });
+
+    expect((resolved.model as { opts: { name: string } }).opts.name).toBe("deepseek");
+  });
+
+  /** A package is its own name; naming it again is a setting it never asked for. */
+  it("names nothing on a route that is a package", async () => {
+    const resolved = await resolveModel("acme:m1", {
+      packages, apiKey: "k", baseUrl: null, name: "acme",
+    });
+
+    expect((resolved.model as { opts: Record<string, unknown> }).opts).not.toHaveProperty("name");
   });
 
   it("hands the factory the id after the route, not the whole spec", async () => {

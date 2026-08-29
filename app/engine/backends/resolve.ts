@@ -7,7 +7,7 @@
  * paid for, and the user is looking at a progress bar that will never finish.
  */
 
-import { PROVIDER_PACKAGES, type ProviderPackages } from "./registry.ts";
+import { GENERIC_ROUTE, PROVIDER_PACKAGES, type ProviderPackages } from "./registry.ts";
 
 /**
  * A spec that cannot become a model, with a code the interface can translate.
@@ -48,6 +48,15 @@ export interface ResolveDeps {
   baseUrl: string | null;
   headers?: Record<string, string>;
   options?: Record<string, unknown>;
+  /**
+   * Who is answering, for the one route that cannot know.
+   *
+   * The generic route is a protocol: without a name the SDK keys the call's
+   * options under `undefined`, and every option written for the provider
+   * behind the endpoint is read by nobody. A route that is a package has its
+   * own name and is given none.
+   */
+  name?: string;
 }
 
 /**
@@ -168,6 +177,7 @@ export async function resolveModel(spec: string, deps: ResolveDeps): Promise<Res
   if (deps.headers !== undefined && Object.keys(deps.headers).length > 0) {
     settings.headers = deps.headers;
   }
+  if (route === GENERIC_ROUTE) settings.name = deps.name ?? route;
 
   let model: unknown;
   try {

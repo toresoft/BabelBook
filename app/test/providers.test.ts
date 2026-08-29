@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import {
   createProvider, deleteProvider, getProvider, listProviders, modelPricesOf, PRESETS, readKey,
-  reasoningOf, refreshCatalogMetadata, resolveRouteOptions, routeDefaults, routeReasoning,
-  setReasoning, updateProvider,
+  providerNameOf, reasoningOf, reasoningOptions, refreshCatalogMetadata, resolveProviderOptions,
+  routeDefaults, setReasoning, updateProvider,
 } from "../main/providers/store.ts";
 import type { Catalog, CatalogProvider } from "../main/catalog/shape.ts";
 
@@ -243,12 +243,42 @@ describe("the catalogue binding", () => {
  * Each route spells the same idea differently, and this is the one place that
  * knows how.
  */
+/**
+ * Production break: a provider the catalogue knows, reached through the
+ * generic route, was addressed by the protocol it speaks instead of by who
+ * answers. `reasoning off` was written for `deepseek` and sent to
+ * `openai-compatible`, which is nobody, so DeepSeek reasoned through a whole
+ * book while the cache key recorded that it had not.
+ */
+describe("the name a provider's options are keyed by", () => {
+  it("is the catalogue's identity when the route is only a protocol", () => {
+    expect(providerNameOf("openai-compatible", "deepseek")).toBe("deepseek");
+  });
+
+  it("is the route itself when the route is a package", () => {
+    expect(providerNameOf("anthropic", "anthropic")).toBe("anthropic");
+    expect(providerNameOf("google-vertex-anthropic", "anthropic"))
+      .toBe("google-vertex-anthropic");
+  });
+
+  /** An endpoint typed by hand belongs to no catalogue and gets no dialect. */
+  it("stays the generic route when no catalogue answers for it", () => {
+    expect(providerNameOf("openai-compatible", null)).toBe("openai-compatible");
+    expect(providerNameOf("openai-compatible", "")).toBe("openai-compatible");
+  });
+
+  it("turns the reasoning off in the words of who answers, not of the protocol", () => {
+    expect(resolveProviderOptions(providerNameOf("openai-compatible", "deepseek"), {}, false))
+      .toEqual({ deepseek: { thinking: { type: "disabled" } } });
+  });
+});
+
 describe("the reasoning options of a route", () => {
   it("turns it off in the words each route uses", () => {
-    expect(routeReasoning("anthropic", false)).toMatchObject({ anthropic: { thinking: { type: "disabled" } } });
-    expect(routeReasoning("deepseek", false)).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
-    expect(routeReasoning("openai", false)).toMatchObject({ openai: { reasoningEffort: "minimal" } });
-    expect(routeReasoning("google", false))
+    expect(reasoningOptions("anthropic", false)).toMatchObject({ anthropic: { thinking: { type: "disabled" } } });
+    expect(reasoningOptions("deepseek", false)).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
+    expect(reasoningOptions("openai", false)).toMatchObject({ openai: { reasoningEffort: "minimal" } });
+    expect(reasoningOptions("google", false))
       .toMatchObject({ google: { thinkingConfig: { thinkingBudget: 0 } } });
   });
 
@@ -258,15 +288,15 @@ describe("the reasoning options of a route", () => {
    * invented price or an invented endpoint.
    */
   it("says nothing at all when it is on", () => {
-    expect(routeReasoning("anthropic", true)).toEqual({});
+    expect(reasoningOptions("anthropic", true)).toEqual({});
   });
 
   it("says nothing for a route it does not know", () => {
-    expect(routeReasoning("acme", false)).toEqual({});
+    expect(reasoningOptions("acme", false)).toEqual({});
   });
 
   it("replaces only the reasoning field when off", () => {
-    expect(resolveRouteOptions("google", {
+    expect(resolveProviderOptions("google", {
       audit: { trace: true },
       google: {
         safetySettings: [{ category: "danger", threshold: "block-none" }],
@@ -282,16 +312,16 @@ describe("the reasoning options of a route", () => {
   });
 
   it("removes persisted reasoning directives when on", () => {
-    expect(resolveRouteOptions("anthropic", {
+    expect(resolveProviderOptions("anthropic", {
       anthropic: { temperature: 0.2, thinking: { type: "enabled", budgetTokens: 1024 } },
     }, true)).toEqual({ anthropic: { temperature: 0.2 } });
-    expect(resolveRouteOptions("deepseek", {
+    expect(resolveProviderOptions("deepseek", {
       deepseek: { temperature: 0.3, thinking: { type: "disabled" } },
     }, true)).toEqual({ deepseek: { temperature: 0.3 } });
-    expect(resolveRouteOptions("openai", {
+    expect(resolveProviderOptions("openai", {
       openai: { store: false, reasoningEffort: "high" },
     }, true)).toEqual({ openai: { store: false } });
-    expect(resolveRouteOptions("google", {
+    expect(resolveProviderOptions("google", {
       google: { safetySettings: [], thinkingConfig: { thinkingBudget: 4096 } },
     }, true)).toEqual({ google: { safetySettings: [] } });
   });

@@ -15,7 +15,8 @@ import {
 } from "./catalog/service.ts";
 import { probeLocalRuntimes } from "./catalog/local.ts";
 import {
-  getProvider, readKey, reasoningOf, refreshCatalogMetadata, resolveRouteOptions, type Crypto,
+  getProvider, providerNameOf, readKey, reasoningOf, refreshCatalogMetadata,
+  resolveProviderOptions, type Crypto,
 } from "./providers/store.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
 import { registerIpc, readSettings } from "./ipc.ts";
@@ -110,6 +111,7 @@ async function verify(request: { providerId: string; modelId: string }): Promise
       baseUrl: provider.baseUrl,
       headers: provider.headers,
       options: provider.options,
+      name: providerNameOf(provider.route, provider.catalogId),
     });
     return await runVerification({ backend: sdkBackend(resolved, generateText), modelId: spec });
   } catch (error) {
@@ -255,27 +257,33 @@ app.whenReady().then(async () => {
       if (fakeBackend) return { kind: "fake" };
       const row = db.prepare(`
         SELECT p.provider_id AS providerId, p.model_id AS modelId,
-               pr.route, pr.base_url AS baseUrl, pr.headers, pr.options
+               pr.route, pr.base_url AS baseUrl, pr.headers, pr.options,
+               pr.catalog_id AS catalogId
           FROM project p LEFT JOIN provider pr ON pr.id = p.provider_id
          WHERE p.id = ?
       `).get(projectId) as {
         providerId: string | null; modelId: string | null; route: string | null;
         baseUrl: string | null; headers: string | null; options: string | null;
+        catalogId: string | null;
       } | undefined;
       if (row === undefined || row.providerId === null || row.modelId === null || row.route === null) {
         throw new Error("NO_PROVIDER_CONFIGURED");
       }
+      // Who answers, not what protocol they speak: the options are keyed by
+      // it, and the generic route is handed it because it cannot know.
+      const name = providerNameOf(row.route, row.catalogId);
       return {
         kind: "sdk",
         spec: `${row.route}:${row.modelId}`,
         apiKey: readKey(db, crypto, row.providerId),
         baseUrl: row.baseUrl,
         headers: row.headers === null ? {} : JSON.parse(row.headers) as Record<string, string>,
-        options: resolveRouteOptions(
-          row.route,
+        options: resolveProviderOptions(
+          name,
           row.options === null ? {} : JSON.parse(row.options) as Record<string, unknown>,
           reasoningOf(db, row.providerId, row.modelId),
         ),
+        name: name === row.route ? null : name,
       };
     },
     broadcast: (channel, payload) => {

@@ -28,6 +28,11 @@ export type BackendSpec =
     baseUrl: string | null;
     headers: Record<string, string>;
     options: Record<string, unknown>;
+    /**
+     * Who answers at that endpoint, and so the key the options are read
+     * under. Null when the route is a package: a package is its own name.
+     */
+    name: string | null;
   };
 
 export interface RunConfig {

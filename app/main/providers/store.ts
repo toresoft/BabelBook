@@ -3,6 +3,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type {
   ModelCapabilities, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset,
 } from "../../shared/dto.ts";
+import { GENERIC_ROUTE } from "../../engine/backends/registry.ts";
 import type { Catalog } from "../catalog/shape.ts";
 
 // The shapes live in `shared/dto.ts` because they cross the IPC boundary, and
@@ -289,23 +290,44 @@ export function routeDefaults(route: string): Record<string, unknown> {
 }
 
 /**
- * How each route spells "do not think about it".
+ * The name a provider's options are keyed by.
+ *
+ * A route that is a package is also a name: `anthropic` reaches
+ * `@ai-sdk/anthropic`, and the SDK reads `providerOptions.anthropic`.
+ * `openai-compatible` is a protocol and not a publisher — it reaches DeepSeek,
+ * a corporate gateway, a laptop — so what knows the endpoint's dialect is the
+ * catalogue's identity for it, never the protocol they all speak. Without this
+ * every provider outside the shipped packages was addressed as nobody: the
+ * options went to a key no model reads, and the application's own default of
+ * reasoning off was written down, recorded in the cache key, and sent nowhere.
+ *
+ * A hand-typed endpoint belongs to no catalogue and keeps the generic name:
+ * an unknown dialect is not a dialect to guess at.
+ */
+export function providerNameOf(route: string, catalogId: string | null): string {
+  return route === GENERIC_ROUTE && catalogId !== null && catalogId !== ""
+    ? catalogId
+    : route;
+}
+
+/**
+ * How each provider spells "do not think about it".
  *
  * The idea is one and the words are four, so the translation table lives in a
  * single place — the same reason `routeDefaults` is here. On, nothing is said:
  * a budget this application picked would be a number nobody measured.
  */
-const ROUTE_REASONING: Record<string, { field: string; off: unknown }> = {
+const REASONING_OFF: Record<string, { field: string; off: unknown }> = {
   anthropic: { field: "thinking", off: { type: "disabled" } },
   deepseek: { field: "thinking", off: { type: "disabled" } },
   openai: { field: "reasoningEffort", off: "minimal" },
   google: { field: "thinkingConfig", off: { thinkingBudget: 0 } },
 };
 
-export function routeReasoning(route: string, enabled: boolean): Record<string, unknown> {
+export function reasoningOptions(name: string, enabled: boolean): Record<string, unknown> {
   if (enabled) return {};
-  const setting = ROUTE_REASONING[route];
-  return setting === undefined ? {} : { [route]: { [setting.field]: setting.off } };
+  const setting = REASONING_OFF[name];
+  return setting === undefined ? {} : { [name]: { [setting.field]: setting.off } };
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -317,24 +339,25 @@ function record(value: unknown): Record<string, unknown> {
 /**
  * Resolves stored options into the options for one call.
  *
- * Reasoning owns only one field inside the route's namespace. Everything else
+ * Keyed by `providerNameOf`, which is what the SDK reads them under.
+ * Reasoning owns only one field inside that namespace. Everything else
  * survives; the owned field is first removed so neither an old application
  * default nor a hand-written option can contradict the resolved cache identity.
  */
-export function resolveRouteOptions(
-  route: string, stored: Record<string, unknown>, reasoning: boolean,
+export function resolveProviderOptions(
+  name: string, stored: Record<string, unknown>, reasoning: boolean,
 ): Record<string, unknown> {
-  const defaults = routeDefaults(route);
+  const defaults = routeDefaults(name);
   const resolved = { ...stored, ...defaults };
-  const setting = ROUTE_REASONING[route];
+  const setting = REASONING_OFF[name];
   if (setting === undefined) return resolved;
 
-  const routeOptions = { ...record(stored[route]), ...record(defaults[route]) };
-  delete routeOptions[setting.field];
-  Object.assign(routeOptions, record(routeReasoning(route, reasoning)[route]));
+  const options = { ...record(stored[name]), ...record(defaults[name]) };
+  delete options[setting.field];
+  Object.assign(options, record(reasoningOptions(name, reasoning)[name]));
 
-  if (Object.keys(routeOptions).length === 0) delete resolved[route];
-  else resolved[route] = routeOptions;
+  if (Object.keys(options).length === 0) delete resolved[name];
+  else resolved[name] = options;
   return resolved;
 }
 

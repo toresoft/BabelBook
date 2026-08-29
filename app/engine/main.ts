@@ -48,7 +48,9 @@ function isBackendSpec(spec: unknown): spec is BackendSpec {
     && (candidate.apiKey === null || typeof candidate.apiKey === "string")
     && (candidate.baseUrl === null || typeof candidate.baseUrl === "string")
     && typeof candidate.headers === "object" && candidate.headers !== null
-    && typeof candidate.options === "object" && candidate.options !== null;
+    && typeof candidate.options === "object" && candidate.options !== null
+    && (candidate.name === null || candidate.name === undefined
+      || typeof candidate.name === "string");
 }
 
 function isEngineCommand(message: unknown): message is EngineCommand {
@@ -73,6 +75,7 @@ async function backendFromSpec(spec: BackendSpec): Promise<LlmBackend> {
   const resolved = await resolveModel(spec.spec, {
     apiKey: spec.apiKey,
     baseUrl: spec.baseUrl,
+    ...(spec.name === null || spec.name === undefined ? {} : { name: spec.name }),
     ...(Object.keys(spec.headers).length === 0 ? {} : { headers: spec.headers }),
     options: spec.options,
   });
