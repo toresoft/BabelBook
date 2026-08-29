@@ -1667,7 +1667,7 @@ import { CODE_INDEX_VERSION } from "../../../core/translate/versions.ts";
  * not putting it in the shared key.
  */
 export function codeIndexKey(cacheKey: string, version: number = CODE_INDEX_VERSION): string {
-  return createHash("sha256").update(`code-index ${version} ${cacheKey}`).digest("hex");
+  return createHash("sha256").update(`code-index ${version} ${cacheKey}`).digest("hex");
 }
 ```
 
