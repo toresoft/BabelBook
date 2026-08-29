@@ -377,6 +377,29 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       launch(projectId, row);
     },
 
+    /**
+     * The composition again, over the translations already held.
+     *
+     * No model is asked anything: the phase reads the store and writes an
+     * EPUB. It is how a book composed wrong stops being composed wrong
+     * without paying for its translation twice.
+     */
+    async recompose(projectId): Promise<void> {
+      if (activeId !== null) throw new RunRefusedError("ENGINE_BUSY");
+
+      const host = machineHost(projectId);
+      if (!host.send({ type: "COMPOSE" })) {
+        throw new RunRefusedError(`RUN_STATE_${host.state.toUpperCase()}`);
+      }
+
+      activeId = projectId;
+      try {
+        await compose(projectId, project(projectId));
+      } finally {
+        activeId = null;
+      }
+    },
+
     async pause(projectId): Promise<void> {
       if (activeId === projectId && engine !== null && engine.alive) {
         engine.send({ type: "pause" });
@@ -407,6 +430,7 @@ export interface RunRuntime {
   readonly active: string | null;
   onMessage(listener: (message: EngineMessage) => void): () => void;
   start(projectId: string): Promise<void>;
+  recompose(projectId: string): Promise<void>;
   pause(projectId: string): Promise<void>;
   approve(projectId: string, gate: "terms" | "code"): Promise<void>;
   /** Pauses what runs, kills the engine, and answers when both are done. */

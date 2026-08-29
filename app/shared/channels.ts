@@ -87,6 +87,8 @@ export interface Invocations {
     res: { units: UnitRow[]; total: number };
   };
   "run.start": { req: { projectId: string }; res: void };
+  /** The composition again, over translations already held: no model is asked. */
+  "run.compose": { req: { projectId: string }; res: void };
   "run.pause": { req: { projectId: string }; res: void };
   "run.approve": { req: { projectId: string; gate: "terms" | "code" }; res: void };
   "terms.list": { req: { projectId: string }; res: TermRow[] };
@@ -210,7 +212,7 @@ export const INVOCATIONS = [
   "env.hasKey",
   "projects.list", "projects.counts", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "project.export", "project.get", "units.list",
-  "run.start", "run.pause", "run.approve",
+  "run.start", "run.compose", "run.pause", "run.approve",
   "terms.list", "terms.decide", "terms.add", "terms.promote",
   "terms.previewInvalidation", "terms.invalidate",
   "exclusions.list", "exclusions.force", "exclusions.clear",

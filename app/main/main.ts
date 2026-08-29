@@ -389,6 +389,7 @@ app.whenReady().then(async () => {
       return chosen.canceled || chosen.filePath === undefined ? null : chosen.filePath;
     },
     startRun: (projectId) => runtime.start(projectId),
+    composeAgain: (projectId) => runtime.recompose(projectId),
     pauseRun: (projectId) => runtime.pause(projectId),
     approveGate: (projectId, gate) => runtime.approve(projectId, gate),
     verifyProvider: verify,

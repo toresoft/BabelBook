@@ -46,7 +46,7 @@ export type ProjectEvent =
   | { type: "LANGUAGE_SET" } | { type: "START" }
   | { type: "TERMS_READY" } | { type: "TERMS_APPROVED" }
   | { type: "CODE_INDEXED" } | { type: "CODE_REVIEWED" }
-  | { type: "TRANSLATED" } | { type: "COMPOSED" }
+  | { type: "TRANSLATED" } | { type: "COMPOSED" } | { type: "COMPOSE" }
   | { type: "PAUSE" } | { type: "RESUME" }
   | { type: "FAIL"; reason: string };
 
@@ -209,13 +209,19 @@ export const projectMachine = setup({
       },
     },
 
-    // Terminal, but deliberately not `final`: a final root state stops the
-    // actor, and the interface keeps asking a stopped snapshot what it can do.
-    // Leaving them ordinary also leaves room for a retry out of `failed`
-    // without changing what a project state is.
-    done: {},
-    incomplete: {},
-    failed: {},
+    /**
+     * Terminal, but deliberately not `final`: a final root state stops the
+     * actor, and the interface keeps asking a stopped snapshot what it can do.
+     *
+     * `COMPOSE` is the retry that room was left for. The translations are the
+     * expensive half and they survive an ending; the book is a function of
+     * them and of the composer, and a composer is code that changes. Composing
+     * again asks no model anything, so an ending is not a sentence: it is the
+     * last verdict, and a verdict can be asked for again.
+     */
+    done: { on: { COMPOSE: "composing" } },
+    incomplete: { on: { COMPOSE: "composing" } },
+    failed: { on: { COMPOSE: "composing" } },
   },
 });
 

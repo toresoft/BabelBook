@@ -88,4 +88,35 @@ describe("the runtime's composition", () => {
     expect(doc).not.toContain("<p>One</p>");
     expect(path.startsWith(dir)).toBe(true);
   });
+
+  /**
+   * Production break: a book composed wrong is composed for good. `done`
+   * accepted no event at all, so the screen offered no button, and the only
+   * way to a correct EPUB was to translate the whole book a second time.
+   */
+  it("composes again after the run is over, without asking the model anything", async () => {
+    const { db, id, runtime } = await composing();
+    await runtime.start(id);
+    expect(makeMachineHost(db, id).state).toBe("done");
+
+    // What the window offers is what the machine allows, so this is the button.
+    expect(makeMachineHost(db, id).allows).toContain("COMPOSE");
+
+    const before = (db.prepare(
+      "SELECT created_at AS at FROM project_phase_result WHERE project_id = ? AND phase = 'compose'",
+    ).get(id) as { at: string }).at;
+
+    await runtime.recompose(id);
+
+    const after = db.prepare(
+      "SELECT created_at AS at, result_json AS json FROM project_phase_result"
+      + " WHERE project_id = ? AND phase = 'compose'",
+    ).get(id) as { at: string; json: string };
+    expect(after.at >= before).toBe(true);
+    expect(makeMachineHost(db, id).state).toBe("done");
+
+    const out = JSON.parse(after.json) as { outputPath: string };
+    const epub = await readEpub(await readFile(out.outputPath));
+    expect(epub.get("OEBPS/c1.xhtml")!.toString("utf8")).toContain("TRADOTTO One");
+  });
 });

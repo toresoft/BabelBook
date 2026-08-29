@@ -32,6 +32,9 @@ export interface MachineHost {
  */
 export const USER_EVENTS = [
   "LANGUAGE_SET", "START", "PAUSE", "RESUME", "TERMS_APPROVED", "CODE_REVIEWED",
+  // COMPOSE is a person's: it re-runs the composition over translations that
+  // already exist, and only an ending accepts it.
+  "COMPOSE",
 ] as const;
 
 export type UserEvent = (typeof USER_EVENTS)[number];

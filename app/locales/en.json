@@ -25,6 +25,7 @@
     "progress": "{{done}} of {{total}} units",
     "translate": "Translate",
     "pause": "Pause",
+    "compose": "Compose the book again",
     "resume": "Resume",
     "delete": "Delete"
   },

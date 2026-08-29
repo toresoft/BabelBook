@@ -85,6 +85,24 @@ describe("Project", () => {
     expect(text).not.toContain(catalogue.library["pause"]);
   });
 
+  /**
+   * A book composed wrong stayed composed wrong: `done` allowed nothing, so
+   * the screen showed no button and the only way out was to translate the
+   * whole book again.
+   */
+  it("offers the composition again when the machine allows it", async () => {
+    const { fixture, invoke } = mount(bridge({ ...detail, state: "done", actions: ["COMPOSE"] }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector("[data-testid=project-compose]");
+    expect(button).not.toBeNull();
+    button.click();
+    await fixture.whenStable();
+
+    expect(invoke).toHaveBeenCalledWith("run.compose", { projectId: "p1" });
+  });
+
   it("offers nothing when the machine allows nothing", async () => {
     const { fixture } = mount(bridge({ ...detail, state: "composing", actions: [] }));
     await fixture.whenStable();

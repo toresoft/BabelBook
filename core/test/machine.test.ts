@@ -102,6 +102,32 @@ describe("projectMachine", () => {
   });
 
   /**
+   * A finished book is not a finished decision.
+   *
+   * The translations are the expensive half and they survive; the composition
+   * is a function of them and of the composer, and the composer is code that
+   * changes. When it changes — or when it wrote the wrong book, which is how
+   * this transition came to exist — the way back is a recomposition, not a
+   * retranslation of a book already paid for.
+   */
+  it("composes again out of every state a run can end in", () => {
+    for (const state of ["done", "incomplete", "failed"] as ProjectState[]) {
+      const actor = start({ hasApprovedTerms: true, hasReviewedExclusions: true }, state);
+      actor.send({ type: "COMPOSE" });
+      expect(actor.getSnapshot().value, state).toBe("composing");
+    }
+  });
+
+  /** Only out of an ending: a run still going composes when it gets there. */
+  it("refuses to be told to compose in the middle of the work", () => {
+    for (const state of ["ready", "running", "waiting-terms", "paused"] as ProjectState[]) {
+      const actor = start({}, state);
+      actor.send({ type: "COMPOSE" });
+      expect(actor.getSnapshot().value, state).toBe(state);
+    }
+  });
+
+  /**
    * Built from `input` rather than from a snapshot, because `new` is transient
    * and a restored actor does not re-run eventless transitions. That is also
    * the only way a project ever reaches `new`: freshly created. What the

@@ -188,8 +188,19 @@ export class Project implements OnDestroy {
     await this.reload();
   }
 
+  /**
+   * The book again, from translations that already exist. No model is asked
+   * anything, so this costs nothing and is the way back from a composition
+   * that came out wrong.
+   */
+  async compose(): Promise<void> {
+    await this.#ipc.invoke("run.compose", { projectId: this.id() });
+    await this.reload();
+  }
+
   async pause(): Promise<void> {
     await this.#ipc.invoke("run.pause", { projectId: this.id() });
+    this.phase.set(null);
     this.phaseProgress.set(null);
     this.liveTokens.set(null);
     await this.reload();

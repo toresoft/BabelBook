@@ -36,6 +36,11 @@
             {{ t('library.pause') }}
           </button>
         }
+        @if (can('COMPOSE')) {
+          <button type="button" class="btn" data-testid="project-compose" (click)="compose()">
+            {{ t('library.compose') }}
+          </button>
+        }
       </div>
     </header>
 

@@ -53,6 +53,7 @@ export interface IpcDeps {
   chooseSave(defaultName: string, kind: "glossary" | "epub"): Promise<string | null>;
   /** Puts a project in the machine's hands, and the machine's verdict on screen. */
   startRun(projectId: string): Promise<void>;
+  composeAgain(projectId: string): Promise<void>;
   pauseRun(projectId: string): Promise<void>;
   approveGate(projectId: string, gate: "terms" | "code"): Promise<void>;
   /** One minimal call to the provider, reported as an outcome and never as a sentence. */
@@ -317,6 +318,11 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "run.start": async ({ projectId }) => {
       await deps.startRun(projectId);
+      deps.broadcast("project.changed", { id: projectId });
+    },
+
+    "run.compose": async ({ projectId }) => {
+      await deps.composeAgain(projectId);
       deps.broadcast("project.changed", { id: projectId });
     },
 

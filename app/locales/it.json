@@ -25,6 +25,7 @@
     "progress": "{{done}} di {{total}} unità",
     "translate": "Traduci",
     "pause": "Pausa",
+    "compose": "Ricomponi il libro",
     "resume": "Riprendi",
     "delete": "Elimina"
   },
