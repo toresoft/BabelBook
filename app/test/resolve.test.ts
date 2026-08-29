@@ -77,6 +77,27 @@ describe("resolveModel", () => {
     expect((resolved.model as { opts: { name: string } }).opts.name).toBe("deepseek");
   });
 
+  /**
+   * The generic route drops a schema unless it is told it can keep one:
+   * `supportsStructuredOutputs` defaults to false, and without it the call
+   * carries `json_object` and no shape at all — while the instructions sent
+   * with it, the short ones, say nothing about a format either.
+   */
+  it("tells the generic route it may impose a shape, when the model can", async () => {
+    const withSchema = await resolveModel("openai-compatible:deepseek-v4-flash", {
+      packages, apiKey: "k", baseUrl: "https://api.deepseek.com",
+      name: "deepseek", structured: true,
+    });
+    const without = await resolveModel("openai-compatible:m1", {
+      packages, apiKey: "k", baseUrl: "https://api.acme.test",
+    });
+
+    expect((withSchema.model as { opts: { supportsStructuredOutputs?: boolean } })
+      .opts.supportsStructuredOutputs).toBe(true);
+    expect((without.model as { opts: Record<string, unknown> }).opts)
+      .not.toHaveProperty("supportsStructuredOutputs");
+  });
+
   /** A package is its own name; naming it again is a setting it never asked for. */
   it("names nothing on a route that is a package", async () => {
     const resolved = await resolveModel("acme:m1", {

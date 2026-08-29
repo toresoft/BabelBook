@@ -181,7 +181,13 @@ export async function resolveModel(spec: string, deps: ResolveDeps): Promise<Res
   if (deps.headers !== undefined && Object.keys(deps.headers).length > 0) {
     settings.headers = deps.headers;
   }
-  if (route === GENERIC_ROUTE) settings.name = deps.name ?? route;
+  if (route === GENERIC_ROUTE) {
+    settings.name = deps.name ?? route;
+    // Without this the generic route drops a schema and sends `json_object`
+    // instead — some JSON, of no particular shape — while the instructions
+    // that travelled with it said nothing about a format either.
+    if (deps.structured === true) settings.supportsStructuredOutputs = true;
+  }
 
   let model: unknown;
   try {
