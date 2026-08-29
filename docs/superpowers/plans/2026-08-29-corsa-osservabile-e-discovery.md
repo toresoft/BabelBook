@@ -178,7 +178,12 @@ it("reports one step per batch, against the number of batches", async () => {
 
   await indexCodeBlocks({
     units,
-    backend: new FakeBackend([answer("[v:c1.xhtml#1] prose")]),
+    // The reply form, not the scripted array: an array that runs out THROWS,
+    // by design, and this test makes more calls than it cares to script.
+    backend: new FakeBackend(() => ({
+      text: "nothing in the format", tokensIn: 0, tokensOut: 0,
+      reasoningTokens: 0, finishReason: "stop",
+    })),
     sourceHash: "h",
     batchSize: 2,
     progress: { report: (p) => seen.push({ phase: p.phase, done: p.done, total: p.total }) },
@@ -193,7 +198,7 @@ it("reports one step per batch, against the number of batches", async () => {
 });
 ```
 
-`unit(n, source, state, reason?)` e `answer(rows)` sono le costanti in testa a `core/test/code.test.ts`; `FakeBackend` viene da `core/test/fake/backend.ts`. La risposta finta non corrisponde ai batch e li fa astenere tutti: è voluto, il test misura il progresso, non i verdetti.
+`unit(n, source, state, reason?)` è la costante in testa a `core/test/code.test.ts`; `FakeBackend` viene da `core/test/fake/backend.ts`. La risposta non è nel formato e fa astenere tutti i batch: è voluto, il test misura il progresso, non i verdetti.
 
 In coda a `core/test/candidates.test.ts`:
 
@@ -202,7 +207,13 @@ it("reports one step per sample", async () => {
   const seen: Array<{ phase: string; done: number; total: number }> = [];
   await extractCandidates({
     units,
-    backend: new FakeBackend([]),
+    // Answers nothing usable, for ever. The parsing fails on every sample,
+    // and that is the point: the bar measures the questions asked, not the
+    // answers understood — `answered` goes on measuring those.
+    backend: new FakeBackend(() => ({
+      text: "nothing in the format", tokensIn: 0, tokensOut: 0,
+      reasoningTokens: 0, finishReason: "stop",
+    })),
     sourceLanguage: "en",
     targetLanguage: "it",
     progress: { report: (p) => seen.push({ phase: p.phase, done: p.done, total: p.total }) },
@@ -215,7 +226,7 @@ it("reports one step per sample", async () => {
 });
 ```
 
-`units` è la costante di sessanta unità in testa al file. `FakeBackend([])` risponde fuori copione: il parsing fallisce, e proprio per questo il test dimostra che la barra misura le domande fatte e non le risposte capite. Se il finto in questo file ha un'altra forma, usa la sua.
+`units` è la costante di sessanta unità in testa al file.
 
 - [ ] **Step 2: Esegui i test e verifica che falliscano**
 
