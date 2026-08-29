@@ -44,7 +44,7 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | B2. Il guscio e le azioni | **completo**, 7/7 + ondata finale | `app/renderer/` |
 | C. La schermata dei provider | **completo**, 7/7 + ondata finale | `app/renderer/src/app/settings/` |
 | Provider inclusi | scritto, non iniziato | `app/main/providers/` |
-| 9. La corsa osservabile e il discovery | **completo**, 11/11, su ramo `corsa-osservabile` in attesa di revisione finale e confluenza | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
+| 9. La corsa osservabile e il discovery | **completo**, 11/11 + revisione finale dell'intero ramo | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
 
 Suite: **818 test verdi** (297 core, 394 app, 127 componenti) piu' **13 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
@@ -57,11 +57,7 @@ I test dei componenti girano col builder `@angular/build:unit-test`
 
 ## Il prossimo passo
 
-**Chiudere il ramo `corsa-osservabile`**: revisione finale dell'intero ramo
-(`ad38a45..HEAD`), poi confluenza su `master`. I task sono tutti completi con
-revisione indipendente; manca solo la passata d'insieme.
-
-Poi **il piano «Provider inclusi»** — i pacchetti provider imbarcati, i 199
+**Il piano «Provider inclusi»** — i pacchetti provider imbarcati, i 199
 provider serviti senza installare nulla, i 4 rifiutati prima della scelta.
 Scritto in
 `docs/superpowers/plans/2026-08-27-babelbook-provider-inclusi.md`, sette task,
@@ -193,5 +189,5 @@ Il lavoro è lineare su `master`. I rami `worktree-agent-*` sono già confluiti 
 si possono cancellare (`git branch -D`), oppure tenere come traccia di chi ha
 scritto cosa.
 
-Il ramo `corsa-osservabile` (staccato da `ad38a45`) porta il piano 9 completo,
-in attesa di revisione finale dell'intero ramo e confluenza.
+Il ramo `corsa-osservabile` ha portato il piano 9 e confluito su `master`; il
+ramo è stato cancellato dopo la verifica della suite sul risultato del merge.
