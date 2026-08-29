@@ -316,6 +316,8 @@ export interface ProviderModel {
   priceIn: number | null;
   priceOut: number | null;
   capabilities: ModelCapabilities | null;
+  /** Null until the user chooses; runtime resolves an unchosen value to off. */
+  reasoningEnabled: boolean | null;
 }
 
 /**

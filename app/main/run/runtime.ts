@@ -12,7 +12,7 @@ import type {
 import { projectCacheKey } from "./cache-key.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
-import { modelContextOf, modelPricesOf } from "../providers/store.ts";
+import { modelContextOf, modelPricesOf, reasoningOf } from "../providers/store.ts";
 import type { Workspace } from "../workspace.ts";
 import type { ProjectEvent } from "../../../core/workflow/project.machine.ts";
 
@@ -282,12 +282,17 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     const contextWindowTokens = configured?.provider_id != null && configured.model_id != null
       ? modelContextOf(db, configured.provider_id, configured.model_id)
       : null;
+    const reasoning = configured?.provider_id != null && configured.model_id != null
+      ? reasoningOf(db, configured.provider_id, configured.model_id)
+      : false;
 
     // The backend is resolved before the key, because the model it names is
     // part of the key: the same book translated by another model is other
     // work, and reusing one for the other is not a saving but a mixture.
     const backend = deps.backendSpec(projectId);
-    const key = projectCacheKey(db, projectId, backend.kind === "sdk" ? backend.spec : "fake");
+    const key = projectCacheKey(
+      db, projectId, backend.kind === "sdk" ? backend.spec : "fake", reasoning,
+    );
     // Written down, because every screen reads the key from here: the library
     // counts progress under it, the units tab shows translations under it, and
     // the report is built from it. A key computed and not stored would leave

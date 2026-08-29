@@ -14,7 +14,10 @@ import {
   catalogState, declaredEnv, discoverFromUrl, modelsForEntry, searchCatalog,
 } from "./catalog/service.ts";
 import { probeLocalRuntimes } from "./catalog/local.ts";
-import { refreshCatalogMetadata } from "./providers/store.ts";
+import {
+  getProvider, readKey, reasoningOf, refreshCatalogMetadata, routeDefaults, routeReasoning,
+  type Crypto,
+} from "./providers/store.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
 import { registerIpc, readSettings } from "./ipc.ts";
 import { restoreRunningProjects } from "./run/machine-host.ts";
@@ -24,7 +27,6 @@ import {
   registerRendererScheme,
   RENDERER_ORIGIN,
 } from "./protocol.ts";
-import { getProvider, readKey, type Crypto } from "./providers/store.ts";
 import { classifyError, verifyProvider as runVerification } from "./providers/verify.ts";
 import { resolveModel } from "../engine/backends/resolve.ts";
 import { sdkBackend } from "../engine/backends/sdk.ts";
@@ -270,7 +272,11 @@ app.whenReady().then(async () => {
         apiKey: readKey(db, crypto, row.providerId),
         baseUrl: row.baseUrl,
         headers: row.headers === null ? {} : JSON.parse(row.headers) as Record<string, string>,
-        options: row.options === null ? {} : JSON.parse(row.options) as Record<string, unknown>,
+        options: {
+          ...(row.options === null ? {} : JSON.parse(row.options) as Record<string, unknown>),
+          ...routeDefaults(row.route),
+          ...routeReasoning(row.route, reasoningOf(db, row.providerId, row.modelId)),
+        },
       };
     },
     broadcast: (channel, payload) => {

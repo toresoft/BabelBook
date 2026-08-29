@@ -55,6 +55,7 @@ interface ModelRow {
   price_in: number | null;
   price_out: number | null;
   capabilities: string | null;
+  reasoning_enabled: number | null;
 }
 
 function parseJson<T>(text: string | null, fallback: T): T {
@@ -95,14 +96,18 @@ function writeModels(db: DatabaseSync, providerId: string, models: ProviderModel
   db.prepare("DELETE FROM provider_model WHERE provider_id = ?").run(providerId);
   const insert = db.prepare(`
     INSERT INTO provider_model (id, provider_id, model_id, display_name,
-                                context_window, price_in, price_out, capabilities)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                context_window, price_in, price_out, capabilities,
+                                reasoning_enabled)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   for (const model of models) {
     insert.run(
       randomUUID(), providerId, model.id, model.displayName,
       model.contextWindow, model.priceIn, model.priceOut,
       model.capabilities === null ? null : JSON.stringify(model.capabilities),
+      model.reasoningEnabled === null || model.reasoningEnabled === undefined
+        ? null
+        : model.reasoningEnabled ? 1 : 0,
     );
   }
 }
@@ -113,7 +118,8 @@ function modelsOf(db: DatabaseSync, providerIds: string[]): Map<string, Provider
   if (providerIds.length === 0) return byProvider;
 
   const rows = db.prepare(`
-    SELECT provider_id, model_id, display_name, context_window, price_in, price_out, capabilities
+    SELECT provider_id, model_id, display_name, context_window, price_in, price_out, capabilities,
+           reasoning_enabled
       FROM provider_model
      ORDER BY provider_id, rowid
   `).all() as unknown as ModelRow[];
@@ -128,6 +134,7 @@ function modelsOf(db: DatabaseSync, providerIds: string[]): Map<string, Provider
       priceIn: row.price_in,
       priceOut: row.price_out,
       capabilities: capabilitiesOf(row.capabilities),
+      reasoningEnabled: row.reasoning_enabled === null ? null : row.reasoning_enabled === 1,
     });
   }
   return byProvider;
@@ -277,22 +284,43 @@ export function readKey(db: DatabaseSync, crypto: Crypto, id: string): string | 
   return crypto.decrypt(Buffer.from(row.api_key_encrypted));
 }
 
-/**
- * Options a route needs to behave, which the hand-written presets used to
- * carry before the catalogue replaced them.
- *
- * These are facts about how this application must call the route, not about
- * what the endpoint serves, which is why they live here and not in anybody's
- * catalogue. The DeepSeek entry is not a preference: reasoning is on by
- * default and spends the whole output budget on reasoning tokens, the chunk
- * comes back empty with `finishReason: "length"`, every unit in it falls back
- * to the source, and the call is billed in full.
- */
 export function routeDefaults(route: string): Record<string, unknown> {
-  if (route === "deepseek") {
-    return { deepseek: { thinking: { type: "disabled" } } };
-  }
   return {};
+}
+
+/**
+ * How each route spells "do not think about it".
+ *
+ * The idea is one and the words are four, so the translation table lives in a
+ * single place — the same reason `routeDefaults` is here. On, nothing is said:
+ * a budget this application picked would be a number nobody measured.
+ */
+export function routeReasoning(route: string, enabled: boolean): Record<string, unknown> {
+  if (enabled) return {};
+  if (route === "anthropic") return { anthropic: { thinking: { type: "disabled" } } };
+  if (route === "deepseek") return { deepseek: { thinking: { type: "disabled" } } };
+  if (route === "openai") return { openai: { reasoningEffort: "minimal" } };
+  if (route === "google") return { google: { thinkingConfig: { thinkingBudget: 0 } } };
+  return {};
+}
+
+/** The resolved runtime choice: an unchosen model reasons off. */
+export function reasoningOf(db: DatabaseSync, providerId: string, modelId: string): boolean {
+  const row = db.prepare(`
+    SELECT reasoning_enabled FROM provider_model
+     WHERE provider_id = ? AND model_id = ?
+  `).get(providerId, modelId) as { reasoning_enabled: number | null } | undefined;
+  return row?.reasoning_enabled === 1;
+}
+
+/** Persists the user's choice; null restores the distinct unchosen state. */
+export function setReasoning(
+  db: DatabaseSync, providerId: string, modelId: string, enabled: boolean | null,
+): void {
+  db.prepare(`
+    UPDATE provider_model SET reasoning_enabled = ?
+     WHERE provider_id = ? AND model_id = ?
+  `).run(enabled === null ? null : enabled ? 1 : 0, providerId, modelId);
 }
 
 /**

@@ -44,6 +44,15 @@ export interface CacheKeyInput {
   sourceSha256: string;
   /** The model spec as it was written, verbatim: it is part of the identity. */
   modelId: string;
+  /**
+   * Whether the model was asked to reason, resolved — the route's default
+   * already applied.
+   *
+   * Resolved rather than as chosen, so two configurations that call the model
+   * the same way produce the same key even when one says it and the other
+   * leaves it implied.
+   */
+  reasoning: boolean;
   sourceLanguage: string;
   targetLanguage: string;
   /** `name@version` for every active glossary, in any order. */
@@ -73,6 +82,7 @@ export function cacheKey(
     context: versions.context,
     source: input.sourceSha256,
     model: input.modelId,
+    reasoning: input.reasoning,
     from: input.sourceLanguage,
     to: input.targetLanguage,
     glossaries: [...input.glossaries].sort(),

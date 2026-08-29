@@ -47,11 +47,12 @@ const unserved: CatalogEntry = {
 const priced: ProviderModel = {
   id: "acme-mini", displayName: "Acme Mini", contextWindow: 128_000,
   priceIn: 0.5, priceOut: 2, capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
+  reasoningEnabled: null,
 };
 
 const unpriced: ProviderModel = {
   id: "acme-other", displayName: "acme-other", contextWindow: null,
-  priceIn: null, priceOut: null, capabilities: null,
+  priceIn: null, priceOut: null, capabilities: null, reasoningEnabled: null,
 };
 
 const runtime: LocalRuntime = {
@@ -400,7 +401,7 @@ describe("Providers", () => {
     const body = calls(invoke, "provider.create")[0]![1] as Record<string, unknown>;
     expect(body["models"]).toEqual([{
       id: "gemma3:12b", displayName: "gemma3:12b", contextWindow: null,
-      priceIn: null, priceOut: null, capabilities: null,
+      priceIn: null, priceOut: null, capabilities: null, reasoningEnabled: null,
     }]);
   });
 

@@ -23,36 +23,43 @@ describe("projectCacheKey", () => {
   it("is a digest, and the same inputs always give the same one", () => {
     const db = database();
 
-    expect(projectCacheKey(db, "p1", "openai-compatible:m1"))
-      .toBe(projectCacheKey(db, "p1", "openai-compatible:m1"));
-    expect(projectCacheKey(db, "p1", "openai-compatible:m1")).toMatch(/^[0-9a-f]{64}$/);
+    expect(projectCacheKey(db, "p1", "openai-compatible:m1", false))
+      .toBe(projectCacheKey(db, "p1", "openai-compatible:m1", false));
+    expect(projectCacheKey(db, "p1", "openai-compatible:m1", false)).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("changes when the model changes, because another model is other work", () => {
     const db = database();
 
-    expect(projectCacheKey(db, "p1", "openai-compatible:m1"))
-      .not.toBe(projectCacheKey(db, "p1", "openai-compatible:m2"));
+    expect(projectCacheKey(db, "p1", "openai-compatible:m1", false))
+      .not.toBe(projectCacheKey(db, "p1", "openai-compatible:m2", false));
+  });
+
+  it("changes when the resolved reasoning mode changes", () => {
+    const db = database();
+
+    expect(projectCacheKey(db, "p1", "acme:m1", false))
+      .not.toBe(projectCacheKey(db, "p1", "acme:m1", true));
   });
 
   it("changes when the book itself changes", () => {
     const db = database();
-    const before = projectCacheKey(db, "p1", "acme:m1");
+    const before = projectCacheKey(db, "p1", "acme:m1", false);
     db.prepare("UPDATE project SET source_sha256 = 'another-book' WHERE id = 'p1'").run();
 
-    expect(projectCacheKey(db, "p1", "acme:m1")).not.toBe(before);
+    expect(projectCacheKey(db, "p1", "acme:m1", false)).not.toBe(before);
   });
 
   it("changes when a glossary is attached or its version moves", () => {
     const db = database();
-    const bare = projectCacheKey(db, "p1", "acme:m1");
+    const bare = projectCacheKey(db, "p1", "acme:m1", false);
 
     attach(db, "fantasy", 1);
-    const withGlossary = projectCacheKey(db, "p1", "acme:m1");
+    const withGlossary = projectCacheKey(db, "p1", "acme:m1", false);
     expect(withGlossary).not.toBe(bare);
 
     db.prepare("UPDATE glossary SET version = 2 WHERE id = 'fantasy'").run();
-    expect(projectCacheKey(db, "p1", "acme:m1")).not.toBe(withGlossary);
+    expect(projectCacheKey(db, "p1", "acme:m1", false)).not.toBe(withGlossary);
   });
 
   it("carries the prompt contract, so work made under an older one is not reused", () => {
@@ -60,8 +67,8 @@ describe("projectCacheKey", () => {
     // The whole point of the key: raising PROMPT_VERSION must move it. Without
     // this the engine would hand back translations produced under instructions
     // that have since been rewritten, and nobody would find it by reading.
-    expect(projectCacheKey(db, "p1", "acme:m1", { prompt: 1, context: 1 }))
-      .not.toBe(projectCacheKey(db, "p1", "acme:m1", { prompt: 2, context: 1 }));
+    expect(projectCacheKey(db, "p1", "acme:m1", false, { prompt: 1, context: 1 }))
+      .not.toBe(projectCacheKey(db, "p1", "acme:m1", false, { prompt: 2, context: 1 }));
   });
 
   it("does not depend on the order the glossaries were attached in", () => {
@@ -73,6 +80,7 @@ describe("projectCacheKey", () => {
     attach(second, "tech", 3);
     attach(second, "fantasy", 1);
 
-    expect(projectCacheKey(first, "p1", "acme:m1")).toBe(projectCacheKey(second, "p1", "acme:m1"));
+    expect(projectCacheKey(first, "p1", "acme:m1", false))
+      .toBe(projectCacheKey(second, "p1", "acme:m1", false));
   });
 });

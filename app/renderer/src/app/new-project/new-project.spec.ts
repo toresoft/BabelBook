@@ -18,9 +18,9 @@ const priced: Provider = {
   catalogId: "acme", catalogAt: "2026-08-20T00:00:00.000Z", hasKey: true,
   models: [
     { id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
-      capabilities: null },
+      capabilities: null, reasoningEnabled: null },
     { id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
-      capabilities: null },
+      capabilities: null, reasoningEnabled: null },
   ],
 };
 

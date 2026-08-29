@@ -10,7 +10,8 @@ import { packFailure } from "../shared/dto.ts";
 import { type Translate } from "./catalogue.ts";
 import { createProject } from "./projects/create.ts";
 import {
-  createProvider, deleteProvider, listProviders, PRESETS, ProviderStoreError, updateProvider,
+  createProvider, deleteProvider, listProviders, PRESETS, ProviderStoreError, setReasoning,
+  updateProvider,
   type Crypto,
 } from "./providers/store.ts";
 import { addManualTerm, decideTerms, listTerms, promoteToGlossary } from "./terms/approve.ts";
@@ -488,6 +489,11 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       if (!deleteProvider(deps.db, id)) {
         throw new ProviderStoreError("PROVIDER_UNKNOWN", `no provider ${id}`);
       }
+      deps.broadcast("providers.changed", {});
+    },
+
+    "provider.setReasoning": async ({ providerId, modelId, enabled }) => {
+      setReasoning(deps.db, providerId, modelId, enabled);
       deps.broadcast("providers.changed", {});
     },
 

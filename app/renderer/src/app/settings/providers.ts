@@ -281,7 +281,8 @@ export class Providers implements OnDestroy {
       baseUrl: runtime.baseUrl,
       // What the running server serves, which no catalogue can know.
       models: runtime.models.map((id) => ({
-        id, displayName: id, contextWindow: null, priceIn: null, priceOut: null, capabilities: null,
+        id, displayName: id, contextWindow: null, priceIn: null, priceOut: null,
+        capabilities: null, reasoningEnabled: null,
       })),
       needsUrl: false,
       needsKey: false,

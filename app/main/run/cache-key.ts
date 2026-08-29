@@ -19,6 +19,7 @@ export function projectCacheKey(
   db: DatabaseSync,
   projectId: string,
   modelId: string,
+  reasoning: boolean,
   versions: Versions = { prompt: PROMPT_VERSION, context: CONTEXT_VERSION },
 ): string {
   const row = db.prepare(`
@@ -39,6 +40,7 @@ export function projectCacheKey(
   return cacheKey({
     sourceSha256: row.sourceSha256,
     modelId,
+    reasoning,
     // The language the units were cut under, which is what the prompt names.
     // A project that never settled one has translated nothing yet, so the
     // placeholder only ever keys work that does not exist.

@@ -115,7 +115,10 @@ describe("the refresh pipeline", () => {
     const provider = createProvider(d, crypto, {
       name: "Acme", route: "acme", baseUrl: null, headers: {}, options: {},
       catalogId: "acme", catalogAt: "2026-01-01T00:00:00Z", apiKey: "sk-secret",
-      models: [{ id: "m1", displayName: "m1", contextWindow: null, priceIn: null, priceOut: null, capabilities: null }],
+      models: [{
+        id: "m1", displayName: "m1", contextWindow: null, priceIn: null, priceOut: null,
+        capabilities: null, reasoningEnabled: null,
+      }],
     });
 
     // The network now says the model costs twice as much as it did.

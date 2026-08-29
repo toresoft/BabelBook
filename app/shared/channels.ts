@@ -142,6 +142,10 @@ export interface Invocations {
   "provider.create": { req: ProviderInput; res: Provider };
   "provider.update": { req: ProviderPatch & { id: string }; res: Provider };
   "provider.delete": { req: { id: string }; res: void };
+  "provider.setReasoning": {
+    req: { providerId: string; modelId: string; enabled: boolean | null };
+    res: void;
+  };
   "provider.verify": { req: { providerId: string; modelId: string }; res: VerifyOutcome };
   /** Asks the machine itself which local runtimes are running right now. */
   "local.runtimes": { req: undefined; res: LocalRuntime[] };
@@ -215,7 +219,7 @@ export const INVOCATIONS = [
   "glossary.importFile", "glossary.exportFile",
   "report.get", "file.open", "file.reveal",
   "providers.list", "providers.presets",
-  "provider.create", "provider.update", "provider.delete", "provider.verify",
+  "provider.create", "provider.update", "provider.delete", "provider.setReasoning", "provider.verify",
   "local.runtimes",
   "catalog.search", "catalog.models", "provider.discover", "catalog.state",
   "catalog.refresh", "catalog.importFile",

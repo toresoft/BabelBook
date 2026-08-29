@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import {
   createProvider, deleteProvider, getProvider, listProviders, modelPricesOf, PRESETS, readKey,
-  refreshCatalogMetadata, routeDefaults, updateProvider,
+  reasoningOf, refreshCatalogMetadata, routeDefaults, routeReasoning, setReasoning, updateProvider,
 } from "../main/providers/store.ts";
 import type { Catalog, CatalogProvider } from "../main/catalog/shape.ts";
 
@@ -29,7 +29,7 @@ const acme = {
   name: "Acme", route: "acme", baseUrl: "https://api.acme.test/v1",
   headers: {}, options: {}, catalogId: null, catalogAt: null,
   models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
-    capabilities: null }],
+    capabilities: null, reasoningEnabled: null }],
 };
 
 /** A catalogue entry for Acme, as a refresh would carry it. */
@@ -108,18 +108,21 @@ describe("providers", () => {
   });
 
   it("keeps the route defaults the hand-written presets used to carry", () => {
-    // Not a preference: DeepSeek's reasoning spends the whole output budget on
-    // reasoning tokens. A fact about how this application must call the route,
-    // which is why it lives here and not in the catalogue.
-    expect(routeDefaults("deepseek")).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
+    expect(routeDefaults("deepseek")).toEqual({});
     expect(routeDefaults("anthropic")).toEqual({});
   });
 
   it("tells the run what its model costs, when the catalogue knew", () => {
     const d = db();
     createProvider(d, crypto, { ...acme, models: [
-      { id: "m1", displayName: "M1", contextWindow: null, priceIn: 1, priceOut: 5, capabilities: null },
-      { id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null, capabilities: null },
+      {
+        id: "m1", displayName: "M1", contextWindow: null, priceIn: 1, priceOut: 5,
+        capabilities: null, reasoningEnabled: null,
+      },
+      {
+        id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
+        capabilities: null, reasoningEnabled: null,
+      },
     ] });
 
     expect(modelPricesOf(d, "any-provider", "m1")).toBeNull(); // no such provider row
@@ -145,10 +148,12 @@ describe("the catalogue binding", () => {
         {
           id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
           capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
+          reasoningEnabled: null,
         },
         {
           id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
           capabilities: null,
+          reasoningEnabled: null,
         },
       ],
     });
@@ -156,10 +161,12 @@ describe("the catalogue binding", () => {
       {
         id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
         capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
+        reasoningEnabled: null,
       },
       {
         id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
         capabilities: null,
+        reasoningEnabled: null,
       },
     ]);
   });
@@ -171,8 +178,14 @@ describe("the catalogue binding", () => {
       // m2 is served by the endpoint but unknown to the catalogue; the choice
       // of m2 must survive a refresh that cannot price it.
       models: [
-        { id: "m1", displayName: "m1", contextWindow: null, priceIn: null, priceOut: null, capabilities: null },
-        { id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null, capabilities: null },
+        {
+          id: "m1", displayName: "m1", contextWindow: null, priceIn: null, priceOut: null,
+          capabilities: null, reasoningEnabled: null,
+        },
+        {
+          id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
+          capabilities: null, reasoningEnabled: null,
+        },
       ],
     });
 
@@ -184,8 +197,12 @@ describe("the catalogue binding", () => {
       {
         id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
         capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
+        reasoningEnabled: null,
       },
-      { id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null, capabilities: null },
+      {
+        id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
+        capabilities: null, reasoningEnabled: null,
+      },
     ]);
     expect(readKey(d, crypto, p.id)).toBe("sk-secret");
   });
@@ -194,7 +211,10 @@ describe("the catalogue binding", () => {
     const d = db();
     const p = createProvider(d, crypto, {
       ...acme, catalogId: null, catalogAt: null,
-      models: [{ id: "m1", displayName: "M1", contextWindow: null, priceIn: null, priceOut: null, capabilities: null }],
+      models: [{
+        id: "m1", displayName: "M1", contextWindow: null, priceIn: null, priceOut: null,
+        capabilities: null, reasoningEnabled: null,
+      }],
     });
 
     refreshCatalogMetadata(d, catalogOf("2026-08-01"));
@@ -213,5 +233,66 @@ describe("the catalogue binding", () => {
     const after = getProvider(d, p.id)!;
     expect(after.catalogAt).toBe("2026-01-01");
     expect(after.models).toHaveLength(1);
+  });
+});
+
+/**
+ * Facts about how this application must call a route, not about what the route
+ * serves — the same reason `routeDefaults` lives here and not in a catalogue.
+ * Each route spells the same idea differently, and this is the one place that
+ * knows how.
+ */
+describe("the reasoning options of a route", () => {
+  it("turns it off in the words each route uses", () => {
+    expect(routeReasoning("anthropic", false)).toMatchObject({ anthropic: { thinking: { type: "disabled" } } });
+    expect(routeReasoning("deepseek", false)).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
+    expect(routeReasoning("openai", false)).toMatchObject({ openai: { reasoningEffort: "minimal" } });
+    expect(routeReasoning("google", false))
+      .toMatchObject({ google: { thinkingConfig: { thinkingBudget: 0 } } });
+  });
+
+  /**
+   * On, the route is left to its own default. Naming a budget this application
+   * has no way to choose would be inventing one, the same refusal as an
+   * invented price or an invented endpoint.
+   */
+  it("says nothing at all when it is on", () => {
+    expect(routeReasoning("anthropic", true)).toEqual({});
+  });
+
+  it("says nothing for a route it does not know", () => {
+    expect(routeReasoning("acme", false)).toEqual({});
+  });
+});
+
+describe("the reasoning of a model", () => {
+  /**
+   * Off, until someone says otherwise. Translation gains nothing from
+   * reasoning and loses the output budget to it: the chunk comes back empty
+   * with `finishReason: "length"`, every unit in it falls back to the source,
+   * and the call is billed in full.
+   */
+  it("is off when nothing was chosen", () => {
+    const d = db();
+    const provider = createProvider(d, crypto, { ...acme, apiKey: "k" });
+    expect(reasoningOf(d, provider.id, "m1")).toBe(false);
+  });
+
+  it("is what was chosen once something was", () => {
+    const d = db();
+    const provider = createProvider(d, crypto, { ...acme, apiKey: "k" });
+    setReasoning(d, provider.id, "m1", true);
+    expect(reasoningOf(d, provider.id, "m1")).toBe(true);
+  });
+
+  /** Null is not false: "not chosen" and "chosen off" are different facts. */
+  it("goes back to unchosen, and reads as off", () => {
+    const d = db();
+    const provider = createProvider(d, crypto, { ...acme, apiKey: "k" });
+    setReasoning(d, provider.id, "m1", true);
+    setReasoning(d, provider.id, "m1", null);
+
+    expect(reasoningOf(d, provider.id, "m1")).toBe(false);
+    expect(listProviders(d)[0]!.models[0]!.reasoningEnabled).toBeNull();
   });
 });

@@ -236,7 +236,7 @@ describe("the provider channels", () => {
       name: "Acme", route: "openai-compatible", baseUrl: "https://api.acme.test/v1",
       headers: {}, options: {}, catalogId: null, catalogAt: null,
       models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
-        capabilities: null }],
+        capabilities: null, reasoningEnabled: null }],
       ...(apiKey === null ? {} : { apiKey }),
     });
     return { deps: d, handlers, created };
@@ -285,10 +285,33 @@ describe("the provider channels", () => {
     const updated = await handlers["provider.update"]({
       id: created.id,
       models: [{ id: "m2", displayName: "M2", contextWindow: null, priceIn: null, priceOut: null,
-        capabilities: null }],
+        capabilities: null, reasoningEnabled: null }],
     });
 
     expect(updated.models.map((model) => model.id)).toEqual(["m2"]);
+  });
+
+  it("sets a model's reasoning choice and tells the window providers changed", async () => {
+    const broadcast = vi.fn();
+    const { deps: d } = await deps({ broadcast });
+    const handlers = buildHandlers(d);
+    const created = await handlers["provider.create"]({
+      name: "Acme", route: "openai", baseUrl: null, headers: {}, options: {},
+      catalogId: null, catalogAt: null,
+      models: [{
+        id: "m1", displayName: "M1", contextWindow: null, priceIn: null, priceOut: null,
+        capabilities: null, reasoningEnabled: null,
+      }],
+    });
+    broadcast.mockClear();
+
+    await handlers["provider.setReasoning"]({
+      providerId: created.id, modelId: "m1", enabled: true,
+    });
+
+    expect((await handlers["providers.list"](undefined))[0]!.models[0]!.reasoningEnabled)
+      .toBe(true);
+    expect(broadcast).toHaveBeenCalledWith("providers.changed", {});
   });
 
   it("accepts a provider with no key, because a local endpoint needs none", async () => {
