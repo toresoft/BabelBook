@@ -10,6 +10,7 @@ import {
 import { createActor } from "xstate";
 import type { EngineRunner } from "../../engine/main.ts";
 import type { EngineMessage, RunConfig, RunSummary } from "../../shared/run.ts";
+import { codeIndexKey } from "./code-index-key.ts";
 
 export type { RunConfig, RunSummary } from "../../shared/run.ts";
 
@@ -146,13 +147,14 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
 
   if (!actor.getSnapshot().context.hasReviewedExclusions) {
     emit({ type: "phase", phase: "code-index" });
-    let code = await store.codeIndex(config.cacheKey);
+    const indexKey = codeIndexKey(config.cacheKey);
+    let code = await store.codeIndex(indexKey);
     if (code === null) {
       const unitsBeforeCode = await store.units();
       code = await indexCodeBlocks({
         units: unitsBeforeCode,
         backend,
-        sourceHash: config.cacheKey,
+        sourceHash: indexKey,
         progress: { report: (p) => emit({ type: "progress", phase: p.phase, done: p.done, total: p.total }) },
         signal,
       });

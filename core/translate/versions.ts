@@ -20,6 +20,19 @@ import { createHash } from "node:crypto";
 export const PROMPT_VERSION = 2;
 export const CONTEXT_VERSION = 1;
 
+/**
+ * 2: the pass asks the translator's question — would you translate this line
+ * or retype it — instead of a classifier's, judges the whole line, carries the
+ * element and class beside the text, and flattens each block onto one line.
+ * Under version 1, measured on a real book by the prototype this came from,
+ * the model called 432 blocks code, at least 86 of them plain prose.
+ *
+ * It does NOT go into `cacheKey`. The code index is keyed separately, because
+ * a translation was not produced by this question and must not be thrown away
+ * when this question is corrected.
+ */
+export const CODE_INDEX_VERSION = 2;
+
 export interface CacheKeyInput {
   /**
    * The book the translation was made from.

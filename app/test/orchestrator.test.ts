@@ -9,6 +9,7 @@ import { SqliteProjectStore } from "../main/db/store.ts";
 import {
   makeMachineHost, restoreRunningProjects, USER_EVENTS,
 } from "../main/run/machine-host.ts";
+import { codeIndexKey } from "../main/run/code-index-key.ts";
 import { makeEngineRunner, runProject } from "../main/run/orchestrator.ts";
 import type { EngineMessage, RunConfig } from "../shared/run.ts";
 
@@ -223,7 +224,7 @@ describe("runProject", () => {
     await store.putCandidateReport("k1", {
       candidates: [], open: [], discarded: 0, abstained: false,
     });
-    await store.commitCodeIndex({ marked: [], freed: [], abstained: 0, sourceHash: "k1" });
+    await store.commitCodeIndex({ marked: [], freed: [], abstained: 0, sourceHash: codeIndexKey("k1") });
     const backend = scriptedBackend();
 
     await runProject({
