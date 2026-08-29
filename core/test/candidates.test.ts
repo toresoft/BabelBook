@@ -129,4 +129,26 @@ END`;
       signal: controller.signal,
     })).rejects.toThrow();
   });
+
+  it("reports one step per sample", async () => {
+    const seen: Array<{ phase: string; done: number; total: number }> = [];
+    await extractCandidates({
+      units,
+      // Answers nothing usable, for ever. The parsing fails on every sample,
+      // and that is the point: the bar measures the questions asked, not the
+      // answers understood — `answered` goes on measuring those.
+      backend: new FakeBackend(() => ({
+        text: "nothing in the format", tokensIn: 0, tokensOut: 0,
+        reasoningTokens: 0, finishReason: "stop",
+      })),
+      sourceLanguage: "en",
+      targetLanguage: "it",
+      progress: { report: (p) => seen.push({ phase: p.phase, done: p.done, total: p.total }) },
+    });
+
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.every((step) => step.phase === "candidates")).toBe(true);
+    expect(seen.map((step) => step.done)).toEqual(seen.map((_, at) => at + 1));
+    expect(seen[seen.length - 1]!.done).toBe(seen[seen.length - 1]!.total);
+  });
 });

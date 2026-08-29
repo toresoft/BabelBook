@@ -1,4 +1,4 @@
-import type { LlmBackend } from "../ports.ts";
+import type { LlmBackend, ProgressSink } from "../ports.ts";
 import type { TermEntry } from "../glossary/index.ts";
 import { isWork, type TranslationUnit } from "../epub/index.ts";
 import { sampleBlocks } from "./sample.ts";
@@ -39,6 +39,8 @@ export interface ExtractInput {
   /** What the user wrote about the book. */
   description?: string;
   signal?: AbortSignal;
+  /** Absent in the tests that only care about the report. */
+  progress?: ProgressSink;
 }
 
 interface Proposal {
@@ -157,6 +159,7 @@ export async function extractCandidates(input: ExtractInput): Promise<CandidateR
   const proposals = new Map<string, Proposal[]>();
   const open = new Map<string, string>();
   let answered = 0;
+  let asked = 0;
 
   for (const sample of samples) {
     input.signal?.throwIfAborted();
@@ -166,6 +169,8 @@ export async function extractCandidates(input: ExtractInput): Promise<CandidateR
     });
 
     const parsed = parseAnswer(result.text);
+    asked++;
+    input.progress?.report({ phase: "candidates", done: asked, total: samples.length });
     if (parsed === null) continue;
     answered++;
 

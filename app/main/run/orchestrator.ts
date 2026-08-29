@@ -104,6 +104,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
         backend,
         sourceLanguage: config.sourceLanguage,
         targetLanguage: config.targetLanguage,
+        progress: { report: (p) => emit({ type: "progress", phase: p.phase, done: p.done, total: p.total }) },
         signal,
       });
       await store.putCandidateReport(config.cacheKey, report);
@@ -136,6 +137,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
         units: unitsBeforeCode,
         backend,
         sourceHash: config.cacheKey,
+        progress: { report: (p) => emit({ type: "progress", phase: p.phase, done: p.done, total: p.total }) },
         signal,
       });
       await store.commitCodeIndex(code);

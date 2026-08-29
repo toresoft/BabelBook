@@ -1,4 +1,4 @@
-import type { LlmBackend } from "../ports.ts";
+import type { LlmBackend, ProgressSink } from "../ports.ts";
 import type { TranslationUnit } from "../epub/index.ts";
 
 export interface CodeIndex {
@@ -18,6 +18,8 @@ export interface IndexInput {
   sourceHash: string;
   batchSize?: number;
   signal?: AbortSignal;
+  /** Absent in the tests that only care about the verdicts. */
+  progress?: ProgressSink;
 }
 
 const DEFAULT_BATCH = 20;
@@ -103,8 +105,13 @@ export async function indexCodeBlocks(input: IndexInput): Promise<CodeIndex> {
   const freed: string[] = [];
   let abstained = 0;
 
+  const batches: TranslationUnit[][] = [];
   for (let at = 0; at < questionable.length; at += batchSize) {
-    const batch = questionable.slice(at, at + batchSize);
+    batches.push(questionable.slice(at, at + batchSize));
+  }
+
+  let judged = 0;
+  for (const batch of batches) {
     const asked = new Set(batch.map((unit) => unit.id));
 
     let verdicts: Map<string, "code" | "prose"> | null = null;
@@ -119,15 +126,17 @@ export async function indexCodeBlocks(input: IndexInput): Promise<CodeIndex> {
 
     if (verdicts === null) {
       abstained++;
-      continue;
+    } else {
+      for (const unit of batch) {
+        const verdict = verdicts.get(unit.id);
+        if (verdict === undefined) continue;
+        if (unit.state === "translate" && verdict === "code") marked.push(unit.id);
+        if (unit.state === "code" && verdict === "prose") freed.push(unit.id);
+      }
     }
 
-    for (const unit of batch) {
-      const verdict = verdicts.get(unit.id);
-      if (verdict === undefined) continue;
-      if (unit.state === "translate" && verdict === "code") marked.push(unit.id);
-      if (unit.state === "code" && verdict === "prose") freed.push(unit.id);
-    }
+    judged++;
+    input.progress?.report({ phase: "code-index", done: judged, total: batches.length });
   }
 
   return { marked, freed, abstained, sourceHash: input.sourceHash };
