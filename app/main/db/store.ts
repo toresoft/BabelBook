@@ -22,6 +22,8 @@ interface UnitRow {
   raw_text: string | null;
   reason: string | null;
   owner_unit_id: string | null;
+  element: string | null;
+  class_name: string | null;
 }
 
 /**
@@ -54,7 +56,8 @@ export class SqliteProjectStore implements ProjectStore {
       SELECT u.id, u.unit_id, d.zip_path AS doc, u.ordinal, u.kind,
              u.range_start, u.range_end,
              coalesce(u.forced_state, u.state) AS state,
-             u.source_text, u.raw_text, u.placeholders, u.reason, u.owner_unit_id
+             u.source_text, u.raw_text, u.placeholders, u.reason, u.owner_unit_id,
+             u.element, u.class_name
         FROM unit u
         JOIN project_document d ON d.id = u.document_id
        WHERE u.project_id = ?
@@ -297,6 +300,8 @@ export class SqliteProjectStore implements ProjectStore {
       ...(row.reason === null ? {} : { reason: row.reason }),
       ...(placeholders === undefined ? {} : { placeholders }),
       ...(row.owner_unit_id === null ? {} : { owner: row.owner_unit_id }),
+      ...(row.element === null ? {} : { element: row.element }),
+      ...(row.class_name === null ? {} : { className: row.class_name }),
     };
   }
 }

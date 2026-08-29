@@ -30,11 +30,13 @@ function seeded(units: TranslationUnit[]) {
   for (const unit of units) {
     db.prepare(`
       INSERT INTO unit (id, project_id, document_id, ordinal, unit_id, kind,
-                        range_start, range_end, state, source_text, raw_text, placeholders)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                        range_start, range_end, state, source_text, raw_text, placeholders,
+                        element, class_name)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     `).run(randomUUID(), "p1", documents.get(unit.doc)!, unit.ordinal, unit.id, unit.kind,
       unit.range[0], unit.range[1], unit.state, unit.source, unit.raw,
-      unit.placeholders === undefined ? null : JSON.stringify(unit.placeholders));
+      unit.placeholders === undefined ? null : JSON.stringify(unit.placeholders),
+      unit.element ?? null, unit.className ?? null);
   }
 
   return db;
@@ -67,6 +69,18 @@ describe("SqliteProjectStore, beyond the contract", () => {
     const [unit] = await new SqliteProjectStore(db, "p1", "r1").units();
     expect(unit.source).toBe("a & b");
     expect(unit.raw).toBe("a &#38; b");
+  });
+
+  it("gives back the element and the class it was given", async () => {
+    const db = seeded([{
+      id: "c1.xhtml#1", kind: "block", doc: "c1.xhtml", ordinal: 1, range: [0, 10],
+      source: "A sentence.", raw: "A sentence.", state: "translate",
+      element: "p", className: "TX",
+    }]);
+
+    const [unit] = await new SqliteProjectStore(db, "p1", "r1").units();
+    expect(unit!.element).toBe("p");
+    expect(unit!.className).toBe("TX");
   });
 
   it("hands the engine approved terms only", async () => {

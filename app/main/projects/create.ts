@@ -165,8 +165,9 @@ export async function createProject(
       const insertUnit = db.prepare(`
         INSERT INTO unit (
           id, project_id, document_id, ordinal, unit_id, kind,
-          range_start, range_end, state, source_text, raw_text, placeholders, reason, owner_unit_id
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          range_start, range_end, state, source_text, raw_text, placeholders, reason, owner_unit_id,
+          element, class_name
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `);
 
       for (const document of documents) {
@@ -177,6 +178,7 @@ export async function createProject(
             unit.range[0], unit.range[1], unit.state, unit.source, unit.raw,
             unit.placeholders === undefined ? null : JSON.stringify(unit.placeholders),
             unit.reason ?? null, unit.owner ?? null,
+            unit.element ?? null, unit.className ?? null,
           );
         }
       }

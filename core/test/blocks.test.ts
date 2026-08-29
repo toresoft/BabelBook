@@ -127,3 +127,28 @@ describe("a page marker", () => {
       .toEqual(["Home"]);
   });
 });
+
+/**
+ * The block's own element and class, not its first descendant's.
+ *
+ * A block's `raw` is its CONTENT, so reading a class out of it answers about
+ * whatever is inside. The extractor has the node in hand and is the only place
+ * that does.
+ */
+describe("what a unit says about its own markup", () => {
+  it("carries the element and the first class of the block", () => {
+    const { units } = extract({
+      doc: "c1.xhtml",
+      source: `<html><body><p class="TX first"><span class="mono">A sentence.</span></p></body></html>`,
+    });
+
+    expect(units[0]!.element).toBe("p");
+    expect(units[0]!.className).toBe("TX");
+  });
+
+  it("says the element even when there is no class", () => {
+    const { units } = extract({ doc: "c1.xhtml", source: "<html><body><pre>code</pre></body></html>" });
+    expect(units[0]!.element).toBe("pre");
+    expect(units[0]!.className).toBeUndefined();
+  });
+});

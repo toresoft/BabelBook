@@ -34,6 +34,16 @@ export interface TranslationUnit {
   placeholders?: Placeholder[];
   /** attribute units only: the block unit that contains them */
   owner?: string;
+  /** The element the unit was cut at, when it was cut at one. */
+  element?: string;
+  /**
+   * Its first class, when it has one.
+   *
+   * From the node, never from `raw`: a block's `raw` is its content, so a
+   * class read out of it belongs to the first descendant — and the class is
+   * exactly the signal the code index asks a model to weigh.
+   */
+  className?: string;
 }
 
 export interface PlaceholderAttr {
@@ -401,6 +411,8 @@ class Extractor {
       state,
       ...(reason === undefined ? {} : { reason }),
       placeholders: content.placeholders,
+      ...(node === null ? {} : { element: node.name }),
+      ...(node === null || classesOf(node)[0] === undefined ? {} : { className: classesOf(node)[0] }),
     });
 
     // The attribute units come after the block that owns them, so an id is
