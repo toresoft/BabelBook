@@ -295,13 +295,47 @@ export function routeDefaults(route: string): Record<string, unknown> {
  * single place — the same reason `routeDefaults` is here. On, nothing is said:
  * a budget this application picked would be a number nobody measured.
  */
+const ROUTE_REASONING: Record<string, { field: string; off: unknown }> = {
+  anthropic: { field: "thinking", off: { type: "disabled" } },
+  deepseek: { field: "thinking", off: { type: "disabled" } },
+  openai: { field: "reasoningEffort", off: "minimal" },
+  google: { field: "thinkingConfig", off: { thinkingBudget: 0 } },
+};
+
 export function routeReasoning(route: string, enabled: boolean): Record<string, unknown> {
   if (enabled) return {};
-  if (route === "anthropic") return { anthropic: { thinking: { type: "disabled" } } };
-  if (route === "deepseek") return { deepseek: { thinking: { type: "disabled" } } };
-  if (route === "openai") return { openai: { reasoningEffort: "minimal" } };
-  if (route === "google") return { google: { thinkingConfig: { thinkingBudget: 0 } } };
-  return {};
+  const setting = ROUTE_REASONING[route];
+  return setting === undefined ? {} : { [route]: { [setting.field]: setting.off } };
+}
+
+function record(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+/**
+ * Resolves stored options into the options for one call.
+ *
+ * Reasoning owns only one field inside the route's namespace. Everything else
+ * survives; the owned field is first removed so neither an old application
+ * default nor a hand-written option can contradict the resolved cache identity.
+ */
+export function resolveRouteOptions(
+  route: string, stored: Record<string, unknown>, reasoning: boolean,
+): Record<string, unknown> {
+  const defaults = routeDefaults(route);
+  const resolved = { ...stored, ...defaults };
+  const setting = ROUTE_REASONING[route];
+  if (setting === undefined) return resolved;
+
+  const routeOptions = { ...record(stored[route]), ...record(defaults[route]) };
+  delete routeOptions[setting.field];
+  Object.assign(routeOptions, record(routeReasoning(route, reasoning)[route]));
+
+  if (Object.keys(routeOptions).length === 0) delete resolved[route];
+  else resolved[route] = routeOptions;
+  return resolved;
 }
 
 /** The resolved runtime choice: an unchosen model reasons off. */

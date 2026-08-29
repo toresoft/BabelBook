@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { migrate, openDatabase } from "../main/db/open.ts";
+import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 
 const m = (id: string, sql: string) => ({ id, sql });
 
@@ -33,5 +33,41 @@ describe("migrate", () => {
   it("turns on WAL and foreign keys", () => {
     const db = openDatabase(":memory:");
     expect((db.prepare("PRAGMA foreign_keys").get() as { foreign_keys: number }).foreign_keys).toBe(1);
+  });
+
+  it("removes the historical DeepSeek reasoning default without losing its other options", () => {
+    const db = openDatabase(":memory:");
+    const migrations = loadMigrations("app/main/db/migrations");
+    migrate(db, migrations.filter((migration) => migration.id < "011-model-reasoning"));
+    db.prepare(`
+      INSERT INTO provider (id, name, route, options)
+      VALUES ('p1', 'DeepSeek', 'deepseek', ?),
+             ('p2', 'DeepSeek bare', 'deepseek', ?),
+             ('p3', 'DeepSeek manual', 'deepseek', ?)
+    `).run(
+      JSON.stringify({
+        audit: { trace: true },
+        deepseek: { temperature: 0.2, thinking: { type: "disabled" } },
+      }),
+      JSON.stringify({ deepseek: { thinking: { type: "disabled" } } }),
+      JSON.stringify({ deepseek: { temperature: 0.4, thinking: "manual" } }),
+    );
+
+    expect(migrate(db, migrations).applied).toEqual(["011-model-reasoning"]);
+
+    const rows = db.prepare("SELECT id, options FROM provider ORDER BY id").all() as
+      Array<{ id: string; options: string }>;
+    expect(rows.map((row) => ({ id: row.id, options: JSON.parse(row.options) as unknown })))
+      .toEqual([
+        {
+          id: "p1",
+          options: { audit: { trace: true }, deepseek: { temperature: 0.2 } },
+        },
+        { id: "p2", options: {} },
+        {
+          id: "p3",
+          options: { deepseek: { temperature: 0.4, thinking: "manual" } },
+        },
+      ]);
   });
 });

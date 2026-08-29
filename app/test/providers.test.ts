@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import {
   createProvider, deleteProvider, getProvider, listProviders, modelPricesOf, PRESETS, readKey,
-  reasoningOf, refreshCatalogMetadata, routeDefaults, routeReasoning, setReasoning, updateProvider,
+  reasoningOf, refreshCatalogMetadata, resolveRouteOptions, routeDefaults, routeReasoning,
+  setReasoning, updateProvider,
 } from "../main/providers/store.ts";
 import type { Catalog, CatalogProvider } from "../main/catalog/shape.ts";
 
@@ -262,6 +263,37 @@ describe("the reasoning options of a route", () => {
 
   it("says nothing for a route it does not know", () => {
     expect(routeReasoning("acme", false)).toEqual({});
+  });
+
+  it("replaces only the reasoning field when off", () => {
+    expect(resolveRouteOptions("google", {
+      audit: { trace: true },
+      google: {
+        safetySettings: [{ category: "danger", threshold: "block-none" }],
+        thinkingConfig: { thinkingBudget: 8192, includeThoughts: true },
+      },
+    }, false)).toEqual({
+      audit: { trace: true },
+      google: {
+        safetySettings: [{ category: "danger", threshold: "block-none" }],
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
+  });
+
+  it("removes persisted reasoning directives when on", () => {
+    expect(resolveRouteOptions("anthropic", {
+      anthropic: { temperature: 0.2, thinking: { type: "enabled", budgetTokens: 1024 } },
+    }, true)).toEqual({ anthropic: { temperature: 0.2 } });
+    expect(resolveRouteOptions("deepseek", {
+      deepseek: { temperature: 0.3, thinking: { type: "disabled" } },
+    }, true)).toEqual({ deepseek: { temperature: 0.3 } });
+    expect(resolveRouteOptions("openai", {
+      openai: { store: false, reasoningEffort: "high" },
+    }, true)).toEqual({ openai: { store: false } });
+    expect(resolveRouteOptions("google", {
+      google: { safetySettings: [], thinkingConfig: { thinkingBudget: 4096 } },
+    }, true)).toEqual({ google: { safetySettings: [] } });
   });
 });
 

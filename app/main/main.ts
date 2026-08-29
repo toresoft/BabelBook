@@ -15,8 +15,7 @@ import {
 } from "./catalog/service.ts";
 import { probeLocalRuntimes } from "./catalog/local.ts";
 import {
-  getProvider, readKey, reasoningOf, refreshCatalogMetadata, routeDefaults, routeReasoning,
-  type Crypto,
+  getProvider, readKey, reasoningOf, refreshCatalogMetadata, resolveRouteOptions, type Crypto,
 } from "./providers/store.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
 import { registerIpc, readSettings } from "./ipc.ts";
@@ -272,11 +271,11 @@ app.whenReady().then(async () => {
         apiKey: readKey(db, crypto, row.providerId),
         baseUrl: row.baseUrl,
         headers: row.headers === null ? {} : JSON.parse(row.headers) as Record<string, string>,
-        options: {
-          ...(row.options === null ? {} : JSON.parse(row.options) as Record<string, unknown>),
-          ...routeDefaults(row.route),
-          ...routeReasoning(row.route, reasoningOf(db, row.providerId, row.modelId)),
-        },
+        options: resolveRouteOptions(
+          row.route,
+          row.options === null ? {} : JSON.parse(row.options) as Record<string, unknown>,
+          reasoningOf(db, row.providerId, row.modelId),
+        ),
       };
     },
     broadcast: (channel, payload) => {
