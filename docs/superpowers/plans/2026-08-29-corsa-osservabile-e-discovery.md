@@ -1,6 +1,65 @@
 # La corsa osservabile e il discovery — piano di implementazione
 
-**Stato: scritto, non iniziato.**
+**Stato: 7 task su 11, al 2026-08-29. Sospeso su richiesta prima del Task 8.**
+
+Il lavoro sta sul ramo `corsa-osservabile`, staccato da `master` a `ad38a45`.
+
+| Task | Stato | Commit |
+|---|---|---|
+| 1. La fase viaggia col progresso | completo | `72404db` |
+| 2. Le due fasi mute contano | completo | `314412a` |
+| 3. Il contatore per corsa | completo | `1ddf2da` |
+| 4. Due barre | completo, 1 round di correzione | `96c9e50`, `3f2dcf8` |
+| 5. Il marcatore di pagina | completo | `08b9bc1` |
+| 6. Le schede mostrano il testo | completo | `19c6414` |
+| 7. Elemento e classe sull'unità | completo, 1 round di correzione | `db28821`, `fb93ead` |
+| 8. La domanda del traduttore | **non iniziato** | — |
+| 9. La versione del passaggio | non iniziato | — |
+| 10. Il ragionamento per modello | non iniziato | — |
+| 11. L'interruttore e il nome | non iniziato | — |
+
+Suite alla sospensione: **787 test verdi** (287 core, 378 processo main, 122
+componenti), typecheck pulito. Ogni task è passato per un implementer fresco e
+una revisione indipendente; i due round di correzione hanno chiuso un Important
+ciascuno.
+
+**Da riprendere così:** `git checkout corsa-osservabile`, poi il Task 8. Il
+ledger dell'esecuzione sta in
+`.superpowers/sdd/2026-08-29-corsa-osservabile-e-discovery/progress.md`, che è
+git-ignored e **non sopravvive a un `git clean -fdx`**: se manca, questa tabella
+e `git log` sono il record.
+
+### Cosa l'esecuzione ha corretto del piano
+
+Quattro difetti, tutti trovati prima o durante l'implementazione. Dove piano e
+codice divergono, vince il codice.
+
+- **Il finto in forma di array solleva** quando il copione finisce, per scelta
+  dichiarata nel suo commento. I due test del Task 2 facevano più chiamate di
+  quante ne scrivessero: sarebbero esplosi invece di misurare. Corretti alla
+  forma a funzione prima di iniziare (`6222409`).
+- **Il `continue` sul batch astenuto** nello pseudocodice del Task 2 avrebbe
+  saltato il rapporto di progresso proprio per i batch falliti — quelli in cui
+  la barra serve di più. L'implementer l'ha ristrutturato; il testo del Task 8
+  usa già la forma giusta, quindi il piano non è stato toccato.
+- **`run.id = 'r1'`** nel test di persistenza del Task 3 collideva con la riga
+  che il fixture inserisce già (`run.id` è `TEXT PRIMARY KEY`): sarebbe fallito
+  sul vincolo di unicità invece di diventare verde.
+- **Il separatore della chiave derivata del Task 9 era un byte NUL invisibile**
+  al posto degli spazi, che rendeva il file di piano binario per `grep`.
+  Toglierli e basta avrebbe lasciato `` `code-index${version}${cacheKey}` ``,
+  senza separatore e quindi ambiguo — versione 12 con chiave `3abc` e versione
+  1 con chiave `23abc` darebbero lo stesso digest. Rimessi gli spazi
+  (`f522cea`).
+
+E una nota di processo: `app/main/exclusions/review.ts` conteneva un byte NUL
+preesistente, quindi git lo classificava come binario e il pacchetto di
+revisione non ne mostrava il testo. Tolto nel Task 6; finché c'era, la revisione
+ha avuto un diff testuale supplementare, altrimenti avrebbe approvato un file
+che non poteva leggere.
+
+**La riga «aggiorna il numero di migrazioni atteso in `app/test/schema.test.ts`»
+è priva di oggetto**: quell'asserzione non esiste. Vale per i Task 3, 7 e 10.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
