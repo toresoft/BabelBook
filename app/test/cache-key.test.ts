@@ -23,50 +23,50 @@ describe("projectCacheKey", () => {
   it("is a digest, and the same inputs always give the same one", () => {
     const db = database();
 
-    expect(projectCacheKey(db, "p1", "openai-compatible:m1", false, "text"))
-      .toBe(projectCacheKey(db, "p1", "openai-compatible:m1", false, "text"));
-    expect(projectCacheKey(db, "p1", "openai-compatible:m1", false, "text")).toMatch(/^[0-9a-f]{64}$/);
+    expect(projectCacheKey(db, "p1", "openai-compatible:m1", "off", "text"))
+      .toBe(projectCacheKey(db, "p1", "openai-compatible:m1", "off", "text"));
+    expect(projectCacheKey(db, "p1", "openai-compatible:m1", "off", "text")).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it("changes when the model changes, because another model is other work", () => {
     const db = database();
 
-    expect(projectCacheKey(db, "p1", "openai-compatible:m1", false, "text"))
-      .not.toBe(projectCacheKey(db, "p1", "openai-compatible:m2", false, "text"));
+    expect(projectCacheKey(db, "p1", "openai-compatible:m1", "off", "text"))
+      .not.toBe(projectCacheKey(db, "p1", "openai-compatible:m2", "off", "text"));
   });
 
   it("changes when the two contracts differ, because they are two instructions", () => {
     const db = database();
 
-    expect(projectCacheKey(db, "p1", "openai-compatible:m1", false, "text"))
-      .not.toBe(projectCacheKey(db, "p1", "openai-compatible:m1", false, "schema"));
+    expect(projectCacheKey(db, "p1", "openai-compatible:m1", "off", "text"))
+      .not.toBe(projectCacheKey(db, "p1", "openai-compatible:m1", "off", "schema"));
   });
 
   it("changes when the resolved reasoning mode changes", () => {
     const db = database();
 
-    expect(projectCacheKey(db, "p1", "acme:m1", false, "text"))
-      .not.toBe(projectCacheKey(db, "p1", "acme:m1", true, "text"));
+    expect(projectCacheKey(db, "p1", "acme:m1", "off", "text"))
+      .not.toBe(projectCacheKey(db, "p1", "acme:m1", "high", "text"));
   });
 
   it("changes when the book itself changes", () => {
     const db = database();
-    const before = projectCacheKey(db, "p1", "acme:m1", false, "text");
+    const before = projectCacheKey(db, "p1", "acme:m1", "off", "text");
     db.prepare("UPDATE project SET source_sha256 = 'another-book' WHERE id = 'p1'").run();
 
-    expect(projectCacheKey(db, "p1", "acme:m1", false, "text")).not.toBe(before);
+    expect(projectCacheKey(db, "p1", "acme:m1", "off", "text")).not.toBe(before);
   });
 
   it("changes when a glossary is attached or its version moves", () => {
     const db = database();
-    const bare = projectCacheKey(db, "p1", "acme:m1", false, "text");
+    const bare = projectCacheKey(db, "p1", "acme:m1", "off", "text");
 
     attach(db, "fantasy", 1);
-    const withGlossary = projectCacheKey(db, "p1", "acme:m1", false, "text");
+    const withGlossary = projectCacheKey(db, "p1", "acme:m1", "off", "text");
     expect(withGlossary).not.toBe(bare);
 
     db.prepare("UPDATE glossary SET version = 2 WHERE id = 'fantasy'").run();
-    expect(projectCacheKey(db, "p1", "acme:m1", false, "text")).not.toBe(withGlossary);
+    expect(projectCacheKey(db, "p1", "acme:m1", "off", "text")).not.toBe(withGlossary);
   });
 
   it("carries the prompt contract, so work made under an older one is not reused", () => {
@@ -74,8 +74,8 @@ describe("projectCacheKey", () => {
     // The whole point of the key: raising PROMPT_VERSION must move it. Without
     // this the engine would hand back translations produced under instructions
     // that have since been rewritten, and nobody would find it by reading.
-    expect(projectCacheKey(db, "p1", "acme:m1", false, "text", { prompt: 1, context: 1 }))
-      .not.toBe(projectCacheKey(db, "p1", "acme:m1", false, "text", { prompt: 2, context: 1 }));
+    expect(projectCacheKey(db, "p1", "acme:m1", "off", "text", { prompt: 1, context: 1 }))
+      .not.toBe(projectCacheKey(db, "p1", "acme:m1", "off", "text", { prompt: 2, context: 1 }));
   });
 
   it("does not depend on the order the glossaries were attached in", () => {
@@ -87,7 +87,7 @@ describe("projectCacheKey", () => {
     attach(second, "tech", 3);
     attach(second, "fantasy", 1);
 
-    expect(projectCacheKey(first, "p1", "acme:m1", false, "text"))
-      .toBe(projectCacheKey(second, "p1", "acme:m1", false, "text"));
+    expect(projectCacheKey(first, "p1", "acme:m1", "off", "text"))
+      .toBe(projectCacheKey(second, "p1", "acme:m1", "off", "text"));
   });
 });

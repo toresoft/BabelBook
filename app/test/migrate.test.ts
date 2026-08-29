@@ -53,7 +53,8 @@ describe("migrate", () => {
       JSON.stringify({ deepseek: { temperature: 0.4, thinking: "manual" } }),
     );
 
-    expect(migrate(db, migrations).applied).toEqual(["011-model-reasoning"]);
+    expect(migrate(db, migrations).applied)
+      .toEqual(["011-model-reasoning", "012-model-reasoning-level"]);
 
     const rows = db.prepare("SELECT id, options FROM provider ORDER BY id").all() as
       Array<{ id: string; options: string }>;

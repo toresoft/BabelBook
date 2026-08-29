@@ -24,7 +24,7 @@ export function enrichModels(ids: string[], entry: CatalogProvider | null): Prov
         structuredOutput: known.structuredOutput,
         attachment: known.attachment,
       },
-      reasoningEnabled: null,
+      reasoningLevel: null,
     };
   });
 }

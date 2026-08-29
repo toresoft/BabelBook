@@ -499,8 +499,8 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       deps.broadcast("providers.changed", {});
     },
 
-    "provider.setReasoning": async ({ providerId, modelId, enabled }) => {
-      setReasoning(deps.db, providerId, modelId, enabled);
+    "provider.setReasoning": async ({ providerId, modelId, level }) => {
+      setReasoning(deps.db, providerId, modelId, level);
       deps.broadcast("providers.changed", {});
     },
 

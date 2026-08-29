@@ -47,12 +47,12 @@ const unserved: CatalogEntry = {
 const priced: ProviderModel = {
   id: "acme-mini", displayName: "Acme Mini", contextWindow: 128_000,
   priceIn: 0.5, priceOut: 2, capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
-  reasoningEnabled: null,
+  reasoningLevel: null,
 };
 
 const unpriced: ProviderModel = {
   id: "acme-other", displayName: "acme-other", contextWindow: null,
-  priceIn: null, priceOut: null, capabilities: null, reasoningEnabled: null,
+  priceIn: null, priceOut: null, capabilities: null, reasoningLevel: null,
 };
 
 const runtime: LocalRuntime = {
@@ -409,7 +409,7 @@ describe("Providers", () => {
     const body = calls(invoke, "provider.create")[0]![1] as Record<string, unknown>;
     expect(body["models"]).toEqual([{
       id: "gemma3:12b", displayName: "gemma3:12b", contextWindow: null,
-      priceIn: null, priceOut: null, capabilities: null, reasoningEnabled: null,
+      priceIn: null, priceOut: null, capabilities: null, reasoningLevel: null,
     }]);
   });
 
@@ -664,19 +664,19 @@ describe("Providers", () => {
    */
   /** A model the catalogue says can reason, beside the one that cannot. */
   const thinker: ProviderModel = {
-    ...priced, id: "acme-max", displayName: "Acme Max", reasoningEnabled: null,
+    ...priced, id: "acme-max", displayName: "Acme Max", reasoningLevel: null,
     capabilities: { toolCall: true, reasoning: true, structuredOutput: true, attachment: false },
   };
 
-  it("offers the reasoning switch only for a model that can reason", async () => {
+  it("offers the reasoning control only for a model that can reason", async () => {
     const { fixture } = mount(bridge({
-      "providers.list": [{ ...saved, models: [thinker, { ...priced, reasoningEnabled: null }] }],
+      "providers.list": [{ ...saved, models: [thinker, { ...priced, reasoningLevel: null }] }],
     }));
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // The switch follows the model chosen in the card's select, which starts on
-    // the first — the one that reasons.
+    // The control follows the model chosen in the card's select, which starts
+    // on the first — the one that reasons.
     expect(fixture.nativeElement.querySelector("[data-testid=reasoning-p1]")).not.toBeNull();
 
     const select = fixture.nativeElement.querySelector("[data-testid=verify-model-p1]");
@@ -702,7 +702,9 @@ describe("Providers", () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    fixture.nativeElement.querySelector("[data-testid=reasoning-p1]").click();
+    const control = fixture.nativeElement.querySelector("[data-testid=reasoning-p1]");
+    control.value = "high";
+    control.dispatchEvent(new Event("change"));
     await fixture.whenStable();
 
     expect(calls(invoke, "ui.confirm")).toHaveLength(1);
@@ -710,11 +712,10 @@ describe("Providers", () => {
   });
 
   /**
-   * A refusal must leave the switch saying what the store says: a toggle that
-   * flips on a "no" is the same untrustworthy control as one that does
-   * nothing.
+   * A refusal must leave the control saying what the store says: one that
+   * moves on a "no" is as untrustworthy as one that does nothing.
    */
-  it("leaves the switch as it was when the change is refused", async () => {
+  it("leaves the control as it was when the change is refused", async () => {
     const { fixture } = mount(bridge({
       "providers.list": [{ ...saved, models: [thinker] }],
       "ui.confirm": { confirmed: false },
@@ -722,13 +723,31 @@ describe("Providers", () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLInputElement).click();
+    const control = fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLSelectElement;
+    control.value = "max";
+    control.dispatchEvent(new Event("change"));
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(
-      (fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLInputElement).checked,
-    ).toBe(false);
+    expect((fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLSelectElement).value)
+      .toBe("off");
+  });
+
+  /**
+   * Production break: the control could say only whether to think. A book
+   * translated with the thinking off — the only alternative there was — came
+   * back a third of it in another language, and there was no way to ask for
+   * less thinking rather than for none.
+   */
+  it("offers a strength, not only an on and an off", async () => {
+    const { fixture } = mount(bridge({ "providers.list": [{ ...saved, models: [thinker] }] }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const control = fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLSelectElement;
+    expect([...control.options].map((option) => option.value)).toEqual(["off", "low", "high", "max"]);
+    // An unchosen model reads as off, the same way the run reads it.
+    expect(control.value).toBe("off");
   });
 
   /** The yes reaches the store for the model the select points at. */
@@ -741,7 +760,9 @@ describe("Providers", () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    (fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLInputElement).click();
+    const control = fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLSelectElement;
+    control.value = "low";
+    control.dispatchEvent(new Event("change"));
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -749,7 +770,7 @@ describe("Providers", () => {
       kind: "reasoningChange", detail: { name: "Acme", model: "Acme Max" },
     });
     expect(calls(invoke, "provider.setReasoning")).toEqual([
-      ["provider.setReasoning", { providerId: "p1", modelId: "acme-max", enabled: true }],
+      ["provider.setReasoning", { providerId: "p1", modelId: "acme-max", level: "low" }],
     ]);
   });
 

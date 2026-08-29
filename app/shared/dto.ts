@@ -309,6 +309,19 @@ export interface ModelCapabilities {
  * number is believed and a missing one is asked about. The same rule holds
  * for every other field the catalogue fills in.
  */
+/**
+ * How hard a model is asked to think, in words every provider can be told in.
+ *
+ * A switch could say only whether to think, and a model that translates well
+ * while thinking can translate badly without it — measured, on a real book,
+ * as one unit in three answered in another language. Not every provider has
+ * words for a strength; where one has none, anything but `off` leaves it its
+ * own default rather than inventing a budget.
+ */
+export type ReasoningLevel = "off" | "low" | "high" | "max";
+
+export const REASONING_LEVELS: readonly ReasoningLevel[] = ["off", "low", "high", "max"];
+
 export interface ProviderModel {
   id: string;
   displayName: string;
@@ -317,7 +330,7 @@ export interface ProviderModel {
   priceOut: number | null;
   capabilities: ModelCapabilities | null;
   /** Null until the user chooses; runtime resolves an unchosen value to off. */
-  reasoningEnabled: boolean | null;
+  reasoningLevel: ReasoningLevel | null;
 }
 
 /**

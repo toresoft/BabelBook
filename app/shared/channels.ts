@@ -1,7 +1,8 @@
 import type {
   CatalogEntry, CatalogState, CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView,
   InvalidationPreview, ProjectSummary,
-  Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, RunPhase, Settings, TermRow,
+  Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, ReasoningLevel,
+  RunPhase, Settings, TermRow,
   TermRule, ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome, LocalRuntime,
 } from "./dto.ts";
 import type { Bucket } from "./buckets.ts";
@@ -10,7 +11,8 @@ export type {
   CatalogEntry, CatalogState,
   CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, GlossaryTerm, GlossaryView,
   InvalidationPreview,
-  ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, RunPhase,
+  ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset,
+  ReasoningLevel, RunPhase,
   Settings, ProjectDetail, Report, ReportLine, TermRow, TermRule, UnitQuery, UnitRow,
   UpdateProjectRequest, VerifyOutcome, LocalRuntime,
 } from "./dto.ts";
@@ -145,7 +147,7 @@ export interface Invocations {
   "provider.update": { req: ProviderPatch & { id: string }; res: Provider };
   "provider.delete": { req: { id: string }; res: void };
   "provider.setReasoning": {
-    req: { providerId: string; modelId: string; enabled: boolean | null };
+    req: { providerId: string; modelId: string; level: ReasoningLevel | null };
     res: void;
   };
   "provider.verify": { req: { providerId: string; modelId: string }; res: VerifyOutcome };

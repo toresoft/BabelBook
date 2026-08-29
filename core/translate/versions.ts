@@ -54,14 +54,16 @@ export interface CacheKeyInput {
   /** The model spec as it was written, verbatim: it is part of the identity. */
   modelId: string;
   /**
-   * Whether the model was asked to reason, resolved — the route's default
-   * already applied.
+   * How hard the model was asked to think, resolved — an unchosen preference
+   * already turned into what the run will actually do.
    *
    * Resolved rather than as chosen, so two configurations that call the model
    * the same way produce the same key even when one says it and the other
-   * leaves it implied.
+   * leaves it implied. Opaque here on purpose: which strengths exist is the
+   * provider layer's vocabulary, and the core only has to hash what it was
+   * told the work was done under.
    */
-  reasoning: boolean;
+  reasoning: string;
   /**
    * Which contract the answer travelled under.
    *

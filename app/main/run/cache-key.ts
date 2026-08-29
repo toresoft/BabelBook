@@ -19,7 +19,7 @@ export function projectCacheKey(
   db: DatabaseSync,
   projectId: string,
   modelId: string,
-  reasoning: boolean,
+  reasoning: string,
   format: "text" | "schema",
   versions: Versions = { prompt: PROMPT_VERSION, context: CONTEXT_VERSION },
 ): string {

@@ -4,7 +4,7 @@ import { cacheKey, CONTEXT_VERSION, PROMPT_VERSION } from "../translate/versions
 const base = {
   sourceSha256: "sha-of-the-book",
   modelId: "acme:m1",
-  reasoning: false,
+  reasoning: "off",
   format: "text" as const,
   sourceLanguage: "en",
   targetLanguage: "it",

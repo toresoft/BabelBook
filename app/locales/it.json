@@ -102,6 +102,12 @@
     "verifying": "Verifica in corso…",
     "reachable": "Raggiungibile, {{ms}} ms",
     "reasoning": "Ragionamento",
+    "reasoningLevels": {
+      "off": "Nessuno",
+      "low": "Poco",
+      "high": "Molto",
+      "max": "Il massimo"
+    },
     "edit": "Modifica",
     "disconnect": "Disconnetti",
     "save": "Salva",

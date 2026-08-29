@@ -30,7 +30,7 @@ const acme = {
   name: "Acme", route: "acme", baseUrl: "https://api.acme.test/v1",
   headers: {}, options: {}, catalogId: null, catalogAt: null,
   models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
-    capabilities: null, reasoningEnabled: null }],
+    capabilities: null, reasoningLevel: null }],
 };
 
 /** A catalogue entry for Acme, as a refresh would carry it. */
@@ -118,11 +118,11 @@ describe("providers", () => {
     createProvider(d, crypto, { ...acme, models: [
       {
         id: "m1", displayName: "M1", contextWindow: null, priceIn: 1, priceOut: 5,
-        capabilities: null, reasoningEnabled: null,
+        capabilities: null, reasoningLevel: null,
       },
       {
         id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
-        capabilities: null, reasoningEnabled: null,
+        capabilities: null, reasoningLevel: null,
       },
     ] });
 
@@ -149,12 +149,12 @@ describe("the catalogue binding", () => {
         {
           id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
           capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
-          reasoningEnabled: null,
+          reasoningLevel: null,
         },
         {
           id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
           capabilities: null,
-          reasoningEnabled: null,
+          reasoningLevel: null,
         },
       ],
     });
@@ -162,12 +162,12 @@ describe("the catalogue binding", () => {
       {
         id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
         capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
-        reasoningEnabled: null,
+        reasoningLevel: null,
       },
       {
         id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
         capabilities: null,
-        reasoningEnabled: null,
+        reasoningLevel: null,
       },
     ]);
   });
@@ -181,11 +181,11 @@ describe("the catalogue binding", () => {
       models: [
         {
           id: "m1", displayName: "m1", contextWindow: null, priceIn: null, priceOut: null,
-          capabilities: null, reasoningEnabled: null,
+          capabilities: null, reasoningLevel: null,
         },
         {
           id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
-          capabilities: null, reasoningEnabled: null,
+          capabilities: null, reasoningLevel: null,
         },
       ],
     });
@@ -198,11 +198,11 @@ describe("the catalogue binding", () => {
       {
         id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
         capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
-        reasoningEnabled: null,
+        reasoningLevel: null,
       },
       {
         id: "m2", displayName: "m2", contextWindow: null, priceIn: null, priceOut: null,
-        capabilities: null, reasoningEnabled: null,
+        capabilities: null, reasoningLevel: null,
       },
     ]);
     expect(readKey(d, crypto, p.id)).toBe("sk-secret");
@@ -214,7 +214,7 @@ describe("the catalogue binding", () => {
       ...acme, catalogId: null, catalogAt: null,
       models: [{
         id: "m1", displayName: "M1", contextWindow: null, priceIn: null, priceOut: null,
-        capabilities: null, reasoningEnabled: null,
+        capabilities: null, reasoningLevel: null,
       }],
     });
 
@@ -268,31 +268,47 @@ describe("the name a provider's options are keyed by", () => {
   });
 
   it("turns the reasoning off in the words of who answers, not of the protocol", () => {
-    expect(resolveProviderOptions(providerNameOf("openai-compatible", "deepseek"), {}, false))
+    expect(resolveProviderOptions(providerNameOf("openai-compatible", "deepseek"), {}, "off"))
       .toEqual({ deepseek: { thinking: { type: "disabled" } } });
   });
 });
 
-describe("the reasoning options of a route", () => {
-  it("turns it off in the words each route uses", () => {
-    expect(reasoningOptions("anthropic", false)).toMatchObject({ anthropic: { thinking: { type: "disabled" } } });
-    expect(reasoningOptions("deepseek", false)).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
-    expect(reasoningOptions("openai", false)).toMatchObject({ openai: { reasoningEffort: "minimal" } });
-    expect(reasoningOptions("google", false))
+describe("the reasoning options of a provider", () => {
+  it("turns it off in the words each one uses", () => {
+    expect(reasoningOptions("anthropic", "off")).toMatchObject({ anthropic: { thinking: { type: "disabled" } } });
+    expect(reasoningOptions("deepseek", "off")).toMatchObject({ deepseek: { thinking: { type: "disabled" } } });
+    expect(reasoningOptions("openai", "off")).toMatchObject({ openai: { reasoningEffort: "minimal" } });
+    expect(reasoningOptions("google", "off"))
       .toMatchObject({ google: { thinkingConfig: { thinkingBudget: 0 } } });
   });
 
   /**
-   * On, the route is left to its own default. Naming a budget this application
-   * has no way to choose would be inventing one, the same refusal as an
-   * invented price or an invented endpoint.
+   * Production break: a switch could say only whether to think, so a book was
+   * translated with the thinking off — the only alternative there was — and
+   * the model answered a third of it in another language.
    */
-  it("says nothing at all when it is on", () => {
-    expect(reasoningOptions("anthropic", true)).toEqual({});
+  it("asks for a strength where the provider has words for one", () => {
+    expect(reasoningOptions("deepseek", "low"))
+      .toEqual({ deepseek: { thinking: { type: "enabled" }, reasoningEffort: "low" } });
+    expect(reasoningOptions("deepseek", "max"))
+      .toEqual({ deepseek: { thinking: { type: "enabled" }, reasoningEffort: "max" } });
+    // OpenAI's ladder stops at high, so `max` asks for the most it has.
+    expect(reasoningOptions("openai", "max")).toEqual({ openai: { reasoningEffort: "high" } });
+    expect(reasoningOptions("openai", "low")).toEqual({ openai: { reasoningEffort: "low" } });
   });
 
-  it("says nothing for a route it does not know", () => {
-    expect(reasoningOptions("acme", false)).toEqual({});
+  /**
+   * Where a provider has no words for a strength, anything but off leaves it
+   * its own default. Naming a budget this application has no way to choose
+   * would be inventing one, the same refusal as an invented price.
+   */
+  it("says nothing at all where there is no strength to name", () => {
+    expect(reasoningOptions("anthropic", "high")).toEqual({});
+    expect(reasoningOptions("google", "low")).toEqual({});
+  });
+
+  it("says nothing for a provider it does not know", () => {
+    expect(reasoningOptions("acme", "off")).toEqual({});
   });
 
   it("replaces only the reasoning field when off", () => {
@@ -302,7 +318,7 @@ describe("the reasoning options of a route", () => {
         safetySettings: [{ category: "danger", threshold: "block-none" }],
         thinkingConfig: { thinkingBudget: 8192, includeThoughts: true },
       },
-    }, false)).toEqual({
+    }, "off")).toEqual({
       audit: { trace: true },
       google: {
         safetySettings: [{ category: "danger", threshold: "block-none" }],
@@ -311,19 +327,21 @@ describe("the reasoning options of a route", () => {
     });
   });
 
-  it("removes persisted reasoning directives when on", () => {
+  it("removes persisted reasoning directives when a strength is asked for", () => {
     expect(resolveProviderOptions("anthropic", {
       anthropic: { temperature: 0.2, thinking: { type: "enabled", budgetTokens: 1024 } },
-    }, true)).toEqual({ anthropic: { temperature: 0.2 } });
+    }, "high")).toEqual({ anthropic: { temperature: 0.2 } });
     expect(resolveProviderOptions("deepseek", {
       deepseek: { temperature: 0.3, thinking: { type: "disabled" } },
-    }, true)).toEqual({ deepseek: { temperature: 0.3 } });
+    }, "high")).toEqual({
+      deepseek: { temperature: 0.3, thinking: { type: "enabled" }, reasoningEffort: "high" },
+    });
     expect(resolveProviderOptions("openai", {
       openai: { store: false, reasoningEffort: "high" },
-    }, true)).toEqual({ openai: { store: false } });
+    }, "low")).toEqual({ openai: { store: false, reasoningEffort: "low" } });
     expect(resolveProviderOptions("google", {
       google: { safetySettings: [], thinkingConfig: { thinkingBudget: 4096 } },
-    }, true)).toEqual({ google: { safetySettings: [] } });
+    }, "high")).toEqual({ google: { safetySettings: [] } });
   });
 });
 
@@ -337,24 +355,26 @@ describe("the reasoning of a model", () => {
   it("is off when nothing was chosen", () => {
     const d = db();
     const provider = createProvider(d, crypto, { ...acme, apiKey: "k" });
-    expect(reasoningOf(d, provider.id, "m1")).toBe(false);
+    expect(reasoningOf(d, provider.id, "m1")).toBe("off");
   });
 
-  it("is what was chosen once something was", () => {
+  it("is the strength that was chosen once one was", () => {
     const d = db();
     const provider = createProvider(d, crypto, { ...acme, apiKey: "k" });
-    setReasoning(d, provider.id, "m1", true);
-    expect(reasoningOf(d, provider.id, "m1")).toBe(true);
+    for (const level of ["low", "high", "max", "off"] as const) {
+      setReasoning(d, provider.id, "m1", level);
+      expect(reasoningOf(d, provider.id, "m1")).toBe(level);
+    }
   });
 
   /** Null is not false: "not chosen" and "chosen off" are different facts. */
   it("goes back to unchosen, and reads as off", () => {
     const d = db();
     const provider = createProvider(d, crypto, { ...acme, apiKey: "k" });
-    setReasoning(d, provider.id, "m1", true);
+    setReasoning(d, provider.id, "m1", "high");
     setReasoning(d, provider.id, "m1", null);
 
-    expect(reasoningOf(d, provider.id, "m1")).toBe(false);
-    expect(listProviders(d)[0]!.models[0]!.reasoningEnabled).toBeNull();
+    expect(reasoningOf(d, provider.id, "m1")).toBe("off");
+    expect(listProviders(d)[0]!.models[0]!.reasoningLevel).toBeNull();
   });
 });

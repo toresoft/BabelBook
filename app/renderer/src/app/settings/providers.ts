@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { TranslocoDirective } from "@jsverse/transloco";
+import { REASONING_LEVELS, type ReasoningLevel } from "../../../../shared/dto.js";
 import type {
   CatalogEntry, CatalogState, LocalRuntime, Provider, ProviderModel, ProviderPreset, VerifyCode,
 } from "../../../../shared/dto.js";
@@ -295,7 +296,7 @@ export class Providers implements OnDestroy {
       // What the running server serves, which no catalogue can know.
       models: runtime.models.map((id) => ({
         id, displayName: id, contextWindow: null, priceIn: null, priceOut: null,
-        capabilities: null, reasoningEnabled: null,
+        capabilities: null, reasoningLevel: null,
       })),
       needsUrl: false,
       needsKey: false,
@@ -517,12 +518,14 @@ export class Providers implements OnDestroy {
     return chosen?.capabilities?.reasoning === true ? chosen : null;
   }
 
+  readonly reasoningLevels = REASONING_LEVELS;
+
   /**
-   * What the switch shows: the chosen model's own choice, with an unchosen
+   * What the control shows: the chosen model's own choice, with an unchosen
    * one reading as off — the same way the run reads it.
    */
-  reasoningOf(provider: Provider): boolean {
-    return this.#chosen(provider)?.reasoningEnabled ?? false;
+  reasoningOf(provider: Provider): ReasoningLevel {
+    return this.#chosen(provider)?.reasoningLevel ?? "off";
   }
 
   /**
@@ -533,27 +536,27 @@ export class Providers implements OnDestroy {
    * switch — exactly as it was.
    */
   async setReasoning(provider: Provider, event: Event): Promise<void> {
-    const box = event.target as HTMLInputElement;
+    const control = event.target as HTMLSelectElement;
     const model = this.#chosen(provider);
     if (model === null) return;
-    const enabled = box.checked;
+    const level = control.value as ReasoningLevel;
     const { confirmed } = await this.#ipc.invoke("ui.confirm", {
       kind: "reasoningChange",
       detail: { name: provider.name, model: model.displayName || model.id },
     });
     if (!confirmed) {
-      // A refused change must not leave the switch saying what was just said
-      // no to. The `[checked]` binding cannot do it — its value did not
-      // change, so nothing is written back — and the event's own target is
-      // the one element that needs putting right.
-      box.checked = this.reasoningOf(provider);
+      // A refused change must not leave the control saying what was just said
+      // no to. The `[value]` binding cannot do it — its value did not change,
+      // so nothing is written back — and the event's own target is the one
+      // element that needs putting right.
+      control.value = this.reasoningOf(provider);
       return;
     }
 
     await this.#ipc.invoke("provider.setReasoning", {
       providerId: provider.id,
       modelId: model.id,
-      enabled,
+      level,
     });
     await this.reload();
   }

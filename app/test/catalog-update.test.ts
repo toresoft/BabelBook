@@ -117,7 +117,7 @@ describe("the refresh pipeline", () => {
       catalogId: "acme", catalogAt: "2026-01-01T00:00:00Z", apiKey: "sk-secret",
       models: [{
         id: "m1", displayName: "m1", contextWindow: null, priceIn: null, priceOut: null,
-        capabilities: null, reasoningEnabled: null,
+        capabilities: null, reasoningLevel: null,
       }],
     });
 

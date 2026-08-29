@@ -301,7 +301,7 @@ describe("enriching what the endpoint lists", () => {
         priceIn: 0.5,
         priceOut: 2,
         capabilities: { toolCall: true, reasoning: false, structuredOutput: true, attachment: false },
-        reasoningEnabled: null,
+        reasoningLevel: null,
       },
       {
         id: "acme-other",
@@ -310,7 +310,7 @@ describe("enriching what the endpoint lists", () => {
         priceIn: null,
         priceOut: null,
         capabilities: null,
-        reasoningEnabled: null,
+        reasoningLevel: null,
       },
     ]);
   });
@@ -319,7 +319,7 @@ describe("enriching what the endpoint lists", () => {
     expect(enrichModels(["acme-mini"], null)).toEqual([
       {
         id: "acme-mini", displayName: "acme-mini", contextWindow: null,
-        priceIn: null, priceOut: null, capabilities: null, reasoningEnabled: null,
+        priceIn: null, priceOut: null, capabilities: null, reasoningLevel: null,
       },
     ]);
   });

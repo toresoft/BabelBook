@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
+import { REASONING_LEVELS, type ReasoningLevel } from "../../shared/dto.ts";
 import type {
   ModelCapabilities, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset,
 } from "../../shared/dto.ts";
@@ -56,7 +57,7 @@ interface ModelRow {
   price_in: number | null;
   price_out: number | null;
   capabilities: string | null;
-  reasoning_enabled: number | null;
+  reasoning_level: string | null;
 }
 
 function parseJson<T>(text: string | null, fallback: T): T {
@@ -98,7 +99,7 @@ function writeModels(db: DatabaseSync, providerId: string, models: ProviderModel
   const insert = db.prepare(`
     INSERT INTO provider_model (id, provider_id, model_id, display_name,
                                 context_window, price_in, price_out, capabilities,
-                                reasoning_enabled)
+                                reasoning_level)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   for (const model of models) {
@@ -106,9 +107,7 @@ function writeModels(db: DatabaseSync, providerId: string, models: ProviderModel
       randomUUID(), providerId, model.id, model.displayName,
       model.contextWindow, model.priceIn, model.priceOut,
       model.capabilities === null ? null : JSON.stringify(model.capabilities),
-      model.reasoningEnabled === null || model.reasoningEnabled === undefined
-        ? null
-        : model.reasoningEnabled ? 1 : 0,
+      model.reasoningLevel ?? null,
     );
   }
 }
@@ -120,7 +119,7 @@ function modelsOf(db: DatabaseSync, providerIds: string[]): Map<string, Provider
 
   const rows = db.prepare(`
     SELECT provider_id, model_id, display_name, context_window, price_in, price_out, capabilities,
-           reasoning_enabled
+           reasoning_level
       FROM provider_model
      ORDER BY provider_id, rowid
   `).all() as unknown as ModelRow[];
@@ -135,7 +134,9 @@ function modelsOf(db: DatabaseSync, providerIds: string[]): Map<string, Provider
       priceIn: row.price_in,
       priceOut: row.price_out,
       capabilities: capabilitiesOf(row.capabilities),
-      reasoningEnabled: row.reasoning_enabled === null ? null : row.reasoning_enabled === 1,
+      reasoningLevel: REASONING_LEVELS.includes(row.reasoning_level as ReasoningLevel)
+        ? row.reasoning_level as ReasoningLevel
+        : null,
     });
   }
   return byProvider;
@@ -311,23 +312,43 @@ export function providerNameOf(route: string, catalogId: string | null): string 
 }
 
 /**
- * How each provider spells "do not think about it".
+ * How each provider spells what to do with its own thinking.
  *
- * The idea is one and the words are four, so the translation table lives in a
- * single place — the same reason `routeDefaults` is here. On, nothing is said:
- * a budget this application picked would be a number nobody measured.
+ * `owns` are the fields this table writes, and the only ones it clears: an
+ * option the user typed for anything else survives untouched.
+ *
+ * Not every provider has words for a strength. Where one does not, a level
+ * other than `off` says nothing at all and leaves the provider its own
+ * default — a budget this application picked would be a number nobody
+ * measured, and inventing one is how a setting starts lying.
  */
-const REASONING_OFF: Record<string, { field: string; off: unknown }> = {
-  anthropic: { field: "thinking", off: { type: "disabled" } },
-  deepseek: { field: "thinking", off: { type: "disabled" } },
-  openai: { field: "reasoningEffort", off: "minimal" },
-  google: { field: "thinkingConfig", off: { thinkingBudget: 0 } },
+const REASONING: Record<string, {
+  owns: readonly string[];
+  off: Record<string, unknown>;
+  effort?: (level: Exclude<ReasoningLevel, "off">) => Record<string, unknown>;
+}> = {
+  anthropic: { owns: ["thinking"], off: { thinking: { type: "disabled" } } },
+  deepseek: {
+    owns: ["thinking", "reasoningEffort"],
+    off: { thinking: { type: "disabled" } },
+    effort: (level) => ({ thinking: { type: "enabled" }, reasoningEffort: level }),
+  },
+  openai: {
+    owns: ["reasoningEffort"],
+    off: { reasoningEffort: "minimal" },
+    // OpenAI's ladder stops at high, so `max` asks for the most it has rather
+    // than for a word it would refuse.
+    effort: (level) => ({ reasoningEffort: level === "max" ? "high" : level }),
+  },
+  google: { owns: ["thinkingConfig"], off: { thinkingConfig: { thinkingBudget: 0 } } },
 };
 
-export function reasoningOptions(name: string, enabled: boolean): Record<string, unknown> {
-  if (enabled) return {};
-  const setting = REASONING_OFF[name];
-  return setting === undefined ? {} : { [name]: { [setting.field]: setting.off } };
+export function reasoningOptions(name: string, level: ReasoningLevel): Record<string, unknown> {
+  const setting = REASONING[name];
+  if (setting === undefined) return {};
+  if (level === "off") return { [name]: { ...setting.off } };
+  const asked = setting.effort?.(level);
+  return asked === undefined ? {} : { [name]: asked };
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -345,15 +366,15 @@ function record(value: unknown): Record<string, unknown> {
  * default nor a hand-written option can contradict the resolved cache identity.
  */
 export function resolveProviderOptions(
-  name: string, stored: Record<string, unknown>, reasoning: boolean,
+  name: string, stored: Record<string, unknown>, reasoning: ReasoningLevel,
 ): Record<string, unknown> {
   const defaults = routeDefaults(name);
   const resolved = { ...stored, ...defaults };
-  const setting = REASONING_OFF[name];
+  const setting = REASONING[name];
   if (setting === undefined) return resolved;
 
   const options = { ...record(stored[name]), ...record(defaults[name]) };
-  delete options[setting.field];
+  for (const field of setting.owns) delete options[field];
   Object.assign(options, record(reasoningOptions(name, reasoning)[name]));
 
   if (Object.keys(options).length === 0) delete resolved[name];
@@ -361,23 +382,25 @@ export function resolveProviderOptions(
   return resolved;
 }
 
-/** The resolved runtime choice: an unchosen model reasons off. */
-export function reasoningOf(db: DatabaseSync, providerId: string, modelId: string): boolean {
+/** The resolved runtime choice: an unchosen model reasons not at all. */
+export function reasoningOf(db: DatabaseSync, providerId: string, modelId: string): ReasoningLevel {
   const row = db.prepare(`
-    SELECT reasoning_enabled FROM provider_model
+    SELECT reasoning_level FROM provider_model
      WHERE provider_id = ? AND model_id = ?
-  `).get(providerId, modelId) as { reasoning_enabled: number | null } | undefined;
-  return row?.reasoning_enabled === 1;
+  `).get(providerId, modelId) as { reasoning_level: string | null } | undefined;
+  return REASONING_LEVELS.includes(row?.reasoning_level as ReasoningLevel)
+    ? row!.reasoning_level as ReasoningLevel
+    : "off";
 }
 
 /** Persists the user's choice; null restores the distinct unchosen state. */
 export function setReasoning(
-  db: DatabaseSync, providerId: string, modelId: string, enabled: boolean | null,
+  db: DatabaseSync, providerId: string, modelId: string, level: ReasoningLevel | null,
 ): void {
   db.prepare(`
-    UPDATE provider_model SET reasoning_enabled = ?
+    UPDATE provider_model SET reasoning_level = ?
      WHERE provider_id = ? AND model_id = ?
-  `).run(enabled === null ? null : enabled ? 1 : 0, providerId, modelId);
+  `).run(level, providerId, modelId);
 }
 
 /**

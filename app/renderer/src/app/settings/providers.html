@@ -44,14 +44,19 @@
                      choice, not a form field. A refusal writes the event's own
                      target back, so the switch never says what was said no to. -->
                 @if (canReason(provider); as chosen) {
-                  <label class="label cursor-pointer gap-2">
-                    <input
-                      class="toggle toggle-sm"
-                      type="checkbox"
-                      [attr.data-testid]="'reasoning-' + provider.id"
-                      [checked]="reasoningOf(provider)"
-                      (change)="setReasoning(provider, $event)" />
+                  <label class="label gap-2">
                     <span>{{ t('providers.reasoning') }}</span>
+                    <select
+                      class="select select-sm"
+                      [attr.data-testid]="'reasoning-' + provider.id"
+                      [value]="reasoningOf(provider)"
+                      (change)="setReasoning(provider, $event)">
+                      @for (level of reasoningLevels; track level) {
+                        <option [value]="level" [selected]="level === reasoningOf(provider)">
+                          {{ t('providers.reasoningLevels.' + level) }}
+                        </option>
+                      }
+                    </select>
                   </label>
                 }
                 <button

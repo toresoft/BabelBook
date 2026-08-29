@@ -236,7 +236,7 @@ describe("the provider channels", () => {
       name: "Acme", route: "openai-compatible", baseUrl: "https://api.acme.test/v1",
       headers: {}, options: {}, catalogId: null, catalogAt: null,
       models: [{ id: "m1", displayName: "M1", contextWindow: 128_000, priceIn: 1, priceOut: 5,
-        capabilities: null, reasoningEnabled: null }],
+        capabilities: null, reasoningLevel: null }],
       ...(apiKey === null ? {} : { apiKey }),
     });
     return { deps: d, handlers, created };
@@ -285,7 +285,7 @@ describe("the provider channels", () => {
     const updated = await handlers["provider.update"]({
       id: created.id,
       models: [{ id: "m2", displayName: "M2", contextWindow: null, priceIn: null, priceOut: null,
-        capabilities: null, reasoningEnabled: null }],
+        capabilities: null, reasoningLevel: null }],
     });
 
     expect(updated.models.map((model) => model.id)).toEqual(["m2"]);
@@ -300,17 +300,17 @@ describe("the provider channels", () => {
       catalogId: null, catalogAt: null,
       models: [{
         id: "m1", displayName: "M1", contextWindow: null, priceIn: null, priceOut: null,
-        capabilities: null, reasoningEnabled: null,
+        capabilities: null, reasoningLevel: null,
       }],
     });
     broadcast.mockClear();
 
     await handlers["provider.setReasoning"]({
-      providerId: created.id, modelId: "m1", enabled: true,
+      providerId: created.id, modelId: "m1", level: "high",
     });
 
-    expect((await handlers["providers.list"](undefined))[0]!.models[0]!.reasoningEnabled)
-      .toBe(true);
+    expect((await handlers["providers.list"](undefined))[0]!.models[0]!.reasoningLevel)
+      .toBe("high");
     expect(broadcast).toHaveBeenCalledWith("providers.changed", {});
   });
 

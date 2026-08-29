@@ -295,7 +295,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       : null;
     const reasoning = configured?.provider_id != null && configured.model_id != null
       ? reasoningOf(db, configured.provider_id, configured.model_id)
-      : false;
+      : "off";
 
     // The backend is resolved before the key, because the model it names is
     // part of the key: the same book translated by another model is other
