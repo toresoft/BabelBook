@@ -11,3 +11,4 @@ npm-debug.log*
 .angular/
 .claude/
 app/release/
+test-results/

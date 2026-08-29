@@ -47,10 +47,15 @@ jobs:
       # one just built and makes it read a book — the gesture that fails when
       # the platform's native binding did not make it into the archive, which
       # is a failure every build above would report as a success.
+      # The path is relative to `working-directory`, which is where the runner
+      # puts the process that reads it: written from the repository root it
+      # resolves to `app/app/release/...`, and Playwright reports that as
+      # "Process failed to launch!" — a sentence about a package that names no
+      # package.
       - name: open what was built (linux)
         if: runner.os == 'Linux'
         env:
-          BABELBOOK_PACKAGED: app/release/linux-unpacked/babelbook
+          BABELBOOK_PACKAGED: release/linux-unpacked/babelbook
         run: |
           sudo apt-get update && sudo apt-get install -y xvfb
           xvfb-run --auto-servernum npx playwright test e2e/packaged.spec.ts
@@ -59,7 +64,7 @@ jobs:
       - name: open what was built (windows)
         if: runner.os == 'Windows'
         env:
-          BABELBOOK_PACKAGED: app/release/win-unpacked/babelBook.exe
+          BABELBOOK_PACKAGED: release/win-unpacked/babelBook.exe
         run: npx playwright test e2e/packaged.spec.ts
         working-directory: app
 

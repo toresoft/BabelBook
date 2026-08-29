@@ -1,6 +1,7 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { buildEpub } from "../../core/test/corpus/build.ts";
 import { mainWindow } from "./support.ts";
@@ -23,6 +24,14 @@ const packaged = process.env["BABELBOOK_PACKAGED"];
 test.skip(packaged === undefined, "BABELBOOK_PACKAGED names no package");
 
 test("the package opens, migrates its database and reads a book", async () => {
+  // Said before launching, and with the path it resolved. Playwright's own
+  // answer to an executable that is not there is "Process failed to launch!",
+  // which reads like a broken package and is usually a relative path resolved
+  // from a directory nobody had in mind.
+  const executable = resolve(packaged!);
+  expect(existsSync(executable), `no package at ${executable} (from ${process.cwd()})`)
+    .toBe(true);
+
   const dir = await mkdtemp(join(tmpdir(), "babelbook-packaged-"));
   const epub = join(dir, "book.epub");
   await writeFile(epub, await buildEpub({
@@ -31,7 +40,7 @@ test("the package opens, migrates its database and reads a book", async () => {
   }));
 
   const app = await electron.launch({
-    executablePath: packaged!,
+    executablePath: executable,
     // An AppImage will not mount without FUSE on a bare runner; extracting is
     // slower and always works.
     args: packaged!.endsWith(".AppImage") ? ["--appimage-extract-and-run"] : [],
