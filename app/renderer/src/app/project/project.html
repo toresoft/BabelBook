@@ -94,7 +94,7 @@
             <dl class="overview__facts">
               <div>
                 <dt>{{ t('project.cost') }}</dt>
-                <dd>
+                <dd data-testid="project-cost">
                   {{ t('report.tokens', {
                     tokensIn: tokens(found).in, tokensOut: tokens(found).out
                   }) }}

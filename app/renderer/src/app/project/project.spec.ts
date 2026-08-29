@@ -174,4 +174,43 @@ describe("Project", () => {
 
     expect(fixture.nativeElement.querySelector("[data-testid=phase-progress]")).toBeNull();
   });
+
+  /**
+   * `run.usage` overrides the database's own count only while the run is
+   * alive. A reload that finds the run over must bring the database's count
+   * back — the live signal is a loan, not a replacement.
+   */
+  it("shows the live spend while running, and the database's own again once reloaded as not running", async () => {
+    let current: ProjectDetail = {
+      ...detail, state: "running", tokens: { in: 100, out: 50, reasoning: 1 },
+    };
+    const invoke = vi.fn(async (channel: string) => {
+      if (channel === "project.get") return current;
+      if (channel === "terms.list" || channel === "glossaries.list") return [];
+      if (channel === "exclusions.list") return [];
+      if (channel === "units.list") return { units: [], total: 0 };
+      if (channel === "report.get") return null;
+      return undefined;
+    });
+    const { fixture, bus } = mount(invoke);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cost = () => fixture.nativeElement.querySelector("[data-testid=project-cost]").textContent as string;
+    expect(cost()).toContain("100");
+
+    bus.emit("run.usage", { projectId: "p1", tokensIn: 999, tokensOut: 888, reasoningTokens: 3 });
+    fixture.detectChanges();
+    expect(cost()).toContain("999");
+    expect(cost()).toContain("888");
+    expect(cost()).not.toContain("100");
+
+    current = { ...current, state: "done" };
+    bus.emit("project.changed", { id: "p1" });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(cost()).toContain("100");
+    expect(cost()).not.toContain("999");
+  });
 });
