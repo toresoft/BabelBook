@@ -37,13 +37,14 @@ const config = (overrides: Partial<RunConfig> = {}): RunConfig => ({
 function scriptedBackend(): FakeBackend {
   return new FakeBackend((call) => {
     if (call.prompt.includes("TERMS")) {
-      return { text: "TERMS 0\nEND", tokensIn: 10, tokensOut: 5, finishReason: "stop" };
+      return { text: "TERMS 0\nEND", tokensIn: 10, tokensOut: 5, reasoningTokens: 0, finishReason: "stop" };
     }
     if (call.prompt.includes("VERDICTS")) {
       return {
         text: "VERDICTS 1\n[v:c1.xhtml#1] prose\nEND",
         tokensIn: 10,
         tokensOut: 5,
+        reasoningTokens: 0,
         finishReason: "stop",
       };
     }
@@ -51,6 +52,7 @@ function scriptedBackend(): FakeBackend {
       text: "UNITS 1\n[u:c1.xhtml#1]\nFrase 1\nEND",
       tokensIn: 10,
       tokensOut: 5,
+      reasoningTokens: 0,
       finishReason: "stop",
     };
   });
@@ -78,6 +80,26 @@ function insertProject(db: DatabaseSync, state = "ready", snapshot: unknown = nu
 
 describe("runProject", () => {
   // Production break: phase code ignores waiting-terms and starts model-backed code indexing or translation.
+  // Production break: the summary a gate returns counts a stored fallback as a translation.
+  it("does not report a held fallback as translated when it stops at a gate", async () => {
+    const store = new FakeStore([unit(1)]);
+    await store.putTranslation({
+      unitId: "c1.xhtml#1", text: "Frase 1", cacheKey: "k1", attempts: 3, outcome: "fell-back",
+    });
+    const { emit } = collect();
+
+    const summary = await runProject({
+      store,
+      backend: scriptedBackend(),
+      config: config(),
+      emit,
+      signal: new AbortController().signal,
+    });
+
+    expect(summary.units.translated).toBe(0);
+    expect(summary.units.fellBack).toBe(1);
+  });
+
   it("returns at the terms gate without spending on a later phase", async () => {
     const store = new FakeStore([unit(1)]);
     const backend = scriptedBackend();
@@ -107,6 +129,7 @@ describe("runProject", () => {
       text: "TERMS 1\n[t:Rivendell] rule=dnt note=proper name\nOPEN 0\nEND",
       tokensIn: 10,
       tokensOut: 5,
+      reasoningTokens: 0,
       finishReason: "stop",
     }));
 
@@ -229,15 +252,16 @@ describe("runProject", () => {
     const store = new SqliteProjectStore(db, "p1", "r1");
     const backend = new FakeBackend((call) => {
       if (call.prompt.includes("TERMS")) {
-        return { text: "TERMS 0\nEND", tokensIn: 1, tokensOut: 1, finishReason: "stop" };
+        return { text: "TERMS 0\nEND", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" };
       }
       if (call.prompt.includes("VERDICTS")) {
-        return { text: "malformed", tokensIn: 1, tokensOut: 1, finishReason: "stop" };
+        return { text: "malformed", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" };
       }
       return {
         text: "UNITS 1\n[u:c1.xhtml#1]\nFrase 1\nEND",
         tokensIn: 1,
         tokensOut: 1,
+        reasoningTokens: 0,
         finishReason: "stop",
       };
     });
@@ -292,13 +316,14 @@ describe("runProject", () => {
     const store = new FakeStore([unit(1)]);
     const backend = new FakeBackend((call) => {
       if (call.prompt.includes("TERMS")) {
-        return { text: "TERMS 0\nEND", tokensIn: 1, tokensOut: 1, finishReason: "stop" };
+        return { text: "TERMS 0\nEND", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" };
       }
       if (call.prompt.includes("VERDICTS")) {
         return {
           text: "VERDICTS 1\n[v:c1.xhtml#1] prose\nEND",
           tokensIn: 1,
           tokensOut: 1,
+          reasoningTokens: 0,
           finishReason: "stop",
         };
       }
@@ -306,6 +331,7 @@ describe("runProject", () => {
         text: "UNITS 1\n[u:c1.xhtml#1]\n\nEND",
         tokensIn: 1,
         tokensOut: 1,
+        reasoningTokens: 0,
         finishReason: "stop",
       };
     });

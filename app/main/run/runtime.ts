@@ -9,6 +9,7 @@ import type { Events } from "../../shared/channels.ts";
 import type {
   BackendSpec, EngineHandle, EngineMessage, RunConfig, RunSummary,
 } from "../../shared/run.ts";
+import { projectCacheKey } from "./cache-key.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
 import { modelContextOf, modelPricesOf } from "../providers/store.ts";
@@ -257,9 +258,20 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       ? modelContextOf(db, configured.provider_id, configured.model_id)
       : null;
 
+    // The backend is resolved before the key, because the model it names is
+    // part of the key: the same book translated by another model is other
+    // work, and reusing one for the other is not a saving but a mixture.
+    const backend = deps.backendSpec(projectId);
+    const key = projectCacheKey(db, projectId, backend.kind === "sdk" ? backend.spec : "fake");
+    // Written down, because every screen reads the key from here: the library
+    // counts progress under it, the units tab shows translations under it, and
+    // the report is built from it. A key computed and not stored would leave
+    // all three answering about whatever key they happened to find.
+    db.prepare("UPDATE project SET cache_key = ? WHERE id = ?").run(key, projectId);
+
     const config: RunConfig = {
       projectId,
-      cacheKey: row.source_sha256,
+      cacheKey: key,
       sourceLanguage: row.source_language ?? "en",
       targetLanguage: row.target_language,
       autoAcceptTerms: settings.autoAcceptTerms,
@@ -274,7 +286,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       type: "start",
       projectId,
       config,
-      backend: deps.backendSpec(projectId),
+      backend,
       machineSnapshot: machineHost(projectId).snapshot,
     });
   }

@@ -3,7 +3,7 @@ import type { LlmCall, LlmResult } from "../../core/ports.ts";
 import { classifyError, verifyProvider } from "../main/providers/verify.ts";
 import { ModelSpecError } from "../engine/backends/resolve.ts";
 
-const ok = { call: async () => ({ text: "pong", tokensIn: 1, tokensOut: 1, finishReason: "stop" as const }) };
+const ok = { call: async () => ({ text: "pong", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" as const }) };
 const failing = (message: string) => ({ call: async (): Promise<LlmResult> => { throw new Error(message); } });
 
 describe("verifyProvider", () => {
@@ -40,7 +40,7 @@ describe("verifyProvider", () => {
     const recording = {
       call: async (input: LlmCall): Promise<LlmResult> => {
         seen.push(input);
-        return { text: "ok", tokensIn: 1, tokensOut: 1, finishReason: "stop" };
+        return { text: "ok", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" };
       },
     };
     await verifyProvider({ backend: recording, modelId: "acme:m1" });

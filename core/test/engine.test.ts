@@ -32,6 +32,33 @@ describe("translateChunk", () => {
     expect(out.fellBack).toEqual([]);
   });
 
+  it("keeps what the last answer looked like, for the units that fell back", async () => {
+    const thinking = new FakeBackend(() => ({
+      text: "Let me work through the passage before I answer.",
+      tokensIn: 900, tokensOut: 4096, reasoningTokens: 4096, finishReason: "length",
+    }));
+
+    const out = await translateChunk({ chunk: chunk([unit(1, "One")]), terms: [], backend: thinking });
+
+    expect(out.fellBack).toEqual([{ unitId: "c1.xhtml#1", reason: "exhausted" }]);
+    expect(out.lastAnswer).toEqual({
+      finishReason: "length",
+      reasoningTokens: 4096,
+      excerpt: "Let me work through the passage before I answer.",
+    });
+  });
+
+  it("keeps only the opening of a long answer, not the whole of it", async () => {
+    const long = "x".repeat(500);
+    const backend = new FakeBackend(() => ({
+      text: long, tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop",
+    }));
+
+    const out = await translateChunk({ chunk: chunk([unit(1, "One")]), terms: [], backend });
+
+    expect(out.lastAnswer?.excerpt).toBe("x".repeat(200));
+  });
+
   it("resends only the rejected unit, with the diagnosis", async () => {
     const backend = new FakeBackend([
       ok("[u:c1.xhtml#1]\nUno\n[u:c1.xhtml#2]\n", 2),
@@ -60,8 +87,8 @@ describe("translateChunk", () => {
   it("keeps asking for less when the answer was truncated", async () => {
     const backend = new FakeBackend((call) =>
       call.prompt.includes("UNITS 2")
-        ? { text: "UNITS 2\n[u:c1.xhtml#1]\nUno\n[u:c1.xhtml#2]\nDu", tokensIn: 1, tokensOut: 1, finishReason: "length" as const }
-        : { text: ok("[u:c1.xhtml#2]\nDue", 1), tokensIn: 1, tokensOut: 1, finishReason: "stop" as const });
+        ? { text: "UNITS 2\n[u:c1.xhtml#1]\nUno\n[u:c1.xhtml#2]\nDu", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "length" as const }
+        : { text: ok("[u:c1.xhtml#2]\nDue", 1), tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" as const });
 
     const out = await translateChunk({ chunk: chunk([unit(1, "One"), unit(2, "Two")]), terms: [], backend });
     expect(out.translated.size).toBe(2);
@@ -70,7 +97,7 @@ describe("translateChunk", () => {
   it("counts the tokens every attempt cost, not only the last", async () => {
     const backend = new FakeBackend((call) => ({
       text: call.prompt.includes("empty-text") ? ok("[u:c1.xhtml#1]\nUno", 1) : ok("[u:c1.xhtml#1]\n", 1),
-      tokensIn: 10, tokensOut: 5, finishReason: "stop" as const,
+      tokensIn: 10, tokensOut: 5, reasoningTokens: 0, finishReason: "stop" as const,
     }));
     const out = await translateChunk({ chunk: chunk([unit(1, "One")]), terms: [], backend });
 
@@ -130,6 +157,32 @@ describe("translateUnits", () => {
     expect(backend.prompts[0]).not.toContain("[u:c1.xhtml#1]");
   });
 
+  it("asks again for a unit that fell back, instead of taking it for done", async () => {
+    const units = [unit(1, "One")];
+    const store = new FakeStore(units);
+    await store.putTranslation({
+      unitId: "c1.xhtml#1", text: "One", cacheKey: "k1", attempts: 3, outcome: "fell-back",
+    });
+    const backend = new FakeBackend([ok("[u:c1.xhtml#1]\nUno", 1)]);
+    await run(units, backend, store);
+
+    expect(backend.prompts).toHaveLength(1);
+    expect((await store.translations("k1")).get("c1.xhtml#1")?.text).toBe("Uno");
+  });
+
+  it("does not count a fallback it is about to retry as work already done", async () => {
+    const units = [unit(1, "One")];
+    const store = new FakeStore(units);
+    await store.putTranslation({
+      unitId: "c1.xhtml#1", text: "One", cacheKey: "k1", attempts: 3, outcome: "fell-back",
+    });
+    const bad = ok("[u:c1.xhtml#1]\n", 1);
+    const summary = await run(units, new FakeBackend([bad, bad, bad]), store);
+
+    expect(summary.units.translated).toBe(0);
+    expect(summary.units.fellBack).toBe(1);
+  });
+
   it("does not skip work held under another key", async () => {
     const units = [unit(1, "One")];
     const store = new FakeStore(units);
@@ -150,6 +203,23 @@ describe("translateUnits", () => {
     const event = store.events.find((e) => e.code === "unit-fell-back");
     expect(event?.severity).toBe("degradation");
     expect(event?.payload).toMatchObject({ unitId: "c1.xhtml#1" });
+  });
+
+  it("says in that event what the model answered, so exhausted is not the whole story", async () => {
+    const store = new FakeStore();
+    const thinking = new FakeBackend(() => ({
+      text: "Thinking about it.",
+      tokensIn: 900, tokensOut: 4096, reasoningTokens: 4096, finishReason: "length",
+    }));
+    await run([unit(1, "One")], thinking, store);
+
+    const event = store.events.find((e) => e.code === "unit-fell-back");
+    expect(event?.payload).toMatchObject({
+      reason: "exhausted",
+      finishReason: "length",
+      reasoningTokens: 4096,
+      excerpt: "Thinking about it.",
+    });
   });
 
   it("counts a translation identical to the source instead of hiding it", async () => {
@@ -185,7 +255,7 @@ describe("translateUnits", () => {
 
   it("adds up the tokens of the whole run", async () => {
     const backend = new FakeBackend((_call) => ({
-      text: ok("[u:c1.xhtml#1]\nUno", 1), tokensIn: 7, tokensOut: 3, finishReason: "stop" as const,
+      text: ok("[u:c1.xhtml#1]\nUno", 1), tokensIn: 7, tokensOut: 3, reasoningTokens: 0, finishReason: "stop" as const,
     }));
     const summary = await run([unit(1, "One")], backend);
 

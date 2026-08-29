@@ -31,7 +31,7 @@ describe("fakes", () => {
   it("answers from a function when the reply depends on the prompt", async () => {
     const backend = new FakeBackend((call) => ({
       text: call.prompt.includes("UNITS") ? "UNITS 0\nEND" : "en",
-      tokensIn: 1, tokensOut: 1, finishReason: "stop" as const,
+      tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" as const,
     }));
     expect((await backend.call({ prompt: "UNITS 1" })).text).toBe("UNITS 0\nEND");
     expect((await backend.call({ prompt: "which language" })).text).toBe("en");

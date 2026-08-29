@@ -33,6 +33,11 @@ interface SummaryRow {
  * Distinct units, not rows: the same unit can hold a translation under several
  * keys, and counting rows would report a book more finished than it is — the
  * one direction a progress bar must never err in.
+ *
+ * Fallbacks are excluded for the same reason. A unit that fell back holds its
+ * own source text, and the next run asks for it again: it is outstanding work
+ * wearing the shape of finished work, and it is the only row in this table
+ * that can make the bar move without a single sentence being translated.
  */
 export interface LibraryQuery {
   search?: string;
@@ -60,6 +65,7 @@ export function listProjects(db: DatabaseSync, query: LibraryQuery = {}): Projec
               JOIN unit u ON u.id = t.unit_id
              WHERE u.project_id = p.id
                AND coalesce(u.forced_state, u.state) IN ('translate', 'maybe-code')
+               AND t.outcome <> 'fell-back'
                AND t.cache_key = coalesce(p.cache_key, t.cache_key)) AS done
       FROM project p
      WHERE (? IS NULL OR lower(p.title) LIKE lower(?))${clause}

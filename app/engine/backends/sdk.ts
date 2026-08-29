@@ -21,7 +21,12 @@ export interface GenerateInput {
 
 export interface GenerateOutput {
   text?: string;
-  usage?: { inputTokens?: number; outputTokens?: number };
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    /** Where the SDK keeps the reasoning split, for every provider that reports one. */
+    outputTokenDetails?: { reasoningTokens?: number };
+  };
   finishReason?: string;
 }
 
@@ -78,6 +83,7 @@ export function sdkBackend(resolved: ResolvedModel, generate: GenerateFn): LlmBa
         text: result.text ?? "",
         tokensIn: count(result.usage?.inputTokens),
         tokensOut: count(result.usage?.outputTokens),
+        reasoningTokens: count(result.usage?.outputTokenDetails?.reasoningTokens),
         finishReason: finish(result.finishReason),
       };
     },

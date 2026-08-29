@@ -10,11 +10,25 @@ import { createHash } from "node:crypto";
  *
  * Whoever edits `instructions.ts` raises `PROMPT_VERSION` in the same commit;
  * whoever edits `plan.ts`'s context window raises `CONTEXT_VERSION`.
+ *
+ * 2: the instructions state the format contract — the header, the marker, the
+ * terminator, the count, and a worked example — instead of asking for "the
+ * format you are given" and naming none of it. Under version 1 a model that
+ * translated perfectly answered in prose, and every unit fell back to source;
+ * nothing produced under it is worth reusing, which is what this bump says.
  */
-export const PROMPT_VERSION = 1;
+export const PROMPT_VERSION = 2;
 export const CONTEXT_VERSION = 1;
 
 export interface CacheKeyInput {
+  /**
+   * The book the translation was made from.
+   *
+   * Everything else here describes how the work was done; this says what it
+   * was done to. A source replaced under a project that keeps its id is a
+   * different book, and its unit ids collide with the old one's.
+   */
+  sourceSha256: string;
   /** The model spec as it was written, verbatim: it is part of the identity. */
   modelId: string;
   sourceLanguage: string;
@@ -44,6 +58,7 @@ export function cacheKey(
   const canonical = JSON.stringify({
     prompt: versions.prompt,
     context: versions.context,
+    source: input.sourceSha256,
     model: input.modelId,
     from: input.sourceLanguage,
     to: input.targetLanguage,

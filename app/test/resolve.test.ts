@@ -135,6 +135,23 @@ describe("sdkBackend", () => {
     const result = await backend.call({ prompt: "One" });
     // A usage the provider omitted counts as zero, never as NaN: the run
     // summary adds these up, and one NaN poisons the whole total.
-    expect(result).toMatchObject({ finishReason: "other", tokensIn: 0, tokensOut: 0 });
+    expect(result).toMatchObject({
+      finishReason: "other", tokensIn: 0, tokensOut: 0, reasoningTokens: 0,
+    });
+  });
+
+  it("reports the output tokens the model spent thinking rather than answering", async () => {
+    const generate = vi.fn().mockResolvedValue({
+      text: "",
+      finishReason: "length",
+      usage: {
+        inputTokens: 900,
+        outputTokens: 4096,
+        outputTokenDetails: { reasoningTokens: 4096 },
+      },
+    });
+    const backend = sdkBackend({ model: {}, modelId: "acme:m1" }, generate);
+
+    expect((await backend.call({ prompt: "One" })).reasoningTokens).toBe(4096);
   });
 });

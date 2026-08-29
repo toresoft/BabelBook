@@ -94,6 +94,16 @@ describe("projectDetail", () => {
     expect(projectDetail(seeded(), "p1")).toMatchObject({ progress: { done: 1, total: 2 } });
   });
 
+  it("leaves a fallback out of the progress, because the unit is still untranslated", () => {
+    const db = seeded();
+    db.prepare(`
+      INSERT INTO translation (id, unit_id, text, cache_key, attempts, outcome)
+      VALUES ('tf','u3','A quiet evening','k1',3,'fell-back')
+    `).run();
+
+    expect(projectDetail(db, "p1")).toMatchObject({ progress: { done: 1, total: 2 } });
+  });
+
   it("answers null for a project that is not there", () => {
     expect(projectDetail(seeded(), "ghost")).toBeNull();
   });

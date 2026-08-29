@@ -1,4 +1,4 @@
-import type { LlmBackend, ProgressSink, ProjectStore } from "../ports.ts";
+import type { LlmBackend, LlmResult, ProgressSink, ProjectStore } from "../ports.ts";
 import type { TermEntry } from "../glossary/index.ts";
 import type { TranslationUnit, UnitState } from "../epub/index.ts";
 import { isWork } from "../epub/index.ts";
@@ -7,12 +7,34 @@ import { termsForChunk } from "./terms.ts";
 import { validate, type Rejection, type RejectionCode } from "./validate.ts";
 import { buildPayload, buildSystem } from "./wire.ts";
 
+/**
+ * What the last attempt came back as, for the units it failed to translate.
+ *
+ * `exhausted` names two different failures and distinguishes neither: an
+ * answer with no structure at all, and one the output budget cut short. Both
+ * leave the rejection list without an entry per unit, so both arrive under the
+ * same word — and a run that fell back on every unit says only that, which is
+ * the point at which reading the code replaces reading the record.
+ *
+ * These three fields separate them. `reasoningTokens` is the one that names
+ * the cause a provider never states: output paid for and spent before the
+ * format began.
+ */
+export interface AnswerDiagnosis {
+  finishReason: LlmResult["finishReason"];
+  reasoningTokens: number;
+  /** The opening of the answer — enough to recognise its shape, not to reprint it. */
+  excerpt: string;
+}
+
 export interface ChunkOutcome {
   translated: Map<string, string>;
   fellBack: Array<{ unitId: string; reason: RejectionCode | "exhausted" }>;
   attempts: number;
   tokensIn: number;
   tokensOut: number;
+  /** Absent only when no call was made, which is to say when nothing was asked. */
+  lastAnswer?: AnswerDiagnosis;
 }
 
 export interface ChunkInput {
@@ -24,6 +46,8 @@ export interface ChunkInput {
 }
 
 const DEFAULT_ATTEMPTS = 3;
+/** Enough of an answer to tell a refusal from a preamble from an empty string. */
+const EXCERPT_CHARS = 200;
 
 /**
  * What the last attempt got wrong, in words the next one can act on.
@@ -64,6 +88,7 @@ export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
   let attempts = 0;
   let tokensIn = 0;
   let tokensOut = 0;
+  let lastAnswer: AnswerDiagnosis | undefined;
 
   while (pending.length > 0 && attempts < maxAttempts) {
     input.signal?.throwIfAborted();
@@ -83,6 +108,11 @@ export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
     });
     tokensIn += result.tokensIn;
     tokensOut += result.tokensOut;
+    lastAnswer = {
+      finishReason: result.finishReason,
+      reasoningTokens: result.reasoningTokens,
+      excerpt: result.text.slice(0, EXCERPT_CHARS),
+    };
 
     const validation = validate(result.text, pending, result.finishReason);
     for (const [unitId, text] of validation.accepted) translated.set(unitId, text);
@@ -100,6 +130,7 @@ export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
     attempts,
     tokensIn,
     tokensOut,
+    ...(lastAnswer === undefined ? {} : { lastAnswer }),
   };
 }
 
@@ -151,7 +182,14 @@ async function inParallel<T>(items: T[], limit: number, worker: (item: T) => Pro
 export async function translateUnits(input: RunInput): Promise<RunSummary> {
   const terms = await input.store.terms();
   const held = await input.store.translations(input.cacheKey);
-  const done = new Set(held.keys());
+
+  // A fallback is not work: it is the source text stored under another name,
+  // because three attempts failed. Counting it as done is how a run stops
+  // asking — the paragraph stays in the original language for ever, the
+  // retry budget meant to rescue it is never spent, and the progress bar
+  // reports the failure as if it were a page translated.
+  const settled = [...held.values()].filter((stored) => stored.outcome !== "fell-back");
+  const done = new Set(settled.map((stored) => stored.unitId));
 
   const chunks = planChunks({
     units: input.units,
@@ -170,8 +208,8 @@ export async function translateUnits(input: RunInput): Promise<RunSummary> {
     notTranslated[unit.state] = (notTranslated[unit.state] ?? 0) + 1;
   }
 
-  let translated = held.size;
-  let identical = [...held.values()].filter((stored) => stored.outcome === "identical").length;
+  let translated = settled.length;
+  let identical = settled.filter((stored) => stored.outcome === "identical").length;
   let fellBack = 0;
   let tokensIn = 0;
   let tokensOut = 0;
@@ -214,7 +252,10 @@ export async function translateUnits(input: RunInput): Promise<RunSummary> {
       await input.store.event({
         code: "unit-fell-back",
         severity: "degradation",
-        payload: { unitId: fallen.unitId, reason: fallen.reason, attempts: outcome.attempts },
+        payload: {
+          unitId: fallen.unitId, reason: fallen.reason, attempts: outcome.attempts,
+          ...(outcome.lastAnswer ?? {}),
+        },
       });
     }
   });

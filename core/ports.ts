@@ -66,6 +66,15 @@ export interface LlmResult {
   text: string;
   tokensIn: number;
   tokensOut: number;
+  /**
+   * The share of `tokensOut` the model spent thinking rather than answering.
+   *
+   * Counted apart because it is the one number that explains an empty answer
+   * from a model that was paid in full: a reasoning model given no output
+   * budget of its own can spend all of it before the format begins, and
+   * without this the run records only that nothing came back.
+   */
+  reasoningTokens: number;
   /** `length` is the only reason that authorises splitting a chunk. */
   finishReason: "stop" | "length" | "other";
 }

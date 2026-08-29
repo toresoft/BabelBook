@@ -137,6 +137,7 @@ export function fakeBackend(): LlmBackend {
         text,
         tokensIn: input.prompt.length,
         tokensOut: text.length,
+        reasoningTokens: 0,
         finishReason: "stop",
       };
     },

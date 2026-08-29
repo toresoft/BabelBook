@@ -111,6 +111,17 @@ describe("listProjects", () => {
     expect(listProjects(db).find((p) => p.id === "p1")!.progress).toEqual({ done: 2, total: 3 });
   });
 
+  it("does not count a fallback as progress: the unit still holds its source", () => {
+    const db = seeded();
+    withUnits(db, 1, 3);
+    db.prepare(`
+      INSERT INTO translation (id, unit_id, text, cache_key, attempts, outcome)
+      VALUES ('tf','u2','x','k1',3,'fell-back')
+    `).run();
+
+    expect(listProjects(db).find((p) => p.id === "p1")!.progress).toEqual({ done: 1, total: 3 });
+  });
+
   it("says zero of zero for a project with no units yet", () => {
     expect(listProjects(seeded()).find((p) => p.id === "p2")!.progress).toEqual({ done: 0, total: 0 });
   });

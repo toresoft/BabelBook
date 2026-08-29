@@ -79,6 +79,29 @@ describe("buildSystem", () => {
     const system = buildSystem({ units: [unit(1, "One")], context, terms: [] });
     expect(system.toLowerCase()).toMatch(/command|code|console/);
   });
+
+  it("names the three tokens the answer is read by, rather than calling it the format", () => {
+    const system = buildSystem({ units: [unit(1, "One")], context, terms: [] });
+
+    expect(system).toMatch(/UNITS <n>|UNITS \d/);
+    expect(system).toContain("[u:");
+    expect(system).toContain("END");
+  });
+
+  it("shows a whole answer, and our own reader accepts it", () => {
+    const system = buildSystem({ units: [unit(1, "One")], context, terms: [] });
+
+    // The worked example is the contract's only unambiguous half: a model that
+    // copies its shape answers correctly. Reading it back with the parser the
+    // engine actually uses is what stops the example from drifting away from it.
+    const example = /^UNITS \d+$[\s\S]*?^END$/m.exec(system);
+    expect(example).not.toBeNull();
+
+    const parsed = parseResponse(example![0]);
+    expect(parsed.terminated).toBe(true);
+    expect(parsed.lines).toHaveLength(parsed.declared!);
+    expect(parsed.lines.every((line) => line.text !== "")).toBe(true);
+  });
 });
 
 describe("parseResponse", () => {

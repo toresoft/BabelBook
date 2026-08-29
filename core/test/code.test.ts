@@ -95,7 +95,7 @@ describe("indexCodeBlocks", () => {
       const asked = [...new Set([...call.prompt.matchAll(/\[v:([^\]<]+)\]/g)].map((m) => m[1]))];
       return {
         text: answer(asked.map((id) => `[v:${id}] prose`).join("\n")),
-        tokensIn: 1, tokensOut: 1, finishReason: "stop" as const,
+        tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" as const,
       };
     });
 

@@ -47,6 +47,9 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
               JOIN unit u ON u.id = t.unit_id
              WHERE u.project_id = p.id
                AND coalesce(u.forced_state, u.state) IN ('translate', 'maybe-code')
+               -- A fallback is the unit's own source text: outstanding work,
+               -- and the next run asks for it again. Same rule as the library.
+               AND t.outcome <> 'fell-back'
                AND t.cache_key = coalesce(p.cache_key, t.cache_key)) AS done,
            coalesce((SELECT sum(r.tokens_in) FROM run r WHERE r.project_id = p.id), 0) AS tokens_in,
            coalesce((SELECT sum(r.tokens_out) FROM run r WHERE r.project_id = p.id), 0) AS tokens_out,

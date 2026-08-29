@@ -30,6 +30,6 @@ export class FakeBackend implements LlmBackend {
     if (next === undefined) {
       throw new Error(`FakeBackend: no scripted answer left (call ${this.prompts.length})`);
     }
-    return { text: next, tokensIn: 0, tokensOut: 0, finishReason: "stop" };
+    return { text: next, tokensIn: 0, tokensOut: 0, reasoningTokens: 0, finishReason: "stop" };
   }
 }

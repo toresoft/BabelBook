@@ -31,11 +31,16 @@ function summaryBeforeTranslation(
     notTranslated[unit.state] = (notTranslated[unit.state] ?? 0) + 1;
   }
   const translations = [...held.values()];
+  const fellBack = translations.filter((translation) => translation.outcome === "fell-back");
   return {
     units: {
       total: units.length,
-      translated: translations.length,
-      fellBack: translations.filter((translation) => translation.outcome === "fell-back").length,
+      // A fallback is held in the same table as a translation and is not one:
+      // it is the source text, kept so the book can still be composed. The
+      // engine will ask for it again, so counting it here would report as
+      // finished exactly the work that is still outstanding.
+      translated: translations.length - fellBack.length,
+      fellBack: fellBack.length,
       identical: translations.filter((translation) => translation.outcome === "identical").length,
     },
     notTranslated,
