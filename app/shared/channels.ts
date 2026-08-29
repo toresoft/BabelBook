@@ -1,8 +1,8 @@
 import type {
   CatalogEntry, CatalogState, CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView,
   InvalidationPreview, ProjectSummary,
-  Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings, TermRow, TermRule,
-  ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome, LocalRuntime,
+  Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, RunPhase, Settings, TermRow,
+  TermRule, ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome, LocalRuntime,
 } from "./dto.ts";
 import type { Bucket } from "./buckets.ts";
 
@@ -10,8 +10,8 @@ export type {
   CatalogEntry, CatalogState,
   CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, GlossaryTerm, GlossaryView,
   InvalidationPreview,
-  ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, Settings,
-  ProjectDetail, Report, ReportLine, TermRow, TermRule, UnitQuery, UnitRow,
+  ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, RunPhase,
+  Settings, ProjectDetail, Report, ReportLine, TermRow, TermRule, UnitQuery, UnitRow,
   UpdateProjectRequest, VerifyOutcome, LocalRuntime,
 } from "./dto.ts";
 
@@ -192,7 +192,7 @@ export interface Events {
   "project.changed": { id: string };
   "providers.changed": Record<string, never>;
   "run.phase": { projectId: string; phase: string };
-  "run.progress": { projectId: string; done: number; total: number };
+  "run.progress": { projectId: string; phase: RunPhase; done: number; total: number };
   /** The system changed its mind, or the window opened into a new desktop. */
   "theme.changed": { dark: boolean };
 }

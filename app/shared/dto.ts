@@ -8,6 +8,21 @@
  * happens to use internally is not the contract.
  */
 
+/**
+ * The phases a run goes through, in the order it goes through them.
+ *
+ * It lives here, with the IPC vocabulary, because three parties need it: the
+ * engine that emits it, the main process that forwards it, and the window that
+ * names it. It mirrors `Progress["phase"]` in `core/ports.ts`, and the
+ * orchestrator's `emit` is what holds the two together — a phase added there
+ * and not here stops compiling.
+ */
+export type RunPhase = "analyze" | "candidates" | "code-index" | "translate" | "compose";
+
+export const RUN_PHASES: readonly RunPhase[] = [
+  "analyze", "candidates", "code-index", "translate", "compose",
+];
+
 export interface CreateProjectRequest {
   epubPath: string;
   targetLanguage: string;

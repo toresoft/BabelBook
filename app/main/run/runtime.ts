@@ -161,7 +161,9 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       return;
     }
     if (message.type === "progress") {
-      deps.broadcast("run.progress", { projectId: activeId, done: message.done, total: message.total });
+      deps.broadcast("run.progress", {
+        projectId: activeId, phase: message.phase, done: message.done, total: message.total,
+      });
       return;
     }
     if (message.type === "done") {

@@ -163,7 +163,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
     signal,
     progress: {
       report(progress): void {
-        emit({ type: "progress", done: progress.done, total: progress.total });
+        emit({ type: "progress", phase: progress.phase, done: progress.done, total: progress.total });
       },
     },
   });

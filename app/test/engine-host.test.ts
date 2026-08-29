@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { startEngineRuntime } from "../engine/main.ts";
 import { StoreClient, type MessagePortLike } from "../engine/store-client.ts";
 import {
-  configureEngineHost, makeEngineHost, startEngine, type UtilityProcessLike,
+  configureEngineHost, isEngineMessage, makeEngineHost, startEngine, type UtilityProcessLike,
 } from "../main/run/engine-host.ts";
 import { makeStoreProxy } from "../main/run/store-proxy.ts";
 import type { EngineCommand, StoreRequest } from "../shared/run.ts";
@@ -386,6 +386,26 @@ describe("engine host", () => {
     mainPort.send({ type: "phase", phase: "translate" });
 
     expect(phases).toEqual(["translate"]);
+  });
+});
+
+describe("the progress message", () => {
+  it("is refused when its phase is not one the run has", () => {
+    expect(isEngineMessage({ type: "progress", phase: "sorting", done: 1, total: 2 })).toBe(false);
+  });
+
+  it("is accepted with a phase the run has", () => {
+    expect(isEngineMessage({ type: "progress", phase: "code-index", done: 1, total: 2 })).toBe(true);
+  });
+
+  /**
+   * A phase-less progress message is the shape of the previous protocol. It is
+   * refused rather than defaulted: a bar that says "translating" while the
+   * code index runs is worse than a bar that says nothing, because it is
+   * believed.
+   */
+  it("is refused without a phase", () => {
+    expect(isEngineMessage({ type: "progress", done: 1, total: 2 })).toBe(false);
   });
 });
 

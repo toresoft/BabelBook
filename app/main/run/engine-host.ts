@@ -5,6 +5,7 @@ import { makeStoreProxy, type StoreProxy } from "./store-proxy.ts";
 import type {
   EngineCommand, EngineHandle, EngineMessage, MessagePortLike, StoreRequest,
 } from "../../shared/run.ts";
+import { RUN_PHASES, type RunPhase } from "../../shared/dto.ts";
 import type { MessagePortMain } from "electron";
 
 export type { EngineHandle } from "../../shared/run.ts";
@@ -40,11 +41,13 @@ function isStoreRequest(message: unknown): message is StoreRequest {
     && Array.isArray(candidate.args);
 }
 
-function isEngineEvent(message: unknown): message is Exclude<EngineMessage, StoreRequest> {
+export function isEngineMessage(message: unknown): message is Exclude<EngineMessage, StoreRequest> {
   if (!isRecord(message)) return false;
   switch (message.type) {
     case "phase": return typeof message.phase === "string";
-    case "progress": return typeof message.done === "number" && typeof message.total === "number";
+    case "progress":
+      return typeof message.done === "number" && typeof message.total === "number"
+        && RUN_PHASES.includes(message.phase as RunPhase);
     case "gate": return message.gate === "terms" || message.gate === "code";
     case "transition": return message.event === "TERMS_READY"
       || message.event === "CODE_INDEXED"
@@ -149,7 +152,7 @@ export function makeEngineHost(deps: EngineHostDeps): EngineHandle {
       return;
     }
 
-    if (!isEngineEvent(message)) return;
+    if (!isEngineMessage(message)) return;
     for (const listener of listeners) listener(message);
   });
   port.start?.();

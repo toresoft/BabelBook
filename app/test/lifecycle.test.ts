@@ -31,7 +31,7 @@ describe("notifications", () => {
   });
 
   it("says nothing about ordinary progress", () => {
-    expect(notifyOn({ type: "progress", done: 3, total: 100 })).toBeNull();
+    expect(notifyOn({ type: "progress", phase: "translate", done: 3, total: 100 })).toBeNull();
   });
 });
 

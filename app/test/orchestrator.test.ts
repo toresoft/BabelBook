@@ -164,7 +164,7 @@ describe("runProject", () => {
     });
 
     expect(seen.filter((message) => message.type === "gate")).toEqual([]);
-    expect(seen).toContainEqual({ type: "progress", done: 1, total: 1 });
+    expect(seen).toContainEqual({ type: "progress", phase: "translate", done: 1, total: 1 });
     expect(seen).toContainEqual({ type: "phase", phase: "compose" });
     expect(seen.filter((message) => message.type === "transition")).toEqual([
       { type: "transition", event: "TERMS_READY" },

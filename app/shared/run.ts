@@ -6,6 +6,10 @@
  * import engine implementation just to understand a message.
  */
 
+import type { RunPhase } from "./dto.ts";
+
+export type { RunPhase } from "./dto.ts";
+
 /**
  * Materials for the engine to build its backend from.
  *
@@ -85,7 +89,7 @@ export type StoreResponse =
 
 export type EngineMessage =
   | { type: "phase"; phase: string }
-  | { type: "progress"; done: number; total: number }
+  | { type: "progress"; phase: RunPhase; done: number; total: number }
   | { type: "gate"; gate: "terms" | "code" }
   | { type: "transition"; event: RunTransition }
   | { type: "done"; summary: RunSummary }
