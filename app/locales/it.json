@@ -43,6 +43,7 @@
     "gone": "Questo progetto non esiste più."
   },
   "phase": {
+    "analyze": "Analisi del libro",
     "candidates": "Estrazione dei termini",
     "code-index": "Riconoscimento del codice",
     "translate": "Traduzione",

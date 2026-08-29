@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { TranslationUnit } from "../../core/epub/index.ts";
+import type { LlmBackend } from "../../core/ports.ts";
 import { FakeBackend } from "../../core/test/fake/backend.ts";
 import { FakeStore } from "../../core/test/fake/store.ts";
 import { createProjectActor } from "../../core/workflow/project.machine.ts";
@@ -276,6 +277,59 @@ describe("runProject", () => {
     });
 
     expect(secondBackend.prompts.some((prompt) => prompt.includes("#CODEINDEX"))).toBe(false);
+  });
+
+  // Production break: the code-index, the longest phase of a run, ignored the
+  // run-wide concurrency and fell back to a private default of two.
+  it("sends the code-index out as wide as the run's concurrency", async () => {
+    // Sixty-one units, sixty per batch: two batches, so width is observable.
+    // Width only is, while an answer is still out — a call that never comes
+    // back holds the window open, and the second batch crosses it exactly
+    // when the setting did not reach the phase.
+    const store = new FakeStore(Array.from({ length: 61 }, (_, at) => unit(at + 1)));
+    const releases: Array<() => void> = [];
+    let codeIndexCalls = 0;
+    const backend: LlmBackend = {
+      call: (input) => {
+        if (!input.prompt.includes("#CODEINDEX")) {
+          return Promise.resolve({
+            text: "TERMS 0\nEND", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop",
+          });
+        }
+        codeIndexCalls++;
+        const header = /#CODEINDEX v1 batch=(\d+\/\d+) count=(\d+)/.exec(input.prompt)!;
+        const verdicts = Array.from(
+          { length: Number(header[2]) }, (_, at) => `[${at + 1}] translate`,
+        );
+        return new Promise((resolve) => {
+          releases.push(() => resolve({
+            text: `#CODEVERDICT v1 batch=${header[1]} count=${header[2]}\n${verdicts.join("\n")}\n@end`,
+            tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop",
+          }));
+        });
+      },
+    };
+    const { seen, emit } = collect();
+
+    const run = runProject({
+      store,
+      backend,
+      config: config({ autoAcceptTerms: true, concurrency: 1 }),
+      emit,
+      signal: new AbortController().signal,
+    });
+
+    // Width one: while the first batch is out, the second is not. The private
+    // default of two would have sent both before any answer came back.
+    await vi.waitFor(() => expect(codeIndexCalls).toBe(1));
+    expect(codeIndexCalls).toBe(1);
+
+    releases.splice(0).forEach((release) => release());
+    await vi.waitFor(() => expect(codeIndexCalls).toBe(2));
+    releases.splice(0).forEach((release) => release());
+
+    await run;
+    expect(seen).toContainEqual({ type: "gate", gate: "code" });
   });
 
   // Production break: malformed code verdict batches are checkpointed without a degradation declaration.
