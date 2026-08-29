@@ -20,6 +20,7 @@ export function projectCacheKey(
   projectId: string,
   modelId: string,
   reasoning: boolean,
+  format: "text" | "schema",
   versions: Versions = { prompt: PROMPT_VERSION, context: CONTEXT_VERSION },
 ): string {
   const row = db.prepare(`
@@ -41,6 +42,7 @@ export function projectCacheKey(
     sourceSha256: row.sourceSha256,
     modelId,
     reasoning,
+    format,
     // The language the units were cut under, which is what the prompt names.
     // A project that never settled one has translated nothing yet, so the
     // placeholder only ever keys work that does not exist.

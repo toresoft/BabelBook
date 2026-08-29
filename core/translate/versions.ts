@@ -62,6 +62,15 @@ export interface CacheKeyInput {
    * leaves it implied.
    */
   reasoning: boolean;
+  /**
+   * Which contract the answer travelled under.
+   *
+   * The two are different instructions, so they are different work: a chunk
+   * translated under a schema was told almost nothing about a format, and one
+   * translated in words was told a great deal. Reusing one for the other would
+   * be reusing work made under rules the run never applied.
+   */
+  format: "text" | "schema";
   sourceLanguage: string;
   targetLanguage: string;
   /** `name@version` for every active glossary, in any order. */
@@ -92,6 +101,7 @@ export function cacheKey(
     source: input.sourceSha256,
     model: input.modelId,
     reasoning: input.reasoning,
+    format: input.format,
     from: input.sourceLanguage,
     to: input.targetLanguage,
     glossaries: [...input.glossaries].sort(),

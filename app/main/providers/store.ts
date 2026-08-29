@@ -414,6 +414,27 @@ export function modelContextOf(db: DatabaseSync, providerId: string, modelId: st
 }
 
 /**
+ * Whether the catalogue says this model can be held to a schema.
+ *
+ * Absent, unreadable or false all mean no. A model asked for a shape it cannot
+ * impose answers in prose, and the instructions it was sent — the short ones,
+ * which say nothing about a format — have nothing to fall back on.
+ */
+export function structuredOf(db: DatabaseSync, providerId: string, modelId: string): boolean {
+  const row = db.prepare(`
+    SELECT capabilities FROM provider_model
+     WHERE provider_id = ? AND model_id = ?
+  `).get(providerId, modelId) as { capabilities: string | null } | undefined;
+  if (row?.capabilities == null) return false;
+
+  try {
+    return (JSON.parse(row.capabilities) as { structuredOutput?: unknown }).structuredOutput === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The one preset that stays hand-built: the shortcut for endpoints the
  * catalogue does not know — OpenRouter, a corporate gateway, a model served
  * from the user's own machine. They differ by base URL, not by protocol, and

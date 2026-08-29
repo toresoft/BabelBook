@@ -36,6 +36,8 @@ export interface ResolvedModel {
   modelId: string;
   /** `providerOptions` for the call, keyed by provider as the SDK expects. */
   options?: Record<string, unknown>;
+  /** Whether the catalogue says this model can be held to a schema. */
+  structured?: boolean;
 }
 
 export interface ResolveDeps {
@@ -48,6 +50,8 @@ export interface ResolveDeps {
   baseUrl: string | null;
   headers?: Record<string, string>;
   options?: Record<string, unknown>;
+  /** Whether the catalogue says this model can be held to a schema. */
+  structured?: boolean;
   /**
    * Who is answering, for the one route that cannot know.
    *
@@ -195,5 +199,6 @@ export async function resolveModel(spec: string, deps: ResolveDeps): Promise<Res
     // the same id on two routes is not the same model.
     modelId: spec,
     options: deps.options,
+    ...(deps.structured === undefined ? {} : { structured: deps.structured }),
   };
 }

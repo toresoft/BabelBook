@@ -21,6 +21,46 @@ const chunk = (units: TranslationUnit[]): Chunk => ({
 const ok = (body: string, count: number) => `UNITS ${count}\n${body}\nEND`;
 
 describe("translateChunk", () => {
+  /**
+   * A provider that can impose the shape is not asked for it in words: the
+   * schema travels with the call, and the instructions spend themselves on
+   * the translation instead of on a header, a marker and a terminator.
+   */
+  it("asks a backend that can impose a shape for one, and asks the others in words", async () => {
+    const withSchema = new FakeBackend(
+      [JSON.stringify({ units: [{ id: "c1.xhtml#1", text: "Uno" }] })], true);
+    const out = await translateChunk({
+      chunk: chunk([unit(1, "One")]), terms: [], backend: withSchema,
+    });
+
+    expect(out.translated.get("c1.xhtml#1")).toBe("Uno");
+    expect(withSchema.calls[0].schema).toBeDefined();
+    expect(withSchema.calls[0].system).not.toContain("UNITS");
+    expect(withSchema.prompts[0]).not.toContain("UNITS 1");
+
+    const inWords = new FakeBackend([ok("[u:c1.xhtml#1]\nUno", 1)]);
+    await translateChunk({ chunk: chunk([unit(1, "One")]), terms: [], backend: inWords });
+    expect(inWords.calls[0].schema).toBeUndefined();
+    expect(inWords.calls[0].system).toContain("UNITS");
+  });
+
+  /** The six levels hold whichever way the answer travelled. */
+  it("holds a schema answer to the same levels", async () => {
+    const backend = new FakeBackend(
+      [JSON.stringify({ units: [{ id: "c1.xhtml#1", text: "步骤四：遵守法规与隐私" }] }),
+       JSON.stringify({ units: [{ id: "c1.xhtml#1", text: "Passo quattro: le norme" }] })], true);
+
+    const out = await translateChunk({
+      chunk: chunk([unit(1, "Step four: complying with the regulations")]),
+      terms: [], backend,
+    });
+
+    expect(out.attempts).toBe(2);
+    expect(backend.prompts[1]).toContain("wrong-script");
+    expect(out.translated.get("c1.xhtml#1")).toBe("Passo quattro: le norme");
+  });
+
+
   it("accepts a good answer in one attempt", async () => {
     const out = await translateChunk({
       chunk: chunk([unit(1, "One"), unit(2, "Two")]), terms: [],

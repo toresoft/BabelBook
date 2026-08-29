@@ -1,5 +1,5 @@
 import { StoreClient } from "./store-client.ts";
-import { generateText } from "ai";
+import { generateObject, generateText } from "ai";
 import type { LlmBackend, ProjectStore } from "../../core/ports.ts";
 import { runProject } from "../main/run/orchestrator.ts";
 import { resolveModel } from "./backends/resolve.ts";
@@ -50,7 +50,8 @@ function isBackendSpec(spec: unknown): spec is BackendSpec {
     && typeof candidate.headers === "object" && candidate.headers !== null
     && typeof candidate.options === "object" && candidate.options !== null
     && (candidate.name === null || candidate.name === undefined
-      || typeof candidate.name === "string");
+      || typeof candidate.name === "string")
+    && (candidate.structured === undefined || typeof candidate.structured === "boolean");
 }
 
 function isEngineCommand(message: unknown): message is EngineCommand {
@@ -76,10 +77,13 @@ async function backendFromSpec(spec: BackendSpec): Promise<LlmBackend> {
     apiKey: spec.apiKey,
     baseUrl: spec.baseUrl,
     ...(spec.name === null || spec.name === undefined ? {} : { name: spec.name }),
+    ...(spec.structured === undefined ? {} : { structured: spec.structured }),
     ...(Object.keys(spec.headers).length === 0 ? {} : { headers: spec.headers }),
     options: spec.options,
   });
-  return sdkBackend(resolved, generateText);
+  // `generateObject` is generic over its schema, and the adapter's port is
+  // not: the cast lives here, at the one call, rather than widening the port.
+  return sdkBackend(resolved, generateText, (input) => generateObject(input as never));
 }
 
 /** The production runner: a backend from the spec, then the phases. */

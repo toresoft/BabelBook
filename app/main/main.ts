@@ -16,7 +16,7 @@ import {
 import { probeLocalRuntimes } from "./catalog/local.ts";
 import {
   getProvider, providerNameOf, readKey, reasoningOf, refreshCatalogMetadata,
-  resolveProviderOptions, type Crypto,
+  resolveProviderOptions, structuredOf, type Crypto,
 } from "./providers/store.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
 import { registerIpc, readSettings } from "./ipc.ts";
@@ -284,6 +284,9 @@ app.whenReady().then(async () => {
           reasoningOf(db, row.providerId, row.modelId),
         ),
         name: name === row.route ? null : name,
+        // Which of the two contracts this run will translate under. The key is
+        // computed from the same answer, so the two cannot disagree.
+        structured: structuredOf(db, row.providerId, row.modelId),
       };
     },
     broadcast: (channel, payload) => {

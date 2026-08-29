@@ -1,4 +1,5 @@
 import type { TranslationUnit } from "../epub/index.ts";
+import { parseSchemaResponse } from "./schema.ts";
 import { foreignScript } from "./script.ts";
 import { parseResponse } from "./wire.ts";
 
@@ -87,16 +88,22 @@ export function validate(
   requested: TranslationUnit[],
   finishReason: "stop" | "length" | "other",
   targetLanguage: string,
+  /** Which contract the answer travelled under. The levels below are the same. */
+  format: "text" | "schema",
 ): Validation {
   const truncated = finishReason === "length";
-  const parsed = parseResponse(raw);
+  const parsed = format === "schema" ? parseSchemaResponse(raw) : parseResponse(raw);
   const rejections: Rejection[] = [];
 
   // Level 1 — structure.
   if (parsed.declared === null) {
     return {
       accepted: new Map(),
-      rejections: [{ unitId: null, code: "no-structure", detail: "no UNITS header in the answer" }],
+      rejections: [{
+        unitId: null,
+        code: "no-structure",
+        detail: format === "schema" ? "the answer is not the shape asked for" : "no UNITS header in the answer",
+      }],
       truncated,
     };
   }

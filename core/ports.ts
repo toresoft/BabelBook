@@ -60,6 +60,12 @@ export interface LlmCall {
   system?: string;
   maxOutputTokens?: number;
   signal?: AbortSignal;
+  /**
+   * A JSON Schema the answer must conform to, for a backend that can impose
+   * one. Plain data on purpose: the core names no SDK and no validation
+   * library, and a schema is an object either way.
+   */
+  schema?: Record<string, unknown>;
 }
 
 export interface LlmResult {
@@ -81,6 +87,14 @@ export interface LlmResult {
 
 export interface LlmBackend {
   call(input: LlmCall): Promise<LlmResult>;
+  /**
+   * Whether a `schema` is enforced rather than ignored.
+   *
+   * Absent means no: a backend that cannot impose a shape must be asked for
+   * one in words, and a caller that assumed otherwise would send instructions
+   * with no format in them and get prose back.
+   */
+  readonly structured?: boolean;
 }
 
 export interface Progress {

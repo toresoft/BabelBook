@@ -33,6 +33,12 @@ export type BackendSpec =
      * under. Null when the route is a package: a package is its own name.
      */
     name: string | null;
+    /**
+     * Whether the answer's shape can be imposed rather than asked for in
+     * words. It decides which of the two contracts the run translates under,
+     * so it is part of the cache key as well.
+     */
+    structured: boolean;
   };
 
 export interface RunConfig {

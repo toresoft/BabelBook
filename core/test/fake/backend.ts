@@ -11,18 +11,23 @@ export type Reply = (call: LlmCall) => LlmResult;
  */
 export class FakeBackend implements LlmBackend {
   readonly prompts: string[] = [];
+  /** Every call as it arrived, for a test that asks what was actually sent. */
+  readonly calls: LlmCall[] = [];
+  readonly structured: boolean;
 
   #scripted: string[] | null;
   #reply: Reply | null;
 
-  constructor(answers: string[] | Reply) {
+  constructor(answers: string[] | Reply, structured = false) {
     this.#scripted = Array.isArray(answers) ? [...answers] : null;
     this.#reply = Array.isArray(answers) ? null : answers;
+    this.structured = structured;
   }
 
   async call(input: LlmCall): Promise<LlmResult> {
     input.signal?.throwIfAborted();
     this.prompts.push(input.prompt);
+    this.calls.push(input);
 
     if (this.#reply !== null) return this.#reply(input);
 

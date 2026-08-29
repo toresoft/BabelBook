@@ -150,6 +150,42 @@ describe("sdkBackend", () => {
     expect(generate.mock.calls[0][0].providerOptions).toEqual({ acme: {} });
   });
 
+  /**
+   * The point of the whole exercise: where the provider can impose the shape,
+   * the answer arrives as an object and the instructions never have to argue
+   * for a header, a marker and a terminator.
+   */
+  it("asks for an object when a schema travels with the call", async () => {
+    const generate = vi.fn();
+    const structured = vi.fn().mockResolvedValue({
+      object: { units: [{ id: "c1#1", text: "Uno" }] },
+      usage: { inputTokens: 10, outputTokens: 4 },
+      finishReason: "stop",
+    });
+    const backend = sdkBackend(
+      { model: {}, modelId: "acme:m1", structured: true }, generate, structured);
+
+    expect(backend.structured).toBe(true);
+    const result = await backend.call({ prompt: "One", schema: { type: "object" } });
+
+    expect(generate).not.toHaveBeenCalled();
+    expect(JSON.parse(result.text)).toEqual({ units: [{ id: "c1#1", text: "Uno" }] });
+    expect(result.tokensIn).toBe(10);
+  });
+
+  /** Declared without the means, or with the means and not declared: neither is structured. */
+  it("does not claim a shape it cannot impose", async () => {
+    const generate = vi.fn().mockResolvedValue({ text: "prose", finishReason: "stop" });
+    const noFunction = sdkBackend({ model: {}, modelId: "acme:m1", structured: true }, generate);
+    const noCapability = sdkBackend({ model: {}, modelId: "acme:m1" }, generate, vi.fn());
+
+    expect(noFunction.structured).toBe(false);
+    expect(noCapability.structured).toBe(false);
+    // And a schema that arrives anyway is not silently dropped into a text call.
+    expect((await noFunction.call({ prompt: "One", schema: { type: "object" } })).text)
+      .toBe("prose");
+  });
+
   it("reports truncation as such, so the engine can split the chunk", async () => {
     const generate = vi.fn().mockResolvedValue({
       text: "Un", usage: { inputTokens: 10, outputTokens: 4096 }, finishReason: "length",

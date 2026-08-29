@@ -34,20 +34,42 @@ export function languageName(tag: string): string {
   return NAMES[tag.split("-")[0]!.toLowerCase()] ?? tag;
 }
 
-export function buildSystem(request: TranslationRequest): string {
-  const from = languageName(request.context.sourceLanguage);
-  const to = languageName(request.context.targetLanguage);
-
+/**
+ * The rules that are about translating, shared by both contracts.
+ *
+ * The two contracts differ in one thing only — how the answer comes back —
+ * and everything else has to stay the same sentence in both. Written twice,
+ * they would drift, and the drift would show up as two books translated under
+ * rules that were meant to be identical.
+ */
+function rules(): string[] {
   return [
-    `You are translating a book from ${from} into ${to}. Every unit you are`,
-    `given must come back written in ${to}.`,
-    "",
     "- Reproduce every numbered placeholder exactly, in the same order and",
     "  balanced: <0>text</0> stays <0>…</0>, <1/> stays <1/>.",
     "- Never translate what sits inside an empty placeholder pair: it holds code.",
     "- Reproduce unchanged any command, code snippet, console session or program",
     "  output that carries no markup of its own: translating one breaks it.",
     "- Keep the author's register and tense. Do not explain, expand or summarise.",
+  ];
+}
+
+/** The two lines that say what the work is, in the position a model reads first. */
+function opening(request: TranslationRequest): string[] {
+  const from = languageName(request.context.sourceLanguage);
+  const to = languageName(request.context.targetLanguage);
+  return [
+    `You are translating a book from ${from} into ${to}. Every unit you are`,
+    `given must come back written in ${to}.`,
+  ];
+}
+
+export function buildSystem(request: TranslationRequest): string {
+  const to = languageName(request.context.targetLanguage);
+
+  return [
+    ...opening(request),
+    "",
+    ...rules(),
     "",
     "Answer with this block and nothing around it. Copy each `[u:<id>]` marker",
     "exactly as it arrives: the markers say which translation belongs to which",
@@ -62,5 +84,27 @@ export function buildSystem(request: TranslationRequest): string {
     "END",
     "",
     `Now translate, into ${to}.`,
+  ].join("\n");
+}
+
+/**
+ * The same work, for a provider that will impose the shape itself.
+ *
+ * Everything the other contract spends on the protocol — the header, the
+ * markers, the terminator, the worked example — is carried by a JSON schema
+ * the provider enforces. What is left is what should always have been most of
+ * it: what to translate, into what, and the four rules that are about
+ * translating rather than about answering.
+ */
+export function buildSchemaSystem(request: TranslationRequest): string {
+  const to = languageName(request.context.targetLanguage);
+
+  return [
+    ...opening(request),
+    "",
+    ...rules(),
+    "",
+    "Answer with one entry per unit: its id copied exactly as it arrives, and",
+    `the ${to} translation as its text.`,
   ].join("\n");
 }

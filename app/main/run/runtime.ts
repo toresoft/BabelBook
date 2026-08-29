@@ -303,6 +303,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     const backend = deps.backendSpec(projectId);
     const key = projectCacheKey(
       db, projectId, backend.kind === "sdk" ? backend.spec : "fake", reasoning,
+      backend.kind === "sdk" && backend.structured ? "schema" : "text",
     );
     // Written down, because every screen reads the key from here: the library
     // counts progress under it, the units tab shows translations under it, and

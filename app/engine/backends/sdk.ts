@@ -1,4 +1,4 @@
-import type { LanguageModel } from "ai";
+import { jsonSchema, type LanguageModel } from "ai";
 import type { LlmBackend, LlmCall, LlmResult } from "../../../core/ports.ts";
 import type { ResolvedModel } from "./resolve.ts";
 
@@ -31,6 +31,17 @@ export interface GenerateOutput {
 }
 
 export type GenerateFn = (input: GenerateInput) => Promise<GenerateOutput>;
+
+/** `generateObject` as this adapter needs it: a schema in, an object out. */
+export interface StructuredInput extends Omit<GenerateInput, "maxOutputTokens"> {
+  schema: unknown;
+}
+
+export interface StructuredOutput extends Omit<GenerateOutput, "text"> {
+  object?: unknown;
+}
+
+export type StructuredFn = (input: StructuredInput) => Promise<StructuredOutput>;
 
 /**
  * A count the provider omitted is zero, never NaN.
@@ -67,20 +78,39 @@ function finish(reason: string | undefined): LlmResult["finishReason"] {
  * owns all of that, and a second layer of retries hidden here would multiply
  * with it and spend a run's budget several times over.
  */
-export function sdkBackend(resolved: ResolvedModel, generate: GenerateFn): LlmBackend {
+export function sdkBackend(
+  resolved: ResolvedModel,
+  generate: GenerateFn,
+  /** Absent means this build cannot impose a shape, whatever the model claims. */
+  generateStructured?: StructuredFn,
+): LlmBackend {
+  // Both halves or neither. A backend that announced a shape it has no way to
+  // impose would be sent instructions with no format in them, and would answer
+  // in prose that nothing can attribute to a unit.
+  const structured = resolved.structured === true && generateStructured !== undefined;
+
   return {
+    structured,
+
     async call(input: LlmCall): Promise<LlmResult> {
-      const result = await generate({
+      const common = {
         model: resolved.model as LanguageModel,
         prompt: input.prompt,
         system: input.system,
-        maxOutputTokens: input.maxOutputTokens,
         abortSignal: input.signal,
         providerOptions: resolved.options as GenerateTextInput["providerOptions"],
-      });
+      };
+
+      const result = structured && input.schema !== undefined
+        ? await generateStructured!({ ...common, schema: jsonSchema(input.schema as never) })
+        : await generate({ ...common, maxOutputTokens: input.maxOutputTokens });
 
       return {
-        text: result.text ?? "",
+        // The object is the answer under one contract and the text under the
+        // other; the engine reads one shape, so the object becomes its JSON.
+        text: "object" in result
+          ? JSON.stringify(result.object ?? {})
+          : (result as GenerateOutput).text ?? "",
         tokensIn: count(result.usage?.inputTokens),
         tokensOut: count(result.usage?.outputTokens),
         reasoningTokens: count(result.usage?.outputTokenDetails?.reasoningTokens),

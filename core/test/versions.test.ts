@@ -5,6 +5,7 @@ const base = {
   sourceSha256: "sha-of-the-book",
   modelId: "acme:m1",
   reasoning: false,
+  format: "text" as const,
   sourceLanguage: "en",
   targetLanguage: "it",
   glossaries: ["fantasy@2"],
@@ -23,6 +24,16 @@ describe("cacheKey", () => {
   it("changes when a glossary is added or removed", () => {
     expect(cacheKey(base)).not.toBe(cacheKey({ ...base, glossaries: ["fantasy@2", "tech@1"] }));
     expect(cacheKey(base)).not.toBe(cacheKey({ ...base, glossaries: [] }));
+  });
+
+  /**
+   * Two contracts are two sets of instructions, so they are two pieces of
+   * work: one chunk was told almost nothing about a format and the other was
+   * told a great deal, and reusing either for the other reuses work made under
+   * rules the run never applied.
+   */
+  it("changes when the answer travelled under the other contract", () => {
+    expect(cacheKey(base)).not.toBe(cacheKey({ ...base, format: "schema" }));
   });
 
   it("changes when the model changes", () => {

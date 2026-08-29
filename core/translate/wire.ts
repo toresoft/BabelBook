@@ -16,18 +16,14 @@ const TERMINATOR = "END";
  * marker** makes it impossible to align by position; the **terminator**
  * separates a finished answer from a truncated one.
  */
-export function buildPayload(request: TranslationRequest): string {
-  if (request.units.length === 0) {
-    throw new Error("buildPayload: nothing to translate");
-  }
-  // The planner decides what is work. A guard here means a defect upstream
-  // cannot end up paying a model to translate code.
-  for (const unit of request.units) {
-    if (!isWork(unit.state)) {
-      throw new Error(`buildPayload: ${unit.id} is ${unit.state}, not work`);
-    }
-  }
-
+/**
+ * Everything a chunk carries before its units: the chapter, the book, the
+ * terminology, the text around it.
+ *
+ * Shared by both contracts, because none of it is about how the answer comes
+ * back. Only the closing instruction and the wrapper differ.
+ */
+export function preamble(request: TranslationRequest): string[] {
   const lines: string[] = [];
   const { context, terms } = request;
 
@@ -61,7 +57,28 @@ export function buildPayload(request: TranslationRequest): string {
     lines.push("", "Text between the units below, for context only, do not translate:",
       ...context.interleaved);
   }
+  return lines;
+}
 
+/** Every unit of the chunk, each behind the marker that names it. */
+export function unitLines(request: TranslationRequest): string[] {
+  return request.units.flatMap((unit) => [`[u:${unit.id}]`, unit.source]);
+}
+
+export function buildPayload(request: TranslationRequest): string {
+  if (request.units.length === 0) {
+    throw new Error("buildPayload: nothing to translate");
+  }
+  // The planner decides what is work. A guard here means a defect upstream
+  // cannot end up paying a model to translate code.
+  for (const unit of request.units) {
+    if (!isWork(unit.state)) {
+      throw new Error(`buildPayload: ${unit.id} is ${unit.state}, not work`);
+    }
+  }
+
+  const lines = [...preamble(request)];
+  const { context } = request;
   // The language is named here and not only in the instructions: this is the
   // last line before the work, and the last line is where a model looks when
   // it starts writing. Version 2 said only "translate the units below", 1600
@@ -69,11 +86,7 @@ export function buildPayload(request: TranslationRequest): string {
   lines.push("", `Translate the ${request.units.length} units below into `
     + `${languageName(context.targetLanguage)}.`,
     "Answer with the same markers, in the same order, and finish with END.", "");
-  lines.push(`UNITS ${request.units.length}`);
-  for (const unit of request.units) {
-    lines.push(`[u:${unit.id}]`, unit.source);
-  }
-  lines.push(TERMINATOR);
+  lines.push(`UNITS ${request.units.length}`, ...unitLines(request), TERMINATOR);
 
   return lines.join("\n");
 }

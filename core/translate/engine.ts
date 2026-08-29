@@ -5,6 +5,8 @@ import { isWork } from "../epub/index.ts";
 import { charsBudgetFor, planChunks, type Chunk } from "./plan.ts";
 import { termsForChunk } from "./terms.ts";
 import { validate, type Rejection, type RejectionCode } from "./validate.ts";
+import { buildSchemaSystem } from "./instructions.ts";
+import { buildSchemaPayload, TRANSLATION_SCHEMA } from "./schema.ts";
 import { buildPayload, buildSystem } from "./wire.ts";
 
 /**
@@ -99,11 +101,19 @@ export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
       context: input.chunk.context,
       terms: termsForChunk(input.terms, pending),
     };
-    const prompt = [buildPayload(request), ...diagnose(rejections)].join("\n");
+    // Two contracts, one difference: whether the provider imposes the shape or
+    // the words have to ask for it. Everything below — the levels, the retry,
+    // the diagnosis — is the same either way.
+    const structured = input.backend.structured === true;
+    const prompt = [
+      structured ? buildSchemaPayload(request) : buildPayload(request),
+      ...diagnose(rejections),
+    ].join("\n");
 
     const result = await input.backend.call({
       prompt,
-      system: buildSystem(request),
+      system: structured ? buildSchemaSystem(request) : buildSystem(request),
+      ...(structured ? { schema: TRANSLATION_SCHEMA } : {}),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
     });
     tokensIn += result.tokensIn;
@@ -116,6 +126,7 @@ export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
 
     const validation = validate(
       result.text, pending, result.finishReason, input.chunk.context.targetLanguage,
+      structured ? "schema" : "text",
     );
     for (const [unitId, text] of validation.accepted) translated.set(unitId, text);
 
