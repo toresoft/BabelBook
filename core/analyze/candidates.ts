@@ -1,6 +1,8 @@
 import type { LlmBackend, ProgressSink } from "../ports.ts";
 import type { TermEntry } from "../glossary/index.ts";
 import { isWork, type TranslationUnit } from "../epub/index.ts";
+import { languageName } from "../translate/instructions.ts";
+import { foreignScript } from "../translate/script.ts";
 import { sampleBlocks } from "./sample.ts";
 
 export interface Candidate extends TermEntry {
@@ -56,7 +58,11 @@ const RULES = new Set(["dnt", "prefer", "must"]);
 
 function buildPrompt(sample: string[], input: ExtractInput): string {
   return [
-    `You are preparing a ${input.sourceLanguage} book for translation into ${input.targetLanguage}.`,
+    // Named, not spelled as a tag. "preparing a en book for translation into
+    // it" asks a model to act on two codes, and on a real book it answered
+    // with renderings in a third language entirely.
+    `You are preparing a ${languageName(input.sourceLanguage)} book`
+      + ` for translation into ${languageName(input.targetLanguage)}.`,
     "From the passage below, list the terms a translator must handle consistently:",
     "proper names, invented names, places, brands, and technical terms.",
     "",
@@ -64,8 +70,8 @@ function buildPrompt(sample: string[], input: ExtractInput): string {
     "",
     "TERMS <count>",
     "[t:<term>] rule=dnt note=<why>",
-    "[t:<term>] rule=must target=<required rendering>",
-    "[t:<term>] rule=prefer target=<preferred rendering>",
+    `[t:<term>] rule=must target=<required rendering, in ${languageName(input.targetLanguage)}>`,
+    `[t:<term>] rule=prefer target=<preferred rendering, in ${languageName(input.targetLanguage)}>`,
     "OPEN <count>",
     "[o:<term>] <the question you could not answer>",
     "END",
@@ -209,6 +215,20 @@ export async function extractCandidates(input: ExtractInput): Promise<CandidateR
     }
 
     const term = proposed[0];
+
+    // A rendering nobody can apply is not a fact, it is a question. An
+    // approved `must` in the wrong script is worse than a missing term: it
+    // travels into every chunk that contains the source string, as an
+    // instruction, and on a real book that is where the ideograms came from.
+    const foreign = term.target === undefined
+      ? null
+      : foreignScript(source, term.target, input.targetLanguage, { minLetters: 1 });
+    if (foreign !== null) {
+      open.set(source, `the proposed rendering of "${source}" is written in ${foreign},`
+        + ` which ${languageName(input.targetLanguage)} is not`);
+      continue;
+    }
+
     candidates.push({
       source,
       ...(term.target === undefined ? {} : { target: term.target }),

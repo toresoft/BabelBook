@@ -69,6 +69,18 @@ describe("foreignScript", () => {
     )).toBe("Han");
   });
 
+  /**
+   * A term is short by nature, and the whole of it is the evidence: "企业" is
+   * two characters and is entirely the wrong answer. The floor that protects a
+   * product name inside a paragraph has no business here.
+   */
+  it("can be asked to judge something as short as a term", () => {
+    expect(foreignScript("businesses", "企业", "it")).toBeNull();
+    expect(foreignScript("businesses", "企业", "it", { minLetters: 1 })).toBe("Han");
+    expect(foreignScript("Step 4", "第4步", "it", { minLetters: 1 })).toBe("Han");
+    expect(foreignScript("Step 4", "Passo 4", "it", { minLetters: 1 })).toBeNull();
+  });
+
   it("judges nothing when there are too few letters to judge", () => {
     expect(foreignScript("n8n", "n8n", "it")).toBeNull();
     expect(foreignScript("42", "42", "it")).toBeNull();

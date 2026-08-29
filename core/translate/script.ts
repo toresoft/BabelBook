@@ -106,13 +106,20 @@ export function scriptsWritingIn(language: string): Set<string> | null {
  */
 export function foreignScript(
   source: string, translated: string, targetLanguage: string,
+  /**
+   * `minLetters` is the floor below which there is nothing to judge. It
+   * protects a paragraph whose four letters are a product name; a term is
+   * short by nature and the whole of it is the evidence, so whoever asks
+   * about one lowers it.
+   */
+  options: { minLetters?: number } = {},
 ): string | null {
   const expected = scriptsWritingIn(targetLanguage);
   if (expected === null) return null;
 
   const found = scriptsOf(translated);
   const letters = [...found.values()].reduce((sum, n) => sum + n, 0);
-  if (letters < MIN_LETTERS) return null;
+  if (letters < (options.minLetters ?? MIN_LETTERS)) return null;
 
   const inSource = scriptsOf(source);
   let worst: { script: string; count: number } | null = null;

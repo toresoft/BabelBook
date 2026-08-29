@@ -103,6 +103,51 @@ END`;
     expect(report.open[0].source).toBe("Rivendell");
   });
 
+  /**
+   * Production break: on a real book the extraction proposed 21 renderings of
+   * 51 in Chinese — nine of them `must`. Auto-acceptance approved every one,
+   * and from then on each chunk carrying one of those sources arrived with an
+   * instruction to render it in Chinese. Units so exposed came back with
+   * ideograms twenty times more often than the rest: the model was not
+   * forgetting the language, it was being told.
+   */
+  it("will not apply a rendering written in a script the target is not", async () => {
+    const report = await extractCandidates({
+      units,
+      backend: thrice(`TERMS 2
+[t:Rivendell] rule=must target=瑞文戴尔 note=place name
+[t:dwarf] rule=must target=nano
+END`),
+      sourceLanguage: "en", targetLanguage: "it",
+    });
+
+    expect(report.candidates.map((c) => c.source)).toEqual(["dwarf"]);
+    // Not dropped: a rendering nobody can apply is a question, and the screen
+    // that shows open questions is where a person can settle it.
+    expect(report.open.map((o) => o.source)).toEqual(["Rivendell"]);
+    expect(report.open[0]!.question).toContain("Han");
+  });
+
+  /** A `dnt` keeps the source form, so there is no rendering to judge. */
+  it("says nothing about a term that is to be left alone", async () => {
+    const report = await extractCandidates({
+      units,
+      backend: thrice("TERMS 1\n[t:Rivendell] rule=dnt note=place name\nEND"),
+      sourceLanguage: "en", targetLanguage: "it",
+    });
+
+    expect(report.candidates.map((c) => c.source)).toEqual(["Rivendell"]);
+  });
+
+  /** The languages are named, not spelled as tags: "into it" is not a language. */
+  it("names the languages in words the model can act on", async () => {
+    const backend = thrice(answer);
+    await extractCandidates({ units, backend, sourceLanguage: "en", targetLanguage: "it" });
+
+    expect(backend.prompts[0]).toContain("English");
+    expect(backend.prompts[0]).toContain("Italian");
+  });
+
   it("discards a term the book does not contain, and says how many", async () => {
     const invented = `TERMS 1\n[t:Numenor] rule=dnt note=place name\nEND`;
     const report = await extractCandidates({
