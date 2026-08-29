@@ -83,6 +83,19 @@ export async function modelsForEntry(
   return enrichModels(discovered.map((model) => model.id), entry);
 }
 
+/**
+ * The variables the entry's documentation names for its key, or null when the
+ * catalogue carries no such entry.
+ *
+ * The main process owns the snapshot, so the line between "the window may name
+ * this variable" and "it may not" is drawn here, against the same data the
+ * window was shown: a name is honoured exactly when the entry declares it.
+ */
+export function declaredEnv(catalog: Catalog, entryId: string): string[] | null {
+  const entry = catalog.providers.find((provider) => provider.id === entryId);
+  return entry === undefined ? null : entry.env;
+}
+
 /** Asks any compatible URL what it serves, with no metadata to add. */
 export async function discoverFromUrl(
   baseUrl: string,

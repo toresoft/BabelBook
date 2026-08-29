@@ -15,10 +15,28 @@ import { Providers } from "./providers";
  * says for the user.
  */
 
+/**
+ * An `api`-bearing entry, the shape of a publisher the SDK ships no package
+ * for: the catalogue declares the address, and `routeOf` answers
+ * `openai-compatible` because that protocol reaches anything that speaks it.
+ */
 const entry: CatalogEntry = {
-  id: "acme", name: "Acme", route: "acme-compatible",
+  id: "acme", name: "Acme", route: "openai-compatible",
   baseUrl: "https://api.acme.test/v1", options: {}, models: 12,
   envVar: "ACME_API_KEY",
+};
+
+/**
+ * An npm-route entry with a null api — the REAL Anthropic shape, taken from
+ * the snapshot: the registry knows `@ai-sdk/anthropic`, and the package
+ * carries its own endpoint, so the catalogue declares no address. `routeOf`
+ * produces exactly this, and a null `baseUrl` on a pickable entry means
+ * "documented in the package", never "unknown".
+ */
+const packaged: CatalogEntry = {
+  id: "anthropic", name: "Anthropic", route: "anthropic",
+  baseUrl: null, options: {}, models: 58,
+  envVar: "ANTHROPIC_API_KEY",
 };
 
 const unserved: CatalogEntry = {
@@ -51,7 +69,7 @@ const state: CatalogState = {
  * row tests spread it, so they differ in exactly the fact each one pins.
  */
 const saved: Provider = {
-  id: "p1", name: "Acme", route: "acme-compatible",
+  id: "p1", name: "Acme", route: "openai-compatible",
   baseUrl: "https://api.acme.test/v1", headers: {}, options: {},
   catalogId: "acme", catalogAt: "2026-08-20T10:00:00.000Z",
   models: [priced], hasKey: true,
@@ -113,7 +131,10 @@ describe("Providers", () => {
   });
 
   it("opens on the ten recommended, before anything is typed", async () => {
-    const ten: CatalogEntry[] = POPULAR.map((id) => ({ ...entry, id, name: id }));
+    // The real ten are mostly npm-route entries with a null api — the
+    // catalogue declares no address because the package carries it — so the
+    // fixture wears that shape rather than an invented addressed one.
+    const ten: CatalogEntry[] = POPULAR.map((id) => ({ ...packaged, id, name: id }));
     const { fixture, invoke } = mount(bridge({ "catalog.search": () => ten }));
     await fixture.whenStable();
     fixture.nativeElement.querySelector("[data-testid=open-connect]").click();
@@ -227,19 +248,30 @@ describe("Providers", () => {
     expect(fixture.nativeElement.querySelector("[data-testid=model-list]")).toBeNull();
   });
 
-  it("asks for an address too when the catalogue knows none", async () => {
-    const bare: CatalogEntry = { ...entry, id: "bare", name: "Bare", baseUrl: null, envVar: null };
-    const { fixture } = mount(bridge({ "catalog.search": [bare] }));
+  it("asks no address of a catalogue pick, and one only of the custom endpoint", async () => {
+    const { fixture } = mount(bridge({ "catalog.search": [packaged] }));
     await fixture.whenStable();
-    fixture.componentInstance.search("bar");
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    fixture.nativeElement.querySelector("[data-testid=entry-bare]").click();
+    fixture.componentInstance.search("anthropic");
     await fixture.whenStable();
     fixture.detectChanges();
 
+    // The honest pair. A catalogue pick is never asked for an address, not
+    // even one whose entry declares none: a null api means the publisher's
+    // own package carries the endpoint, and a URL typed here would override
+    // the real one at resolve time and break every run. The custom endpoint
+    // is the one endpoint nobody documented, so the address is its question
+    // and only its question.
+    fixture.nativeElement.querySelector("[data-testid=entry-anthropic]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).toBeNull();
+    expect(fixture.componentInstance.draft()?.needsUrl).toBe(false);
+
+    fixture.componentInstance.pickCompatible();
+    fixture.detectChanges();
     expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).not.toBeNull();
+    expect(fixture.componentInstance.draft()?.needsUrl).toBe(true);
   });
 
   it("connects with the models the endpoint serves, without a field for any id", async () => {
@@ -332,23 +364,25 @@ describe("Providers", () => {
   });
 
   it("loads the catalogue's own list when the entry declares no endpoint to ask", async () => {
-    const noUrl = { ...entry, baseUrl: null };
     const { fixture, invoke } = mount(bridge({ "catalog.models": [priced] }));
     await fixture.whenStable();
 
-    fixture.componentInstance.pick(noUrl);
+    // The packaged shape: the package carries the endpoint, the catalogue the
+    // list. No address is asked of the form, and none is invented to ask with.
+    fixture.componentInstance.pick(packaged);
     fixture.detectChanges();
     // Nothing is asked of the network while the form is open: the list waits
     // for the save, when the key — if there is one — is in hand.
     expect(calls(invoke, "catalog.models")).toHaveLength(0);
-    expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=provider-base-url]")).toBeNull();
 
-    fixture.componentInstance.patch("baseUrl", "https://self-hosted.acme.test/v1");
     await fixture.componentInstance.save();
 
-    // The list came from the catalogue entry itself, key or no key.
-    expect(calls(invoke, "catalog.models")[0]![1]).toEqual({ entryId: "acme", apiKey: null });
+    // The list came from the catalogue entry itself, key or no key, and the
+    // provider was created with the address it truly has: none of its own.
+    expect(calls(invoke, "catalog.models")[0]![1]).toEqual({ entryId: "anthropic", apiKey: null });
     const body = calls(invoke, "provider.create")[0]![1] as Record<string, unknown>;
+    expect(body["baseUrl"]).toBeNull();
     expect(body["models"]).toEqual([priced]);
   });
 

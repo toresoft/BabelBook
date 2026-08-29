@@ -18,8 +18,9 @@
 /* The add section is one button: the picker it opens lives in the modal. */
 .providers__add { display: grid; gap: 0.5rem; }
 
-/* daisyUI styles .menu-disabled only inside the :active/.menu-active branch,
-   so at rest it renders nothing: the inert affordance is stated here instead. */
+/* daisyUI keys the disabled look on the <li> (`.menu … li.menu-disabled`, or
+   a `[disabled]` within it); this markup wears the class on the <a>, where
+   that selector never reaches. The local rule bridges the two. */
 .menu a.menu-disabled { pointer-events: none; opacity: 0.5; }
 
 .providers__catalog-row { display: flex; gap: 0.5rem; align-items: baseline; flex-wrap: wrap; }
@@ -32,15 +33,6 @@
 .draft small { color: var(--text-muted); font-size: 0.8rem; }
 .draft__nokey { margin: 0; font-size: 0.85rem; color: var(--ok); }
 
-/* The model list is read-only: it arrived from the endpoint or the catalogue,
-   and the form's job is to show it, not to edit it. */
-.draft__models { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 4px; display: grid; gap: 0; }
-.draft__model { display: flex; gap: 0.75rem; flex-wrap: wrap; padding: 0.4rem 0.6rem; align-items: baseline; }
-.draft__model + .draft__model { border-top: 1px solid var(--surface-raised); }
-.draft__model-name { font-size: 0.9rem; }
-.draft__model-context { color: var(--text-muted); font-size: 0.8rem; }
-.draft__model-price { color: var(--ok); font-size: 0.8rem; }
-.draft__model-price--unknown { color: var(--warning-soft-text); }
 .draft__failure { color: var(--danger); font-size: 0.85rem; margin: 0; }
 .draft__actions { display: flex; gap: 0.75rem; }
 

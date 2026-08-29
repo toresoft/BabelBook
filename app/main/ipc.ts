@@ -67,6 +67,12 @@ export interface IpcDeps {
     search(query: string): CatalogEntry[];
     modelsFor(entryId: string, apiKey: string | null): Promise<ProviderModel[]>;
     discover(baseUrl: string, apiKey: string | null): Promise<ProviderModel[]>;
+    /**
+     * The variables the entry's documentation names for its key, or null when
+     * no such entry. The boundary's arbiter: a window may name one of these
+     * and nothing else, and this is where the main side checks it.
+     */
+    declaredEnv(entryId: string): string[] | null;
     state(): CatalogState;
     refresh(): Promise<CatalogState>;
     importFile(): Promise<CatalogState>;
@@ -135,22 +141,38 @@ function workspaceOf(db: DatabaseSync, id: string): Workspace {
 
 /**
  * The key a request actually carries: the typed one, or the one the named
- * environment variable holds.
+ * environment variable holds — but only under a name the catalogue entry
+ * declares.
  *
  * `apiKeyFromEnv` is a variable's name, never a value — a name is public
  * documentation, and the reading happens here, on the one side that may. The
- * typed key wins, because a paste is the more deliberate act; a variable that
- * turns out to hold nothing is answered as "no key", which the caller treats
- * like any other keyless request.
+ * typed key wins, because a paste is the more deliberate act, and it wins
+ * before the name is even looked at: the honest window never sends both.
+ *
+ * A name no entry declares is refused loudly rather than answered as "no
+ * key". The window names a variable only after the entry declared it in the
+ * same catalogue it was shown, so anything else is a defect or an attempt to
+ * marry an arbitrary environment variable to an endpoint of the requester's
+ * choosing — and quietly connecting without the key would tell the user
+ * their key was saved when it was not.
  */
 function resolveKey(
   apiKey: string | null | undefined,
   apiKeyFromEnv: string | null | undefined,
+  declaredEnv: string[] | null,
 ): string | null {
   if (apiKey !== undefined && apiKey !== null && apiKey !== "") return apiKey;
   if (apiKeyFromEnv === undefined || apiKeyFromEnv === null) return null;
+  if (declaredEnv === null || !declaredEnv.includes(apiKeyFromEnv)) {
+    throw new Error(`ENV_NOT_DECLARED: ${apiKeyFromEnv}`);
+  }
 
-  const fromEnv = process.env[apiKeyFromEnv];
+  // An own property, or nothing: `process.env` inherits Object.prototype, so
+  // a name like "toString" would otherwise answer with a function where a
+  // string is promised — one that can never be a key.
+  const fromEnv = Object.hasOwn(process.env, apiKeyFromEnv)
+    ? process.env[apiKeyFromEnv]
+    : undefined;
   return fromEnv === undefined || fromEnv === "" ? null : fromEnv;
 }
 
@@ -219,7 +241,11 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "ui.chooseSave": async ({ defaultName, kind }) => deps.chooseSave(defaultName, kind),
 
-    "env.hasKey": async ({ name }) => (process.env[name] ?? "") !== "",
+    "env.hasKey": async ({ name }) =>
+      // An own property, or the answer is false: `process.env` inherits
+      // Object.prototype, so a name like "toString" would otherwise make the
+      // boolean lie about a function nobody ever exported.
+      Object.hasOwn(process.env, name) && (process.env[name] ?? "") !== "",
 
     "projects.list": async ({ filter, bucket }) =>
       listProjects(deps.db, { ...(filter === undefined ? {} : { search: filter }), ...(bucket === undefined ? {} : { bucket }) }),
@@ -311,10 +337,22 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     "catalog.search": async ({ query }) => deps.catalog.search(query),
 
     "catalog.models": async ({ entryId, apiKey, apiKeyFromEnv }) =>
-      deps.catalog.modelsFor(entryId, resolveKey(apiKey, apiKeyFromEnv)),
+      deps.catalog.modelsFor(
+        entryId,
+        resolveKey(apiKey, apiKeyFromEnv, deps.catalog.declaredEnv(entryId)),
+      ),
 
-    "provider.discover": async ({ baseUrl, apiKey, apiKeyFromEnv }) =>
-      deps.catalog.discover(baseUrl, resolveKey(apiKey, apiKeyFromEnv)),
+    "provider.discover": async ({ baseUrl, apiKey, apiKeyFromEnv }) => {
+      // The honest window never names a variable here: a hand-typed endpoint
+      // has no documentation to declare one, so there is no list to validate
+      // the name against — and reading an arbitrary variable into a request
+      // this same call carries to an arbitrary URL would be an exfiltration
+      // channel, not a convenience. Rejected, not quietly ignored.
+      if (apiKeyFromEnv !== undefined && apiKeyFromEnv !== null) {
+        throw new Error(`ENV_NOT_DECLARED: ${apiKeyFromEnv}`);
+      }
+      return deps.catalog.discover(baseUrl, apiKey ?? null);
+    },
 
     "catalog.state": async () => deps.catalog.state(),
 
@@ -421,10 +459,17 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "provider.create": async (input) => {
       // The environment may hold the key: the request names the variable, and
-      // only this process reads it. A typed key wins over the named one.
+      // only this process reads it — under the name the entry it is connecting
+      // declares, and no other. A typed key wins over the named one.
       const created = createProvider(deps.db, deps.crypto, {
         ...input,
-        apiKey: resolveKey(input.apiKey, input.apiKeyFromEnv),
+        apiKey: resolveKey(
+          input.apiKey,
+          input.apiKeyFromEnv,
+          input.catalogId === undefined || input.catalogId === null
+            ? null
+            : deps.catalog.declaredEnv(input.catalogId),
+        ),
       });
       deps.broadcast("providers.changed", {});
       return created;

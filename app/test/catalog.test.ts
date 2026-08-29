@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { routeForPackage } from "../engine/backends/registry.ts";
 import { POPULAR } from "../main/catalog/popular.ts";
 import { pruneCatalog, routeOf, type CatalogProvider } from "../main/catalog/shape.ts";
-import { searchCatalog } from "../main/catalog/service.ts";
+import { searchCatalog, declaredEnv } from "../main/catalog/service.ts";
 import { CATALOG_URL, readCatalog, refreshCatalog } from "../main/catalog/load.ts";
 import { enrichModels } from "../main/catalog/enrich.ts";
 
@@ -200,6 +200,18 @@ describe("what an entry says about itself", () => {
     ]), "bare");
 
     expect(entry!.envVar).toBeNull();
+  });
+
+  it("declares the whole list a window may name, and null for no such entry", () => {
+    // The boundary's arbiter: the ipc layer honours a variable's name only
+    // when the entry declares it, so this is the whole of what may cross.
+    const catalog = aCatalog([
+      { id: "goog", name: "Goog", npm: "@ai-sdk/google",
+        env: ["GOOGLE_API_KEY", "GEMINI_API_KEY"], api: null, models: [] },
+    ]);
+
+    expect(declaredEnv(catalog, "goog")).toEqual(["GOOGLE_API_KEY", "GEMINI_API_KEY"]);
+    expect(declaredEnv(catalog, "ghost")).toBeNull();
   });
 });
 

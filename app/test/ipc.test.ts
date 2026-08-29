@@ -334,6 +334,14 @@ describe("env.hasKey", () => {
     expect(absent).toBe(false);
     delete process.env["BABELBOOK_TEST_KEY"];
   });
+
+  // Production break: `process.env` inherits Object.prototype, so before the
+  // own-property guard a prototype name made the boolean say "there is a key"
+  // about a function nobody ever exported.
+  it("says no of a name the environment merely inherits, like toString", async () => {
+    const handlers = buildHandlers((await deps()).deps);
+    expect(await handlers["env.hasKey"]({ name: "toString" })).toBe(false);
+  });
 });
 
 /**
@@ -341,18 +349,36 @@ describe("env.hasKey", () => {
  *
  * The window never reads the value: it sends a name — which is documentation,
  * not a secret — and this process does the reading. What these tests pin is
- * that the crossing happens exactly here and nowhere else.
+ * that the crossing happens exactly here and nowhere else, and that the name
+ * is honoured only when the catalogue entry it connects declares it.
  */
 describe("the environment offer", () => {
+  /** The request as the honest window sends it: an entry it picked, no key. */
   const input = {
     name: "Acme", route: "openai-compatible", baseUrl: "https://api.acme.test/v1",
-    headers: {}, options: {}, catalogId: null, catalogAt: null,
+    headers: {}, options: {}, catalogId: "acme", catalogAt: null,
     models: [],
+  };
+
+  /** The catalogue the entry was picked from, declaring `env` for its key. */
+  const catalogDeclaring = (env: string[]) => {
+    const state = {
+      at: "2026-08-27T00:00:00.000Z", providers: 0, models: 0, bundled: true, checkedAt: null,
+    };
+    return {
+      search: () => [],
+      modelsFor: async () => [],
+      discover: async () => [],
+      declaredEnv: (entryId: string) => (entryId === "acme" ? env : null),
+      state: () => state,
+      refresh: async () => state,
+      importFile: async () => state,
+    };
   };
 
   it("stores the key the named variable holds, and never says it back", async () => {
     process.env["BABELBOOK_TEST_KEY"] = "sk-from-env";
-    const { deps: d } = await deps();
+    const { deps: d } = await deps({ catalog: catalogDeclaring(["BABELBOOK_TEST_KEY"]) });
 
     const created = await buildHandlers(d)["provider.create"]({
       ...input, apiKeyFromEnv: "BABELBOOK_TEST_KEY",
@@ -367,7 +393,7 @@ describe("the environment offer", () => {
 
   it("lets a typed key win over the variable the request names", async () => {
     process.env["BABELBOOK_TEST_KEY"] = "sk-from-env";
-    const { deps: d } = await deps();
+    const { deps: d } = await deps({ catalog: catalogDeclaring(["BABELBOOK_TEST_KEY"]) });
 
     const created = await buildHandlers(d)["provider.create"]({
       ...input, apiKey: "sk-typed", apiKeyFromEnv: "BABELBOOK_TEST_KEY",
@@ -380,13 +406,58 @@ describe("the environment offer", () => {
   });
 
   it("connects no key when the named variable holds nothing", async () => {
-    const { deps: d } = await deps();
+    const { deps: d } = await deps({ catalog: catalogDeclaring(["BABELBOOK_TEST_KEY"]) });
 
     const created = await buildHandlers(d)["provider.create"]({
-      ...input, apiKeyFromEnv: "BABELBOOK_TEST_MISSING",
+      ...input, apiKeyFromEnv: "BABELBOOK_TEST_KEY",
     });
 
     expect(created.hasKey).toBe(false);
+  });
+
+  it("refuses a variable the entry does not declare, instead of saving no key", async () => {
+    const { db, deps: d } = await deps({ catalog: catalogDeclaring(["ACME_API_KEY"]) });
+
+    // The window names only what the entry declared; anything else is a
+    // defect or an attempt to marry some other variable to this endpoint.
+    // Quietly connecting keyless would say "saved" about a key that was not.
+    await expect(buildHandlers(d)["provider.create"]({
+      ...input, apiKeyFromEnv: "NOT_ACME_API_KEY",
+    })).rejects.toThrow(/ENV_NOT_DECLARED/);
+    await expect(buildHandlers(d)["provider.create"]({
+      ...input, catalogId: "ghost", apiKeyFromEnv: "ACME_API_KEY",
+    })).rejects.toThrow(/ENV_NOT_DECLARED/);
+    expect((db.prepare("SELECT count(*) AS n FROM provider").get() as { n: number }).n).toBe(0);
+  });
+
+  it("refuses a variable named to the discover channel, which has no entry to declare one", async () => {
+    const discover = vi.fn(async () => []);
+    const { deps: d } = await deps({
+      catalog: { ...catalogDeclaring(["ACME_API_KEY"]), discover },
+    });
+    const handlers = buildHandlers(d);
+
+    // A hand-typed endpoint has no documentation, so no name could ever be
+    // declared for it — and this same call carries whatever it reads to any
+    // URL the requester typed. Rejected before anything is read or asked.
+    await expect(handlers["provider.discover"]({
+      baseUrl: "https://gateway.internal/v1", apiKey: null, apiKeyFromEnv: "ACME_API_KEY",
+    })).rejects.toThrow(/ENV_NOT_DECLARED/);
+    expect(discover).not.toHaveBeenCalled();
+  });
+
+  it("refuses a variable the entry does not declare before its models are asked", async () => {
+    const modelsFor = vi.fn(async () => []);
+    const { deps: d } = await deps({
+      catalog: { ...catalogDeclaring(["ACME_API_KEY"]), modelsFor },
+    });
+    const handlers = buildHandlers(d);
+
+    await expect(handlers["catalog.models"]({
+      entryId: "acme", apiKey: null, apiKeyFromEnv: "NOT_ACME_API_KEY",
+    })).rejects.toThrow(/ENV_NOT_DECLARED/);
+    // Nothing was asked of any endpoint, and no key was read to ask with.
+    expect(modelsFor).not.toHaveBeenCalled();
   });
 
   it("resolves the variable before the endpoint is asked for its models", async () => {
@@ -403,6 +474,7 @@ describe("the environment offer", () => {
           return [];
         },
         discover: async () => [],
+        declaredEnv: (entryId: string) => (entryId === "acme" ? ["BABELBOOK_TEST_KEY"] : null),
         state: () => catalogState,
         refresh: async () => catalogState,
         importFile: async () => catalogState,

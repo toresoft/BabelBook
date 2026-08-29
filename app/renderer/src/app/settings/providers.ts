@@ -13,8 +13,10 @@ import { IpcService } from "../core/ipc.service";
  * What the form asks is a property of the provider, not a mode of the form.
  * The four kinds this replaced — catalogue, local, compatible, edit — cost
  * five conditions in the template to ask, in the end, for a key and sometimes
- * an address. An address is wanted when the catalogue knows none; a key is
- * wanted unless the endpoint runs on this machine.
+ * an address. An address is wanted only of the hand-typed endpoint: a
+ * catalogue pick's address is the entry's own business (its package carries
+ * it, or the catalogue declares it), and an edit was already given one. A key
+ * is wanted unless the endpoint runs on this machine.
  *
  * `apiKey` starts empty on every open and is never filled from the store: the
  * renderer is not allowed to read a key, so there is nothing to prefill with.
@@ -31,7 +33,13 @@ interface Draft {
   catalogAt: string | null;
   /** Carried, not asked: a runtime's own models, or an edit's untouched list. */
   models: ProviderModel[];
-  /** The catalogue declared no address, so someone has to give one. */
+  /**
+   * Whether the form must ask for an address. Only the hand-typed endpoint's
+   * question: a catalogue pick never answers it — the entry's package carries
+   * the endpoint or the catalogue declares it, and a URL typed over either
+   * would override the real one at resolve time — and an edit was already
+   * given its address by whoever created the provider.
+   */
   needsUrl: boolean;
   /** A runtime on this machine wants no key; everything else does. */
   needsKey: boolean;
@@ -249,7 +257,12 @@ export class Providers implements OnDestroy {
       // The date of the metadata this provider will carry, which is the
       // catalogue's date: the answer to "how old is this price?".
       catalogAt: this.catalogState()?.at ?? null,
-      needsUrl: entry.baseUrl === null,
+      // Never an address: a `baseUrl` of null on a pickable entry means the
+      // publisher's own npm package carries the endpoint (the registry gave
+      // the entry its route), not that nobody documented one. Asking here
+      // would demand an address nobody has to give, and a typed value would
+      // override the package's built-in endpoint and break every run.
+      needsUrl: false,
       envVar: entry.envVar,
     });
     // The gift, when there is one: the variable the entry documents may
@@ -361,10 +374,11 @@ export class Providers implements OnDestroy {
   }
 
   /**
-   * What the form demands before it can save: a name for the endpoints nobody
-   * else can name, an address for the ones the catalogue does not know. The
-   * key is never demanded — some gateways want none — and no model id ever is:
-   * the models come from somewhere else; the form can only carry them.
+   * What the form demands before it can save: a name for the one endpoint
+   * nobody else can name — the hand-typed one, which is also the only one that
+   * must be given an address. The key is never demanded — some gateways want
+   * none — and no model id ever is: the models come from somewhere else; the
+   * form can only carry them.
    */
   invalid(draft: Draft): boolean {
     if (draft.id !== null) return draft.name.trim() === "";

@@ -10,7 +10,9 @@ import {
   CatalogError, installCatalog, parseImportedCatalog, readCatalog, refreshCatalog,
   type CatalogPaths,
 } from "./catalog/load.ts";
-import { catalogState, discoverFromUrl, modelsForEntry, searchCatalog } from "./catalog/service.ts";
+import {
+  catalogState, declaredEnv, discoverFromUrl, modelsForEntry, searchCatalog,
+} from "./catalog/service.ts";
 import { probeLocalRuntimes } from "./catalog/local.ts";
 import { refreshCatalogMetadata } from "./providers/store.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
@@ -382,6 +384,7 @@ app.whenReady().then(async () => {
       search: (query) => searchCatalog(loaded.catalog, query),
       modelsFor: (entryId, apiKey) => modelsForEntry(loaded.catalog, entryId, apiKey),
       discover: (baseUrl, apiKey) => discoverFromUrl(baseUrl, apiKey),
+      declaredEnv: (entryId) => declaredEnv(loaded.catalog, entryId),
       state: () => catalogState(loaded.catalog, loaded.bundled, loaded.checkedAt),
       refresh: async () => {
         const updated = await refreshCatalog(paths);
