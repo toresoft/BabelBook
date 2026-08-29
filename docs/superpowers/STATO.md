@@ -1,6 +1,6 @@
 # Stato del lavoro
 
-Aggiornato al 2026-08-25. Serve a riprendere da zero contesto: dove siamo, cosa
+Aggiornato al 2026-08-29. Serve a riprendere da zero contesto: dove siamo, cosa
 viene dopo, e cosa si è già scoperto che i piani non sapevano.
 
 ## Come si lavora qui
@@ -37,11 +37,16 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 3. Shell Electron e database | **completo**, 11/11 | `app/main/`, `app/shared/`, `app/renderer/` |
 | 4. Esecuzione, provider, composizione | **completo**, 9/9 | `app/main/providers/`, `app/engine/`, `app/main/run/`, `app/main/compose.ts`, `core/workflow/` |
 | 5. Gate, glossari, report | **completo**, 8/8 | `app/main/terms/`, `app/main/exclusions/`, `app/main/glossaries/`, `app/main/report/`, `app/renderer/src/app/project/` |
-| 6. CI e pacchetti | **6 task su 8**, CI verde su GitHub | `.github/`, `app/electron-builder.yml` |
-| 7. Catalogo provider e modelli locali | **completo**, 9/9 | `app/main/catalog/` |
-| 8. Interfaccia | scritto, non iniziato | — |
+| 6. CI e pacchetti | task 1-3 e 6-8 fatti, 4 a metà, 5 non verificabile qui | `.github/`, `app/electron-builder.yml` |
+| 7. Catalogo provider e modelli locali | **completo, 9/9** — tranne la prova dal vivo del Task 3 | `app/main/catalog/` |
+| 8. Interfaccia | **completo** | `app/renderer/src/app/` |
+| B1. Fondazione daisyUI | **completo**, 7/7 + ondata finale | `app/renderer/` |
+| B2. Il guscio e le azioni | **completo**, 7/7 + ondata finale | `app/renderer/` |
+| C. La schermata dei provider | **completo**, 7/7 + ondata finale | `app/renderer/src/app/settings/` |
+| Provider inclusi | scritto, non iniziato | `app/main/providers/` |
+| 9. La corsa osservabile e il discovery | **completo**, 11/11, su ramo `corsa-osservabile` in attesa di revisione finale e confluenza | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
 
-Suite: **574 test verdi** (260 core, 255 app, 59 componenti) piu' **11 prove
+Suite: **817 test verdi** (297 core, 393 app, 127 componenti) piu' **13 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
 ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
 la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
@@ -52,10 +57,15 @@ I test dei componenti girano col builder `@angular/build:unit-test`
 
 ## Il prossimo passo
 
-**Piano 7** — il catalogo dei provider (models.dev), i modelli locali (Ollama e
-LM Studio) e una schermata dove aggiungere un provider sono tre gesti. Scritto
-in `docs/superpowers/plans/2026-08-26-babelbook-provider-catalogue.md`, nove
-task, non iniziato.
+**Chiudere il ramo `corsa-osservabile`**: revisione finale dell'intero ramo
+(`ad38a45..HEAD`), poi confluenza su `master`. I task sono tutti completi con
+revisione indipendente; manca solo la passata d'insieme.
+
+Poi **il piano «Provider inclusi»** — i pacchetti provider imbarcati, i 199
+provider serviti senza installare nulla, i 4 rifiutati prima della scelta.
+Scritto in
+`docs/superpowers/plans/2026-08-27-babelbook-provider-inclusi.md`, sette task,
+non iniziato.
 
 La CI e' verde su GitHub (entrambi i job, prove end-to-end comprese) ma **non
 l'ho mai vista fallire**: finche' non si rompe un test di proposito e non la si
@@ -68,7 +78,10 @@ per l'`.exe`.
 **E resta la prova che nessuna suite può dare**: un libro vero con un provider
 vero. È il rischio numero uno da sempre. Ora si fa tutto dall'interfaccia:
 Impostazioni → Provider → un preset → la chiave → Verifica; poi un libro corto,
-con l'auto-accettazione spenta per vedere i due gate.
+con l'auto-accettazione spenta per vedere i due gate. Con questo piano, la
+prova guarda anche **la barra della fase muoversi durante il code-index** e
+**il conteggio dei token salire prima del primo chunk tradotto** — le due cose
+che prima nessuno poteva vedere.
 
 ## Decisioni prese durante l'esecuzione
 
@@ -112,11 +125,31 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 - **Ganci per le prove end-to-end**, letti in un punto solo di `main.ts`:
   `BABELBOOK_USER_DATA` sposta database e workspace, `BABELBOOK_EPUB_FOR_TEST`
   fa restituire un percorso al posto del dialogo nativo.
+- **Il progresso è una coppia, non un numero** (piano 9): quanto del libro è
+  tradotto è un fatto del database, monotono, vero anche a corsa ferma; cosa
+  sta facendo la fase adesso è un fatto della fase, che riparte a ogni fase.
+  Confondere le due faceva una barra corretta e illeggibile.
+- **Il conto è un decoratore attorno al backend** (`countingBackend`), montato
+  una volta: nessuna fase futura può dimenticare di contare. I token si
+  scrivono nella riga `run` mentre **arrivano**, non alla fine — una corsa
+  fermata a un gate ha comunque speso ciò che ha speso (migrazione 009).
+- **Il code-index chiede la domanda del traduttore** — «la tradurresti o la
+  riscriveresti?», con elemento e classe accanto al testo, batch da 60 in
+  parallelo — invece di «è codice?». La sua versione (2) sta in una chiave
+  propria derivata (`codeIndexKey`), non nella chiave condivisa: correggere la
+  domanda non butta via le traduzioni. Con esso: un marcatore di pagina non è
+  una voce, e le schede mostrano i byte veri spogliati del markup.
+- **Il ragionamento è una scelta del modello**: `ProviderModel.reasoningEnabled`
+  (null = non scelto, si legge come spento), composto in `resolveRouteOptions`
+  che normalizza le opzioni di ogni rotta, e il booleano risolto entra nella
+  chiave di cache (migrazione 011, che ripulisce il vecchio default DeepSeek).
+  L'interruttore in UI chiede conferma, perché cambiare la chiave getta via le
+  traduzioni fatte con quel modello.
 
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti i 574 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti gli 817 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è
@@ -149,3 +182,6 @@ Su quattro EPUB in `~/Development/OWN/Translator/`:
 Il lavoro è lineare su `master`. I rami `worktree-agent-*` sono già confluiti e
 si possono cancellare (`git branch -D`), oppure tenere come traccia di chi ha
 scritto cosa.
+
+Il ramo `corsa-osservabile` (staccato da `ad38a45`) porta il piano 9 completo,
+in attesa di revisione finale dell'intero ramo e confluenza.

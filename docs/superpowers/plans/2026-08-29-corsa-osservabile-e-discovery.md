@@ -1,8 +1,8 @@
 # La corsa osservabile e il discovery — piano di implementazione
 
-**Stato: 7 task su 11, al 2026-08-29. Sospeso su richiesta prima del Task 8.**
-
-Il lavoro sta sul ramo `corsa-osservabile`, staccato da `master` a `ad38a45`.
+**Stato: completo — 11 task su 11, al 2026-08-29.** Il lavoro sta sul ramo
+`corsa-osservabile`, staccato da `master` a `ad38a45`, in attesa della revisione
+finale dell'intero ramo e della confluenza.
 
 | Task | Stato | Commit |
 |---|---|---|
@@ -13,18 +13,17 @@ Il lavoro sta sul ramo `corsa-osservabile`, staccato da `master` a `ad38a45`.
 | 5. Il marcatore di pagina | completo | `08b9bc1` |
 | 6. Le schede mostrano il testo | completo | `19c6414` |
 | 7. Elemento e classe sull'unità | completo, 1 round di correzione | `db28821`, `fb93ead` |
-| 8. La domanda del traduttore | **non iniziato** | — |
-| 9. La versione del passaggio | non iniziato | — |
-| 10. Il ragionamento per modello | non iniziato | — |
-| 11. L'interruttore e il nome | non iniziato | — |
+| 8. La domanda del traduttore | completo, 1 round di correzione | `5c0ac87`, `206d59d` |
+| 9. La versione del passaggio | completo, 1 round di correzione | `20b4cdf`, `69470a6` |
+| 10. Il ragionamento per modello | completo, 1 round di correzione | `d7e2daa`, `2e74404` |
+| 11. L'interruttore e il nome | completo | `55e760e` |
 
-Suite alla sospensione: **787 test verdi** (287 core, 378 processo main, 122
+Suite a fine lavori: **817 test verdi** (297 core, 393 processo main, 127
 componenti), typecheck pulito. Ogni task è passato per un implementer fresco e
-una revisione indipendente; i due round di correzione hanno chiuso un Important
-ciascuno.
+una revisione indipendente; quattro round di correzione in tutto, uno per task
+dall'ottavo.
 
-**Da riprendere così:** `git checkout corsa-osservabile`, poi il Task 8. Il
-ledger dell'esecuzione sta in
+Il ledger dell'esecuzione sta in
 `.superpowers/sdd/2026-08-29-corsa-osservabile-e-discovery/progress.md`, che è
 git-ignored e **non sopravvive a un `git clean -fdx`**: se manca, questa tabella
 e `git log` sono il record.
@@ -51,6 +50,26 @@ codice divergono, vince il codice.
   senza separatore e quindi ambiguo — versione 12 con chiave `3abc` e versione
   1 con chiave `23abc` darebbero lo stesso digest. Rimessi gli spazi
   (`f522cea`).
+
+- **Le opzioni di rotta si compongono in `app/main/main.ts`**, non in
+  `runtime.ts` come il Task 10 dava per scontato: all'HEAD reale runtime
+  consuma soltanto `deps.backendSpec`. Modificato il sito reale con un solo
+  call-site mirato.
+- **Lo spread superficiale del Task 10 non poteva funzionare due volte:**
+  sostituiva l'intero blocco di opzioni della rotta (buttando opzioni sorelle
+  come `temperature`), e `{}` per ragionamento acceso non cancellava una
+  direttiva storica persistita — il vecchio default DeepSeek. Sostituito da
+  `resolveRouteOptions`, che preserva le opzioni sorelle, cancella il campo di
+  ragionamento della rotta e rimette lo spelling «off» solo col booleano
+  risolto falso; la migrazione 011 ripulisce il solo `$.deepseek.thinking`
+  storico. La spec vince lo snippet: richiesta e cache devono dire la stessa
+  cosa (`2e74404`).
+- **Lo snippet dell'interruttore del Task 11 mentiva sul rifiuto**: con
+  `[ngModel]`, una conferma rifiutata lascia il checkbox capovolto, perché
+  Angular non riscrive la view quando il valore bound non cambia — esattamente
+  il «controllo che non fa niente» che il commento del brief avvisa di non
+  costruire. Sostituito con `[checked]`+`(change)` e riscrittura esplicita
+  della view anche sul rifiuto, pinnata da un test dedicato.
 
 E una nota di processo: `app/main/exclusions/review.ts` conteneva un byte NUL
 preesistente, quindi git lo classificava come binario e il pacchetto di
