@@ -151,4 +151,37 @@ describe("what a unit says about its own markup", () => {
     expect(units[0]!.element).toBe("pre");
     expect(units[0]!.className).toBeUndefined();
   });
+
+  /**
+   * An attribute unit is not an element — the `img` it comes from is the
+   * block's descendant, not the block. Task 8's label logic falls back to
+   * `unit.kind` when `element` is absent, so inheriting the owning block's
+   * element here would silently mislabel every attribute unit as a block.
+   */
+  it("gives an attribute unit neither element nor class, even though its owner has both", () => {
+    const { units } = extract({
+      doc: "c1.xhtml",
+      source: `<html><body><p class="TX"><img src="c.png" alt="A cat"/></p></body></html>`,
+    });
+
+    const attr = units.find((u) => u.kind === "attribute")!;
+    expect(attr.source).toBe("A cat");
+    expect(attr.element).toBeUndefined();
+    expect(attr.className).toBeUndefined();
+  });
+
+  /**
+   * A loose-text run has no element of its own — it is bare text sitting
+   * beside sibling blocks inside a container. Same fallback as the attribute
+   * case: Task 8 reads `kind` when `element` is missing, so borrowing the
+   * container's element would misreport this run as a block, too.
+   */
+  it("gives a loose-text unit neither element nor class, even though its container has one", () => {
+    const { units } = extract({ source: doc("<div><p>One</p>Stray text<p>Two</p></div>"), doc: "c1.xhtml" });
+
+    const textUnit = units.find((u) => u.kind === "text")!;
+    expect(textUnit.source).toBe("Stray text");
+    expect(textUnit.element).toBeUndefined();
+    expect(textUnit.className).toBeUndefined();
+  });
 });
