@@ -114,7 +114,9 @@ export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
       excerpt: result.text.slice(0, EXCERPT_CHARS),
     };
 
-    const validation = validate(result.text, pending, result.finishReason);
+    const validation = validate(
+      result.text, pending, result.finishReason, input.chunk.context.targetLanguage,
+    );
     for (const [unitId, text] of validation.accepted) translated.set(unitId, text);
 
     rejections = validation.rejections;

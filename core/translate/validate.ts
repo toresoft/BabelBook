@@ -1,4 +1,5 @@
 import type { TranslationUnit } from "../epub/index.ts";
+import { foreignScript } from "./script.ts";
 import { parseResponse } from "./wire.ts";
 
 export type RejectionCode =
@@ -9,7 +10,8 @@ export type RejectionCode =
   | "unknown-id"            // level 4: an id nobody asked for
   | "duplicate-id"          // level 4: the same unit answered twice
   | "missing-id"            // level 4: a requested unit never came back
-  | "placeholder-mismatch"; // level 5: the markup did not survive
+  | "placeholder-mismatch"  // level 5: the markup did not survive
+  | "wrong-script";         // level 6: answered in a language nobody asked for
 
 export interface Rejection {
   /** Null when the fault is the answer's as a whole. */
@@ -19,7 +21,7 @@ export interface Rejection {
 }
 
 export interface Validation {
-  /** Unit id to translated text, for everything that passed all five levels. */
+  /** Unit id to translated text, for everything that passed all six levels. */
   accepted: Map<string, string>;
   rejections: Rejection[];
   /** The answer stopped because it ran out of output budget. */
@@ -66,7 +68,7 @@ function placeholdersSurvived(source: string, translated: string): string | null
 }
 
 /**
- * A chunk's answer, held to five levels.
+ * A chunk's answer, held to six levels.
  *
  * Each level stops what it catches and keeps everything else: a retry that
  * resent the whole chunk would pay again for units that were already right,
@@ -75,11 +77,16 @@ function placeholdersSurvived(source: string, translated: string): string | null
  * Level 4 is the one that matters most. Ids are matched, never positions: an
  * answer whose units are plausible but shifted by one reads as a good
  * translation and puts every sentence in the wrong place.
+ *
+ * Level 6 is the one that had to be added after a book shipped. Five levels
+ * all ask whether the answer has the right shape, and a translation into the
+ * wrong language has exactly the right shape.
  */
 export function validate(
   raw: string,
   requested: TranslationUnit[],
   finishReason: "stop" | "length" | "other",
+  targetLanguage: string,
 ): Validation {
   const truncated = finishReason === "length";
   const parsed = parseResponse(raw);
@@ -147,6 +154,17 @@ export function validate(
     const damage = placeholdersSurvived(unit.source, line.text);
     if (damage !== null) {
       rejections.push({ unitId: line.unitId, code: "placeholder-mismatch", detail: damage });
+      continue;
+    }
+
+    // Level 6 — the language it came back in.
+    const foreign = foreignScript(unit.source, line.text, targetLanguage);
+    if (foreign !== null) {
+      rejections.push({
+        unitId: line.unitId,
+        code: "wrong-script",
+        detail: `answered in ${foreign}, which ${targetLanguage} is not written in`,
+      });
       continue;
     }
 
