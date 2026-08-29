@@ -145,6 +145,16 @@ Non sono nei piani originali. Sono nel codice e nei commit.
   chiave di cache (migrazione 011, che ripulisce il vecchio default DeepSeek).
   L'interruttore in UI chiede conferma, perché cambiare la chiave getta via le
   traduzioni fatte con quel modello.
+- **L'aggiornamento stesso ricalcola ogni chiave e ripaga una volta**: col
+  booleano risolto del ragionamento entrato nella chiave di cache, alla prima
+  corsa dopo questo ramo la `project.cache_key` ricalcolata è diversa da
+  quella salvata per ogni progetto creato prima, e le sue traduzioni vengono
+  rispese una volta. Per le quattro rotte note è forzato: le loro richieste
+  cambiano davvero, ora che lo spento viaggia come direttiva esplicita. Per
+  le rotte non mappate è uniforme ma gratuito — e resta uniforme di proposito,
+  perché una chiave condizionale alla rotta avrebbe reintrodotto la divergenza
+  silenziosa tra richiesta e cache. Accettato deliberatamente, essendo il ramo
+  pre-rilascio.
 
 ## Cosa nessuna suite dimostra
 

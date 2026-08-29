@@ -71,6 +71,15 @@ codice divergono, vince il codice.
   costruire. Sostituito con `[checked]`+`(change)` e riscrittura esplicita
   della view anche sul rifiuto, pinnata da un test dedicato.
 
+C'è poi una conseguenza dell'aggiornamento che il testo del piano non dichiara
+mai: col booleano risolto del ragionamento nella chiave di cache, la prima
+corsa dopo questo ramo ricalcola la chiave di ogni progetto esistente e le sue
+traduzioni vengono rispese una volta — forzato per le rotte note, le cui
+richieste cambiano davvero; uniforme, non condizionale alla rotta, anche per
+le rotte non mappate, perché renderla condizionale reintrodurrebbe la
+divergenza silenziosa tra richiesta e cache. Accettato deliberatamente, essendo
+il ramo pre-rilascio.
+
 E una nota di processo: `app/main/exclusions/review.ts` conteneva un byte NUL
 preesistente, quindi git lo classificava come binario e il pacchetto di
 revisione non ne mostrava il testo. Tolto nel Task 6; finché c'era, la revisione
