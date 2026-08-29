@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { indexCodeBlocks } from "../analyze/code.ts";
 import { FakeBackend } from "./fake/backend.ts";
 import type { TranslationUnit } from "../epub/index.ts";
+import type { LlmResult } from "../ports.ts";
 
 const unit = (
   n: number | string, source: string, state: TranslationUnit["state"], reason?: string,
@@ -72,6 +73,8 @@ describe("indexCodeBlocks", () => {
     });
 
     expect(backend.prompts).toHaveLength(2);
+    expect(backend.prompts[1]).toContain("@retry");
+    expect(backend.prompts[1]).toContain("header #CODEVERDICT not found");
     expect(index).toMatchObject({ marked: ["c1.xhtml#1"], abstained: 0 });
   });
 
@@ -159,31 +162,42 @@ describe("indexCodeBlocks", () => {
    * looked hung. The batches are independent — none reads what another decided —
    * so they go out as wide as the run allows.
    */
-  it("judges the batches in parallel", async () => {
-    let running = 0;
-    let highest = 0;
-    const units = Array.from({ length: 6 }, (_, at) => unit(`c1.xhtml#${at}`, "translate", "translate"));
+  it("uses the requested concurrency and sorts out-of-order batch decisions", async () => {
+    const resolvers: Array<(result: LlmResult) => void> = [];
+    const units = [
+      unit(1, "one", "translate"),
+      unit(2, "two", "code", "css-code-surface"),
+      unit(3, "three", "translate"),
+      unit(4, "four", "code", "css-code-surface"),
+      unit(5, "five", "translate"),
+      unit(6, "six", "code", "css-code-surface"),
+    ];
 
-    await indexCodeBlocks({
+    const indexing = indexCodeBlocks({
       units,
       backend: {
-        call: async () => {
-          running++;
-          highest = Math.max(highest, running);
-          await new Promise((resolve) => setTimeout(resolve, 5));
-          running--;
-          return {
-            text: "#CODEVERDICT v1 batch=1/3 count=2\n[1] translate\n[2] translate\n@end",
-            tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" as const,
-          };
-        },
+        call: () => new Promise<LlmResult>((resolve) => resolvers.push(resolve)),
       },
       sourceHash: "h",
       batchSize: 2,
       concurrency: 3,
     });
 
-    expect(highest).toBeGreaterThan(1);
+    expect(resolvers).toHaveLength(3);
+    const verdict = (batch: string): LlmResult => ({
+      text: answer("[1] keep\n[2] translate", batch),
+      tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop",
+    });
+    resolvers[2]!(verdict("3/3"));
+    await Promise.resolve();
+    resolvers[1]!(verdict("2/3"));
+    await Promise.resolve();
+    resolvers[0]!(verdict("1/3"));
+
+    await expect(indexing).resolves.toMatchObject({
+      marked: ["c1.xhtml#1", "c1.xhtml#3", "c1.xhtml#5"],
+      freed: ["c1.xhtml#2", "c1.xhtml#4", "c1.xhtml#6"],
+    });
   });
 
   /**
