@@ -45,8 +45,9 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | C. La schermata dei provider | **completo**, 7/7 + ondata finale | `app/renderer/src/app/settings/` |
 | Provider inclusi | scritto, non iniziato | `app/main/providers/` |
 | 9. La corsa osservabile e il discovery | **completo**, 11/11 + revisione finale dell'intero ramo | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
+| Difetti trovati sul primo libro vero | **quattro, corretti** | `app/renderer/src/app/project/`, `app/main/providers/`, `app/main/run/`, `core/workflow/` |
 
-Suite: **818 test verdi** (297 core, 394 app, 127 componenti) piu' **13 prove
+Suite: **836 test verdi** (299 core, 403 app, 134 componenti) piu' **13 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
 ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
 la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
@@ -71,8 +72,29 @@ Poi restano due cose, entrambe fuori dalla portata di questa macchina:
 `libxcrypt-compat` per costruire `.deb` e `.rpm` su Fedora, e un runner Windows
 per l'`.exe`.
 
-**E resta la prova che nessuna suite può dare**: un libro vero con un provider
-vero. È il rischio numero uno da sempre. Ora si fa tutto dall'interfaccia:
+**La prova che nessuna suite poteva dare è stata fatta**: un libro vero (3347
+unità, DeepSeek) tradotto dall'interfaccia. Ha trovato quattro difetti che
+818 test non avevano visto, e nessuno dei quattro era nel core:
+
+- **le due barre** mostravano gli stessi due numeri: una domanda sola, fatta
+  due volte, e durante code-index la barra del libro contava batch;
+- **il ragionamento non si spegneva**: l'89% dei token in uscita era pensiero,
+  perché la grafia di «non pensarci» era indicizzata per route dell'SDK e
+  quel provider viaggia su `openai-compatible`, che è un protocollo e non un
+  editore. La route generica per giunta non riceveva un `name`, quindi l'SDK
+  leggeva le opzioni sotto la chiave `undefined`: nessuna opzione, di nessun
+  tipo, poteva raggiungerla;
+- **la composizione chiedeva l'impronta invece della chiave di cache**: zero
+  traduzioni trovate, ogni unità riemessa dal sorgente, e un EPUB inglese con
+  i metadati italiani — senza che una sola invariante si rompesse;
+- **`done` non accettava nulla**: un libro composto male non si poteva
+  ricomporre se non ritraducendolo da capo.
+
+Il primo era visibile a occhio, gli altri tre solo leggendo il database della
+corsa. `makeRunRuntime` non era importato da nessun test: è il buco da cui è
+passato il terzo.
+
+Resta da rifare la stessa prova end-to-end sull'applicazione corretta. Ora si fa tutto dall'interfaccia:
 Impostazioni → Provider → un preset → la chiave → Verifica; poi un libro corto,
 con l'auto-accettazione spenta per vedere i due gate. Con questo piano, la
 prova guarda anche **la barra della fase muoversi durante il code-index** e
