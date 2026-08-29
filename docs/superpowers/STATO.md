@@ -47,7 +47,7 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 9. La corsa osservabile e il discovery | **completo**, 11/11 + revisione finale dell'intero ramo | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
 | Difetti trovati sul primo libro vero | **quattro, corretti** | `app/renderer/src/app/project/`, `app/main/providers/`, `app/main/run/`, `core/workflow/` |
 
-Suite: **868 test verdi** (325 core, 408 app, 135 componenti) piu' **13 prove
+Suite: **876 test verdi** (333 core, 408 app, 135 componenti) piu' **13 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
 ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
 la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
@@ -108,11 +108,67 @@ rispettando ogni regola del protocollo. Da li' sono venute quattro cose:
   schema, e le istruzioni tornano a parlare di traduzione. Due contratti, e
   la chiave di cache li distingue;
 - **il ragionamento a forza** (`off`, `low`, `high`, `max`) invece che a
-  interruttore: era l'assenza di una via di mezzo a produrre il difetto.
+  interruttore.
 
-Resta da rifare la prova end-to-end sull'applicazione corretta — e ora c'e'
-anche una domanda da decidere con i numeri: se al modello basti `low` per
-tradurre nella lingua giusta, o se serva di piu'. Ora si fa tutto dall'interfaccia:
+**Ma la causa era un'altra, e l'ha trovata l'utente.** L'estrazione dei termini
+nominava le lingue **con i tag**: al modello arrivava «preparing a *en* book
+for translation into *it*», e proponeva 21 rese su 51 in cinese, nove come
+`must`. L'auto-accettazione le approvava, e da li' ogni chunk che conteneva una
+di quelle stringhe partiva con l'istruzione di renderla in cinese. Le unita'
+esposte tornavano con ideogrammi venti volte piu' spesso delle altre — 13,9%
+contro 0,7%. `languageName()` esisteva da sempre e li' non era usata.
+
+Da quella scoperta due correzioni: le lingue si nominano, e una resa scritta in
+una scrittura in cui la lingua di destinazione non si scrive diventa una
+**domanda aperta** invece che un candidato — l'auto-accettazione approva solo i
+candidati.
+
+E un difetto introdotto riequilibrando le istruzioni, trovato dai dati: senza
+la frase che nominava `UNITS <n>` il modello smetteva di scriverla, e il parser
+scartava l'intera risposta al livello 1 — 180 unita' a terra su 368, tutte con
+la traduzione giusta dentro. Ora il **primo marcatore ancora il blocco**.
+
+## La prova che nessuna suite poteva dare: fatta
+
+Lo stesso libro (1686 unita'), applicazione corretta, ragionamento **spento**:
+
+| | ideogrammi | ricadute | primo tentativo |
+|---|---|---|---|
+| prompt v2 | 645 (38%) | 0 | — |
+| v3 + bug del parser | — | 180/368 (49%) | ~48% |
+| **oggi** | **0** | **0** | **99,5%** |
+
+3 minuti e 11 secondi, $0,049, composizione `complete`, zero invarianti rotte,
+31 termini applicati e nessuno in cinese.
+
+Accanto, **Translator** sullo stesso libro con lo stesso modello e lo stesso
+pensiero spento: 1950 unita' (segmenta piu' fitto), zero ricadute, 99,6% al
+primo tentativo, zero ideogrammi, ~4m30s — e **nessuna terminologia**, perche'
+il suo `method` era `skipped-no-glossaries`.
+
+Il sesto livello e la guardia sulle rese **non sono mai scattati**: zero
+domande aperte, zero rifiuti `wrong-script`. Sono garanzie che non hanno dovuto
+agire, e servono perche' la prossima volta che un modello sbaglia lingua non
+finisca in un libro composto e dichiarato `complete`.
+
+## Il prossimo passo, e una decisione aperta
+
+**Translator non chiede mai la resa al modello.** Il tipo dei suoi candidati
+non ha un campo `target`: propone `source`, `rule`, `note`, e scrive il target
+**vuoto** per tutto cio' che non e' `dnt`, cosi' un file approvato con un
+`must` senza resa fallisce rumorosamente. Il commento in testa a
+`src/analyze/candidates.ts` lo motiva: *«over-generation is the measured
+failure mode of automatic term extraction; the approval gate is the
+mitigation»*. Adottarlo renderebbe impossibile l'intera classe di errore invece
+di intercettarne una parte — al prezzo di cambiare il senso
+dell'auto-accettazione, che approverebbe soltanto i `dnt`.
+
+Restano anche i **21 termini cinesi** nel database del progetto vecchio:
+l'orchestratore salta la fase dei candidati quando `store.terms()` non e'
+vuoto, quindi nemmeno una chiave di cache nuova li rimuove. Vanno rifiutati a
+mano.
+
+Il resto della prova dal vivo si fa dall'interfaccia:
 Impostazioni → Provider → un preset → la chiave → Verifica; poi un libro corto,
 con l'auto-accettazione spenta per vedere i due gate. Con questo piano, la
 prova guarda anche **la barra della fase muoversi durante il code-index** e
