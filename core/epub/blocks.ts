@@ -178,6 +178,21 @@ function classesOf(node: ElementNode): string[] {
   return raw === undefined ? [] : raw.split(/\s+/).filter((c) => c.length > 0);
 }
 
+/**
+ * An element that records where a printed page began, rather than something a
+ * reader reads.
+ *
+ * Recognised by what the element declares — `epub:type="pagebreak"` or
+ * `role="doc-pagebreak"` — and never by what its label contains. A label that
+ * is only digits could be a figure number, a footnote or a year; a declared
+ * page break could not be anything else.
+ */
+function isPageMarker(node: ElementNode): boolean {
+  const declared = (attrValue(node, "epub:type") ?? "").split(/\s+/);
+  if (declared.includes("pagebreak")) return true;
+  return (attrValue(node, "role") ?? "").split(/\s+/).includes("doc-pagebreak");
+}
+
 export interface ExtractInput {
   source: string;
   doc: string;
@@ -298,16 +313,18 @@ class Extractor {
       };
       out.placeholders.push(placeholder);
 
-      for (const name of translatableAttributes(child.name)) {
-        const attr = child.attrs.find((a) => a.name === name);
-        if (!attr || attr.value.trim().length === 0) continue;
-        const slot: PlaceholderAttr = { unitId: "", start: attr.start, end: attr.end };
-        (placeholder.attrs ??= []).push(slot);
-        out.pending.push({
-          slot,
-          range: [child.openStart + attr.start, child.openStart + attr.end],
-          value: attr.value,
-        });
+      if (!isPageMarker(child)) {
+        for (const name of translatableAttributes(child.name)) {
+          const attr = child.attrs.find((a) => a.name === name);
+          if (!attr || attr.value.trim().length === 0) continue;
+          const slot: PlaceholderAttr = { unitId: "", start: attr.start, end: attr.end };
+          (placeholder.attrs ??= []).push(slot);
+          out.pending.push({
+            slot,
+            range: [child.openStart + attr.start, child.openStart + attr.end],
+            value: attr.value,
+          });
+        }
       }
 
       if (child.selfClosing) {

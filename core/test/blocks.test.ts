@@ -86,3 +86,44 @@ describe("inline markup", () => {
     expect(ph.open.slice(ph.attrs![0].start, ph.attrs![0].end)).toBe("A cat");
   });
 });
+
+/**
+ * A page marker records where a printed page began. It is not content, in any
+ * state: translating "199" is meaningless, and listing it as an exclusion put
+ * a second, mysterious row beside every code listing that carried one.
+ *
+ * The rule reads the element, never the value. An `aria-label` that is only a
+ * number could be anything; a `doc-pagebreak` could not.
+ */
+describe("a page marker", () => {
+  it("makes no unit of its own inside a listing", () => {
+    const { units } = extract({
+      doc: "c1.xhtml",
+      source: `<html><body><pre><code><span aria-label="199" epub:type="pagebreak"`
+        + ` id="pg_199" role="doc-pagebreak"/>const a = 1;</code></pre></body></html>`,
+    });
+
+    expect(units.map((unit) => unit.kind)).toEqual(["block"]);
+    expect(units[0]!.state).toBe("code");
+  });
+
+  it("makes no unit in a paragraph either", () => {
+    const { units } = extract({
+      doc: "c1.xhtml",
+      source: `<html><body><p><span aria-label="12" role="doc-pagebreak"/>A sentence.</p></body></html>`,
+    });
+
+    expect(units.filter((unit) => unit.kind === "attribute")).toEqual([]);
+  });
+
+  /** The rule is the marker's, not the attribute's: an ordinary label stays. */
+  it("leaves an aria-label that labels something", () => {
+    const { units } = extract({
+      doc: "c1.xhtml",
+      source: `<html><body><p><span aria-label="Home">A sentence.</span></p></body></html>`,
+    });
+
+    expect(units.filter((unit) => unit.kind === "attribute").map((unit) => unit.source))
+      .toEqual(["Home"]);
+  });
+});
