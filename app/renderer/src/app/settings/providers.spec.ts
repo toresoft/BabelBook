@@ -216,7 +216,7 @@ describe("Providers", () => {
     expect(row).toContain("ACME_API_KEY");
   });
 
-  it("asks for one thing only: the key", async () => {
+  it("asks for the key, and nothing the catalogue already knows", async () => {
     const { fixture } = mount();
     await fixture.whenStable();
 
@@ -225,8 +225,10 @@ describe("Providers", () => {
     const form = fixture.nativeElement.querySelector("[data-testid=provider-form]") as HTMLElement;
 
     expect(form.querySelector("[data-testid=provider-api-key]")).not.toBeNull();
-    // No name to invent, no route to know, no URL to paste: the entry said so.
-    for (const absent of ["provider-name", "provider-route", "provider-base-url"]) {
+    // No route to know, no URL to paste: the entry said so. The name it does
+    // ask for is the entry's own, prefilled — there to be changed, not
+    // invented.
+    for (const absent of ["provider-route", "provider-base-url"]) {
       expect(form.querySelector(`[data-testid=${absent}]`)).toBeNull();
     }
   });
@@ -290,7 +292,13 @@ describe("Providers", () => {
     for (const absent of ["add-model", "find-models", "model-list"]) {
       expect(form.querySelector(`[data-testid=${absent}]`)).toBeNull();
     }
-    expect(form.querySelector("input:not([data-testid=provider-api-key])")).toBeNull();
+    // The name names the provider and the key unlocks it: no input carries a
+    // model id.
+    expect(
+      form.querySelector(
+        "input:not([data-testid=provider-api-key]):not([data-testid=provider-name])",
+      ),
+    ).toBeNull();
 
     await fixture.componentInstance.save();
 
@@ -648,5 +656,121 @@ describe("Providers", () => {
     refused!.click();
     fixture.detectChanges();
     expect(fixture.componentInstance.draft()).toBeNull();
+  });
+
+  /**
+   * A switch on a model that cannot reason is a control that does nothing, and
+   * a control that does nothing teaches people not to trust the others.
+   */
+  /** A model the catalogue says can reason, beside the one that cannot. */
+  const thinker: ProviderModel = {
+    ...priced, id: "acme-max", displayName: "Acme Max", reasoningEnabled: null,
+    capabilities: { toolCall: true, reasoning: true, structuredOutput: true, attachment: false },
+  };
+
+  it("offers the reasoning switch only for a model that can reason", async () => {
+    const { fixture } = mount(bridge({
+      "providers.list": [{ ...saved, models: [thinker, { ...priced, reasoningEnabled: null }] }],
+    }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The switch follows the model chosen in the card's select, which starts on
+    // the first — the one that reasons.
+    expect(fixture.nativeElement.querySelector("[data-testid=reasoning-p1]")).not.toBeNull();
+
+    const select = fixture.nativeElement.querySelector("[data-testid=verify-model-p1]");
+    select.value = "acme-mini";
+    select.dispatchEvent(new Event("change"));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=reasoning-p1]")).toBeNull();
+  });
+
+  /**
+   * The switch changes the cache key, so it throws away what was translated with
+   * that model. It says so before it does it — the same promise the terms screen
+   * already keeps.
+   */
+  it("says what it would undo before undoing it", async () => {
+    const invoke = bridge({
+      "providers.list": [{ ...saved, models: [thinker] }],
+      "ui.confirm": { confirmed: false },
+    });
+    const { fixture } = mount(invoke);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector("[data-testid=reasoning-p1]").click();
+    await fixture.whenStable();
+
+    expect(calls(invoke, "ui.confirm")).toHaveLength(1);
+    expect(calls(invoke, "provider.setReasoning")).toHaveLength(0);
+  });
+
+  /**
+   * A refusal must leave the switch saying what the store says: a toggle that
+   * flips on a "no" is the same untrustworthy control as one that does
+   * nothing.
+   */
+  it("leaves the switch as it was when the change is refused", async () => {
+    const { fixture } = mount(bridge({
+      "providers.list": [{ ...saved, models: [thinker] }],
+      "ui.confirm": { confirmed: false },
+    }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLInputElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLInputElement).checked,
+    ).toBe(false);
+  });
+
+  /** The yes reaches the store for the model the select points at. */
+  it("changes the chosen model's reasoning, after the yes", async () => {
+    const invoke = bridge({
+      "providers.list": [{ ...saved, models: [thinker] }],
+      "ui.confirm": { confirmed: true },
+    });
+    const { fixture } = mount(invoke);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    (fixture.nativeElement.querySelector("[data-testid=reasoning-p1]") as HTMLInputElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(calls(invoke, "ui.confirm")[0]![1]).toMatchObject({
+      kind: "reasoningChange", detail: { name: "Acme", model: "Acme Max" },
+    });
+    expect(calls(invoke, "provider.setReasoning")).toEqual([
+      ["provider.setReasoning", { providerId: "p1", modelId: "acme-max", enabled: true }],
+    ]);
+  });
+
+  /**
+   * Two keys for the same brand — work and personal — used to become two rows
+   * nobody could tell apart, both at the top under "connected".
+   */
+  it("asks for a name when connecting from the catalogue", async () => {
+    const { fixture } = mount(bridge({ "catalog.search": [entry] }));
+    await fixture.whenStable();
+
+    // The same two clicks the modal's own tests make: open it, choose the entry.
+    fixture.nativeElement.querySelector("[data-testid=open-connect]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector("[data-testid=entry-acme]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const field = fixture.nativeElement.querySelector("[data-testid=provider-name]");
+    expect(field).not.toBeNull();
+    expect(field.value).toBe(entry.name);
   });
 });

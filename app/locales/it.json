@@ -90,6 +90,7 @@
     "verify": "Verifica",
     "verifying": "Verifica in corso…",
     "reachable": "Raggiungibile, {{ms}} ms",
+    "reasoning": "Ragionamento",
     "edit": "Modifica",
     "disconnect": "Disconnetti",
     "save": "Salva",
@@ -382,6 +383,7 @@
     "delete": "Elimina",
     "abandon": "Abbandona",
     "disconnect": "Disconnetti",
+    "apply": "Applica",
     "deleteProject": {
       "message": "Eliminare «{{title}}»? Il progetto, il suo spazio di lavoro e l'EPUB tradotto verranno cancellati."
     },
@@ -390,6 +392,9 @@
     },
     "deleteProvider": {
       "message": "Disconnettere «{{name}}»? Anche la sua chiave cifrata verrà rimossa."
+    },
+    "reasoningChange": {
+      "message": "Cambiare il ragionamento di «{{model}}» su «{{name}}»? Le traduzioni già fatte con questo modello erano legate all'impostazione precedente e verranno rifatte."
     },
     "deleteGlossary": {
       "message": "Eliminare il glossario «{{name}}»? {{count}} progetti ne perderanno la terminologia.",

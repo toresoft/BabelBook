@@ -202,6 +202,7 @@ export function confirmQuestion(
     verify: t(
       kind === "abandonProject" ? "confirm.abandon"
       : kind === "deleteProvider" ? "confirm.disconnect"
+      : kind === "reasoningChange" ? "confirm.apply"
       : "confirm.delete",
     ),
   };

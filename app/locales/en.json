@@ -90,6 +90,7 @@
     "verify": "Verify",
     "verifying": "Verifying…",
     "reachable": "Reachable, {{ms}} ms",
+    "reasoning": "Reasoning",
     "edit": "Edit",
     "disconnect": "Disconnect",
     "save": "Save",
@@ -382,6 +383,7 @@
     "delete": "Delete",
     "abandon": "Abandon",
     "disconnect": "Disconnect",
+    "apply": "Apply",
     "deleteProject": {
       "message": "Delete “{{title}}”? The project, its workspace and the translated EPUB will be removed."
     },
@@ -390,6 +392,9 @@
     },
     "deleteProvider": {
       "message": "Disconnect “{{name}}”? Its encrypted key will be removed too."
+    },
+    "reasoningChange": {
+      "message": "Change reasoning for “{{model}}” on “{{name}}”? Translations already made with this model were cached under the previous setting and will be done again."
     },
     "deleteGlossary": {
       "message": "Delete the glossary “{{name}}”? {{count}} projects will lose its terminology.",

@@ -40,6 +40,20 @@
                     <option [value]="model.id">{{ model.displayName || model.id }}</option>
                   }
                 </select>
+                <!-- One-way bound on purpose: the box is a view of the store's
+                     choice, not a form field. A refusal writes the event's own
+                     target back, so the switch never says what was said no to. -->
+                @if (canReason(provider); as chosen) {
+                  <label class="label cursor-pointer gap-2">
+                    <input
+                      class="toggle toggle-sm"
+                      type="checkbox"
+                      [attr.data-testid]="'reasoning-' + provider.id"
+                      [checked]="reasoningOf(provider)"
+                      (change)="setReasoning(provider, $event)" />
+                    <span>{{ t('providers.reasoning') }}</span>
+                  </label>
+                }
                 <button
                   type="button"
                   class="btn"
@@ -145,28 +159,29 @@
 
   @if (draft(); as form) {
     <form class="draft" data-testid="provider-form" (ngSubmit)="save()">
+      <!-- The header says what is being connected — the catalogue entry's own
+           name, never editable; the field below is the name the row will
+           wear, which is the user's to give. -->
       <h2>
         @if (form.id !== null) {
           {{ t('providers.editTitle') }}
         } @else if (form.catalogId === null) {
           {{ t('providers.compatibleTitle') }}
         } @else {
-          {{ form.name }}
+          {{ form.catalogName }}
         }
       </h2>
 
-      @if (form.id !== null || (form.catalogId === null && form.needsUrl)) {
-        <label>
-          {{ t('providers.name') }}
-          <input
-            type="text"
-            class="input"
-            data-testid="provider-name"
-            [ngModel]="form.name"
-            [ngModelOptions]="{ standalone: true }"
-            (ngModelChange)="patch('name', $event)" />
-        </label>
-      }
+      <label>
+        {{ t('providers.name') }}
+        <input
+          type="text"
+          class="input"
+          data-testid="provider-name"
+          [ngModel]="form.name"
+          [ngModelOptions]="{ standalone: true }"
+          (ngModelChange)="patch('name', $event)" />
+      </label>
 
       @if (form.needsUrl) {
         <label>

@@ -31,6 +31,14 @@ interface Draft {
   options: Record<string, unknown>;
   catalogId: string | null;
   catalogAt: string | null;
+  /**
+   * The catalogue entry's own name, kept apart from `name`: the header shows
+   * the identity of what is being connected — which no one should be able to
+   * change — while the field carries the name the row will wear once
+   * connected. Null for a hand-typed endpoint and a local runtime, which have
+   * no catalogue to take a name from.
+   */
+  catalogName: string | null;
   /** Carried, not asked: a runtime's own models, or an edit's untouched list. */
   models: ProviderModel[];
   /**
@@ -70,7 +78,8 @@ const FAILURE_KEYS: Record<string, string> = {
 const BLANK: Draft = {
   id: null, name: "", route: "openai-compatible", baseUrl: null,
   apiKey: "", headers: {}, options: {}, catalogId: null, catalogAt: null,
-  models: [], needsUrl: true, needsKey: true, envVar: null, hadKey: false,
+  catalogName: null, models: [], needsUrl: true, needsKey: true, envVar: null,
+  hadKey: false,
 };
 
 @Component({
@@ -257,6 +266,10 @@ export class Providers implements OnDestroy {
       // The date of the metadata this provider will carry, which is the
       // catalogue's date: the answer to "how old is this price?".
       catalogAt: this.catalogState()?.at ?? null,
+      // The entry's own name starts in the field, and stays in the header
+      // either way: two keys of the same brand must not become two rows
+      // nobody can tell apart.
+      catalogName: entry.name,
       // Never an address: a `baseUrl` of null on a pickable entry means the
       // publisher's own npm package carries the endpoint (the registry gave
       // the entry its route), not that nobody documented one. Asking here
@@ -485,6 +498,64 @@ export class Providers implements OnDestroy {
 
   chooseModel(provider: Provider, modelId: string): void {
     this.chosenModel.update((chosen) => ({ ...chosen, [provider.id]: modelId }));
+  }
+
+  /** The model the card's select points at, or null when the list has none. */
+  #chosen(provider: Provider): ProviderModel | null {
+    const id = this.modelFor(provider);
+    return provider.models.find((model) => model.id === id) ?? null;
+  }
+
+  /**
+   * The model the card's select points at, when it can reason: the switch
+   * exists only for a model that has something to switch. Null for every
+   * other choice — and for the models that declare no capabilities at all,
+   * because an unknown is not a yes.
+   */
+  canReason(provider: Provider): ProviderModel | null {
+    const chosen = this.#chosen(provider);
+    return chosen?.capabilities?.reasoning === true ? chosen : null;
+  }
+
+  /**
+   * What the switch shows: the chosen model's own choice, with an unchosen
+   * one reading as off — the same way the run reads it.
+   */
+  reasoningOf(provider: Provider): boolean {
+    return this.#chosen(provider)?.reasoningEnabled ?? false;
+  }
+
+  /**
+   * Asks before it writes, because the write costs more than it seems: the
+   * reasoning choice is part of the cache key, so a flip throws away every
+   * translation already made with that model. The question names the model
+   * and its provider, and a refusal leaves everything — the store and the
+   * switch — exactly as it was.
+   */
+  async setReasoning(provider: Provider, event: Event): Promise<void> {
+    const box = event.target as HTMLInputElement;
+    const model = this.#chosen(provider);
+    if (model === null) return;
+    const enabled = box.checked;
+    const { confirmed } = await this.#ipc.invoke("ui.confirm", {
+      kind: "reasoningChange",
+      detail: { name: provider.name, model: model.displayName || model.id },
+    });
+    if (!confirmed) {
+      // A refused change must not leave the switch saying what was just said
+      // no to. The `[checked]` binding cannot do it — its value did not
+      // change, so nothing is written back — and the event's own target is
+      // the one element that needs putting right.
+      box.checked = this.reasoningOf(provider);
+      return;
+    }
+
+    await this.#ipc.invoke("provider.setReasoning", {
+      providerId: provider.id,
+      modelId: model.id,
+      enabled,
+    });
+    await this.reload();
   }
 
   /**
