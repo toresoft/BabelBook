@@ -1,5 +1,7 @@
 import type { LlmBackend, ProgressSink } from "../ports.ts";
 import type { TranslationUnit } from "../epub/index.ts";
+import { batchUnits, buildCodePrompt, parseCodeVerdict } from "./code-wire.ts";
+import type { CodeBatch } from "./code-wire.ts";
 
 export interface CodeIndex {
   /** Units that were `translate` and become `maybe-code`. */
@@ -17,61 +19,17 @@ export interface IndexInput {
   backend: LlmBackend;
   sourceHash: string;
   batchSize?: number;
+  /** Batches are independent, so they go out as wide as the run allows. */
+  concurrency?: number;
   signal?: AbortSignal;
   /** Absent in the tests that only care about the verdicts. */
   progress?: ProgressSink;
 }
 
-const DEFAULT_BATCH = 20;
-const ATTEMPTS = 2;
-const VERDICT = /^\[v:([^\]]+)\]\s+(code|prose)\s*$/;
+const ATTEMPTS = 3;
 
 /** The only deduction soft enough to be overruled: a guess made from a stylesheet. */
 const FROM_CSS = "css-code-surface";
-
-function buildPrompt(batch: TranslationUnit[]): string {
-  return [
-    "Below are blocks from a book. For each one, say whether it is code —",
-    "a command, a snippet, a console session, program output, a path or an",
-    "identifier meant to be typed — or prose, which includes prose that",
-    "mentions code in passing.",
-    "",
-    "Answer in exactly this format and nothing else:",
-    "",
-    `VERDICTS ${batch.length}`,
-    "[v:<unit id>] code",
-    "[v:<unit id>] prose",
-    "END",
-    "",
-    "One line per block, in the order they are given, and nothing else.",
-    "",
-    "Blocks:",
-    ...batch.flatMap((unit) => [`[v:${unit.id}]`, unit.source]),
-  ].join("\n");
-}
-
-function parseVerdicts(raw: string, asked: Set<string>): Map<string, "code" | "prose"> | null {
-  const lines = raw.split(/\r?\n/).map((line) => line.trim());
-  const start = lines.findIndex((line) => /^VERDICTS\s+\d+$/.test(line));
-  const end = lines.indexOf("END");
-  if (start === -1 || end === -1 || end < start) return null;
-
-  const declared = Number(/^VERDICTS\s+(\d+)$/.exec(lines[start])![1]);
-  const verdicts = new Map<string, "code" | "prose">();
-
-  for (const line of lines.slice(start + 1, end)) {
-    if (line === "") continue;
-    const matched = VERDICT.exec(line);
-    if (matched === null) return null;
-    // A verdict about a unit we did not ask about means the answer is not
-    // about this batch. Taking the rest of it on trust would apply someone
-    // else's judgement to this book.
-    if (!asked.has(matched[1])) return null;
-    verdicts.set(matched[1], matched[2] as "code" | "prose");
-  }
-
-  return verdicts.size === declared ? verdicts : null;
-}
 
 /**
  * A second opinion on what is code, from a model that reads the text.
@@ -96,8 +54,6 @@ function parseVerdicts(raw: string, asked: Set<string>): Map<string, "code" | "p
  * would be damage; flagging it is help.
  */
 export async function indexCodeBlocks(input: IndexInput): Promise<CodeIndex> {
-  const batchSize = input.batchSize ?? DEFAULT_BATCH;
-
   const questionable = input.units.filter((unit) =>
     unit.state === "translate" || (unit.state === "code" && unit.reason === FROM_CSS));
 
@@ -105,39 +61,52 @@ export async function indexCodeBlocks(input: IndexInput): Promise<CodeIndex> {
   const freed: string[] = [];
   let abstained = 0;
 
-  const batches: TranslationUnit[][] = [];
-  for (let at = 0; at < questionable.length; at += batchSize) {
-    batches.push(questionable.slice(at, at + batchSize));
-  }
+  const batches = batchUnits(questionable, input.batchSize);
+  const judge = async (batch: CodeBatch): Promise<void> => {
+    let retryReason: string | undefined;
 
-  let judged = 0;
-  for (const batch of batches) {
-    const asked = new Set(batch.map((unit) => unit.id));
-
-    let verdicts: Map<string, "code" | "prose"> | null = null;
-    for (let attempt = 0; attempt < ATTEMPTS && verdicts === null; attempt++) {
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       input.signal?.throwIfAborted();
       const result = await input.backend.call({
-        prompt: buildPrompt(batch),
+        prompt: buildCodePrompt(batch, retryReason),
         ...(input.signal === undefined ? {} : { signal: input.signal }),
       });
-      verdicts = parseVerdicts(result.text, asked);
-    }
 
-    if (verdicts === null) {
-      abstained++;
-    } else {
-      for (const unit of batch) {
-        const verdict = verdicts.get(unit.id);
-        if (verdict === undefined) continue;
-        if (unit.state === "translate" && verdict === "code") marked.push(unit.id);
-        if (unit.state === "code" && verdict === "prose") freed.push(unit.id);
+      const verdict = parseCodeVerdict(result.text, batch);
+      if (!verdict.ok) {
+        // Carried into the next attempt. A model told what was wrong with its
+        // last answer fixes it; a model asked again, identically, answers
+        // identically, and the batch burns its whole budget saying so.
+        retryReason = verdict.reason;
+        continue;
       }
+
+      for (const unit of batch.units) {
+        if (unit.state === "translate" && verdict.code.has(unit.id)) marked.push(unit.id);
+        if (unit.state === "code" && verdict.prose.has(unit.id)) freed.push(unit.id);
+      }
+      return;
     }
 
-    judged++;
-    input.progress?.report({ phase: "code-index", done: judged, total: batches.length });
+    abstained++;
+  };
+
+  const width = Math.max(1, input.concurrency ?? 2);
+  let judged = 0;
+  for (let at = 0; at < batches.length; at += width) {
+    input.signal?.throwIfAborted();
+    await Promise.all(batches.slice(at, at + width).map(async (batch) => {
+      await judge(batch);
+      judged++;
+      input.progress?.report({ phase: "code-index", done: judged, total: batches.length });
+    }));
   }
 
+  // Sorted before they leave. The batches finish in whatever order the network
+  // returns them, and this list becomes a checkpoint: an order that changes
+  // between two identical runs would make the record of one unreadable against
+  // the other.
+  marked.sort();
+  freed.sort();
   return { marked, freed, abstained, sourceHash: input.sourceHash };
 }

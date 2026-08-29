@@ -39,9 +39,9 @@ function scriptedBackend(): FakeBackend {
     if (call.prompt.includes("TERMS")) {
       return { text: "TERMS 0\nEND", tokensIn: 10, tokensOut: 5, reasoningTokens: 0, finishReason: "stop" };
     }
-    if (call.prompt.includes("VERDICTS")) {
+    if (call.prompt.includes("#CODEINDEX")) {
       return {
-        text: "VERDICTS 1\n[v:c1.xhtml#1] prose\nEND",
+        text: "#CODEVERDICT v1 batch=1/1 count=1\n[1] translate\n@end",
         tokensIn: 10,
         tokensOut: 5,
         reasoningTokens: 0,
@@ -254,7 +254,7 @@ describe("runProject", () => {
       if (call.prompt.includes("TERMS")) {
         return { text: "TERMS 0\nEND", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" };
       }
-      if (call.prompt.includes("VERDICTS")) {
+      if (call.prompt.includes("#CODEINDEX")) {
         return { text: "malformed", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" };
       }
       return {
@@ -318,9 +318,9 @@ describe("runProject", () => {
       if (call.prompt.includes("TERMS")) {
         return { text: "TERMS 0\nEND", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" };
       }
-      if (call.prompt.includes("VERDICTS")) {
+      if (call.prompt.includes("#CODEINDEX")) {
         return {
-          text: "VERDICTS 1\n[v:c1.xhtml#1] prose\nEND",
+          text: "#CODEVERDICT v1 batch=1/1 count=1\n[1] translate\n@end",
           tokensIn: 1,
           tokensOut: 1,
           reasoningTokens: 0,
