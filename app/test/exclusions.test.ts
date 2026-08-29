@@ -117,4 +117,40 @@ describe("exclusions", () => {
   it("reports nothing cleared when there was nothing forced", () => {
     expect(clearForced(seeded(), "p1", ["c1.xhtml#1"])).toEqual({ cleared: 0 });
   });
+
+  it("shows the code of a listing, and where it is", () => {
+    const db = seeded();
+    db.prepare(`
+      INSERT INTO unit (id, project_id, document_id, ordinal, unit_id,
+                        range_start, range_end, state, source_text, raw_text)
+      VALUES ('u5','p1','d1',5,'c1.xhtml#5',9,10,'code','<0></0>','<code>const a = 1;</code>')
+    `).run();
+
+    const groups = listExclusions(db, "p1");
+    const listing = groups.flatMap((group) => group.units).find((unit) => unit.unitId === "c1.xhtml#5")!;
+
+    expect(listing.text).toBe("const a = 1;");
+    expect(listing.ordinal).toBe(5);
+  });
+
+  /**
+   * Grouped by state and reason alone, a technical book is one group of twelve
+   * hundred rows. The document is what turns that back into questions a person
+   * can answer one at a time.
+   */
+  it("splits the groups by document", () => {
+    const db = seeded();
+    db.prepare("INSERT INTO project_document (id, project_id, zip_path, spine_order) VALUES ('d2','p1','c2.xhtml',2)").run();
+    db.prepare(`
+      INSERT INTO unit (id, project_id, document_id, ordinal, unit_id,
+                        range_start, range_end, state, reason, source_text, raw_text)
+      VALUES ('u5','p1','d2',1,'c2.xhtml#1',0,1,'code','css-code-surface','x','x')
+    `).run();
+
+    const docs = listExclusions(db, "p1")
+      .filter((group) => group.reason === "css-code-surface")
+      .map((group) => group.doc);
+
+    expect(new Set(docs)).toEqual(new Set(["c1.xhtml", "c2.xhtml"]));
+  });
 });

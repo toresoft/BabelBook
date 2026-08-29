@@ -243,7 +243,9 @@ export type ExcludedState =
 export interface ExclusionGroup {
   state: ExcludedState | "translate";
   reason: string | null;
-  units: Array<{ unitId: string; text: string; forced: boolean }>;
+  /** The document these belong to: without it a technical book is one group of twelve hundred. */
+  doc: string;
+  units: Array<{ unitId: string; ordinal: number; text: string; forced: boolean }>;
 }
 
 /** What a change in terminology would undo, priced in tokens, before it undoes it. */

@@ -219,6 +219,8 @@
     "lead": "{{count}} blocks will not be translated. Check that this is right.",
     "empty": "Nothing excluded: the whole book will be translated.",
     "inGroup": "{{count}} blocks",
+    "inDocument": "in {{doc}}",
+    "position": "Block {{ordinal}}",
     "noReason": "Your decision",
     "free": "It is prose, translate it",
     "protect": "It is code, leave it",

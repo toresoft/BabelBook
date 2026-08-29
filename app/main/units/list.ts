@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { UnitQuery, UnitRow } from "../../shared/dto.ts";
+import { displayText } from "./display.ts";
 
 export type { UnitQuery, UnitRow } from "../../shared/dto.ts";
 
@@ -11,6 +12,7 @@ interface Row {
   forced_state: string | null;
   reason: string | null;
   source_text: string;
+  raw_text: string | null;
   translation: string | null;
   outcome: string | null;
 }
@@ -56,7 +58,7 @@ export function listUnits(
   const rows = db.prepare(`
     SELECT u.unit_id, d.zip_path, u.ordinal,
            coalesce(u.forced_state, u.state) AS effective,
-           u.forced_state, u.reason, u.source_text,
+           u.forced_state, u.reason, u.source_text, u.raw_text,
            t.text AS translation, t.outcome
     ${from} ${where}
      ORDER BY d.spine_order, u.ordinal
@@ -72,7 +74,7 @@ export function listUnits(
       state: row.effective,
       forced: row.forced_state !== null,
       reason: row.reason,
-      source: row.source_text,
+      source: displayText(row.raw_text, row.source_text),
       translation: row.translation,
       outcome: row.outcome,
     })),

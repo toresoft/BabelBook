@@ -219,6 +219,8 @@
     "lead": "{{count}} blocchi non verranno tradotti. Controlla che sia giusto.",
     "empty": "Nessuna esclusione: tutto il libro verrà tradotto.",
     "inGroup": "{{count}} blocchi",
+    "inDocument": "in {{doc}}",
+    "position": "Blocco {{ordinal}}",
     "noReason": "Deciso da te",
     "free": "È testo, traducilo",
     "protect": "È codice, lascialo",

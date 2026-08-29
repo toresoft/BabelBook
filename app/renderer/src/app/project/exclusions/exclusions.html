@@ -8,10 +8,11 @@
     <p class="exclusions__empty" data-testid="exclusions-empty">{{ t('exclusions.empty') }}</p>
   }
 
-  @for (group of groups(); track group.state + '/' + group.reason) {
+  @for (group of groups(); track group.state + '/' + group.reason + '/' + group.doc) {
     <article class="group" [attr.data-testid]="'group-' + group.state + '-' + (group.reason ?? 'none')">
       <h3 class="group__head">
         {{ t('unitState.' + group.state) }}
+        <span class="group__doc">{{ t('exclusions.inDocument', { doc: group.doc }) }}</span>
         <span class="group__count">{{ t('exclusions.inGroup', { count: group.units.length }) }}</span>
       </h3>
       <p class="group__reason">
@@ -21,6 +22,7 @@
       <ul class="group__units">
         @for (unit of group.units; track unit.unitId) {
           <li class="unit" [attr.data-testid]="'unit-' + unit.unitId">
+            <p class="unit__position">{{ t('exclusions.position', { ordinal: unit.ordinal }) }}</p>
             <p class="unit__text">{{ unit.text }}</p>
             <div class="unit__actions">
               <span class="unit__verdict">{{ t('unitState.' + verdict(unit.unitId, group.state)) }}</span>

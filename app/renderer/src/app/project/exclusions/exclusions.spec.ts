@@ -10,15 +10,17 @@ const groups: ExclusionGroup[] = [
   {
     state: "code",
     reason: "css-code-surface",
+    doc: "c1.xhtml",
     units: [
-      { unitId: "c1.xhtml#1", text: "gem install foo", forced: false },
-      { unitId: "c1.xhtml#2", text: "The src/ directory holds the sources", forced: false },
+      { unitId: "c1.xhtml#1", ordinal: 1, text: "gem install foo", forced: false },
+      { unitId: "c1.xhtml#2", ordinal: 2, text: "The src/ directory holds the sources", forced: false },
     ],
   },
   {
     state: "translate-no",
     reason: null,
-    units: [{ unitId: "c1.xhtml#3", text: "Acme Corp", forced: false }],
+    doc: "c1.xhtml",
+    units: [{ unitId: "c1.xhtml#3", ordinal: 3, text: "Acme Corp", forced: false }],
   },
 ];
 
