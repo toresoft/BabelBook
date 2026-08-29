@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, OnDestroy, signal } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
-import type { ProjectDetail } from "../../../../shared/dto.js";
+import type { ProjectDetail, RunPhase } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
 import { Exclusions } from "./exclusions/exclusions";
 import { ReportView } from "./report/report";
@@ -35,6 +35,24 @@ export class Project implements OnDestroy {
   readonly tab = signal<Tab>("overview");
   readonly phase = signal<string | null>(null);
 
+  /**
+   * What the run is doing right now, which is not what the book is.
+   *
+   * Two numbers, not one. `project.progress` says how much of the book is
+   * translated: a fact of the database, monotone, true with nothing running.
+   * This says how far the current phase has got, and it restarts at every
+   * phase. Conflated, they made a bar that was the first but moved only during
+   * the last phase of the second — correctly still, and unreadably so.
+   */
+  readonly phaseProgress = signal<{ phase: RunPhase; done: number; total: number } | null>(null);
+
+  /**
+   * Live spend, from `run.usage`. It overrides `found.tokens` only while the
+   * run is alive; once reloaded state says the run is over, the database row
+   * is the truth again and this goes back to null.
+   */
+  readonly liveTokens = signal<{ in: number; out: number; reasoning: number } | null>(null);
+
   #ipc = inject(IpcService);
   #unsubscribe: Array<() => void> = [];
 
@@ -57,6 +75,11 @@ export class Project implements OnDestroy {
       this.project.update((found) => found === null
         ? found
         : { ...found, progress: { done: progress.done, total: progress.total } });
+      this.phaseProgress.set({ phase: progress.phase, done: progress.done, total: progress.total });
+    }));
+    this.#unsubscribe.push(this.#ipc.on("run.usage", (usage) => {
+      if (usage.projectId !== this.id()) return;
+      this.liveTokens.set({ in: usage.tokensIn, out: usage.tokensOut, reasoning: usage.reasoningTokens });
     }));
   }
 
@@ -67,6 +90,14 @@ export class Project implements OnDestroy {
   async reload(id = this.id()): Promise<void> {
     const found = await this.#ipc.invoke("project.get", { id });
     this.project.set(found);
+
+    // A phase bar left on screen after the run ended is a lie with a date on
+    // it: the reloaded state is the only thing that gets to say the run is
+    // still going, so a reload that finds it isn't clears both live signals.
+    if (found?.state !== "running") {
+      this.phaseProgress.set(null);
+      this.liveTokens.set(null);
+    }
 
     // A gate is where the user is needed, so that is where they are put.
     if (found?.state === "waiting-terms") this.tab.set("terms");
@@ -88,6 +119,17 @@ export class Project implements OnDestroy {
       : Math.round((found.progress.done / found.progress.total) * 100);
   }
 
+  phasePercent(running: { done: number; total: number }): number {
+    return running.total === 0
+      ? 0
+      : Math.round((running.done / running.total) * 100);
+  }
+
+  /** The live spend while a run is going, the database's own answer otherwise. */
+  tokens(found: ProjectDetail): { in: number; out: number; reasoning: number } {
+    return this.liveTokens() ?? found.tokens;
+  }
+
   async start(): Promise<void> {
     await this.#ipc.invoke("run.start", { projectId: this.id() });
     await this.reload();
@@ -95,6 +137,8 @@ export class Project implements OnDestroy {
 
   async pause(): Promise<void> {
     await this.#ipc.invoke("run.pause", { projectId: this.id() });
+    this.phaseProgress.set(null);
+    this.liveTokens.set(null);
     await this.reload();
   }
 }

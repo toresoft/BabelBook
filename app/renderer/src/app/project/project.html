@@ -47,6 +47,27 @@
       {{ t('library.progress', { done: found.progress.done, total: found.progress.total }) }}
     </p>
 
+    @if (phaseProgress(); as running) {
+      <div class="project__phase-bar">
+        <span class="project__phase-name">{{ t('phase.' + running.phase) }}</span>
+        @if (running.total > 0) {
+          <progress
+            class="progress progress-primary"
+            max="100"
+            data-testid="phase-progress"
+            [value]="phasePercent(running)"></progress>
+          <span class="project__phase-counts" data-testid="phase-counts">
+            {{ t('library.progress', { done: running.done, total: running.total }) }}
+          </span>
+        } @else {
+          <!-- A bar that moves without claiming progress: nothing here knows
+               how far along this phase is, and a bar that filled up would be
+               inventing it. Same rule the splash follows, same reason. -->
+          <progress class="progress progress-primary" data-testid="phase-progress"></progress>
+        }
+      </div>
+    }
+
     <nav class="tabs tabs-border">
       @for (name of tabs; track name) {
         <button
@@ -75,7 +96,7 @@
                 <dt>{{ t('project.cost') }}</dt>
                 <dd>
                   {{ t('report.tokens', {
-                    tokensIn: found.tokens.in, tokensOut: found.tokens.out
+                    tokensIn: tokens(found).in, tokensOut: tokens(found).out
                   }) }}
                   @if (found.cost !== null) {
                     · {{ t('report.money', { amount: found.cost.toFixed(2) }) }}

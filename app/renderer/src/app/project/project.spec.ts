@@ -38,18 +38,32 @@ function bridge(project: ProjectDetail | null = detail) {
   });
 }
 
-function mount(invoke = bridge()) {
+/** The event side of the bridge, which `mount`'s stub does not have. */
+function events() {
+  const listeners = new Map<string, Array<(payload: unknown) => void>>();
+  return {
+    on: (channel: string, listener: (payload: unknown) => void) => {
+      listeners.set(channel, [...(listeners.get(channel) ?? []), listener]);
+      return () => {};
+    },
+    emit: (channel: string, payload: unknown) => {
+      for (const listener of listeners.get(channel) ?? []) listener(payload);
+    },
+  };
+}
+
+function mount(invoke = bridge(), bus = events()) {
   TestBed.configureTestingModule({
     imports: [Project],
     providers: [
       provideRouter([]),
       ...provideI18n("it"),
-      { provide: IpcService, useValue: { invoke, on: () => () => {} } },
+      { provide: IpcService, useValue: { invoke, on: bus.on } },
     ],
   });
   const fixture = TestBed.createComponent(Project);
   fixture.componentRef.setInput("id", "p1");
-  return { fixture, invoke };
+  return { fixture, invoke, bus };
 }
 
 const catalogue = it_IT as unknown as {
@@ -127,5 +141,37 @@ describe("Project", () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain((catalogue.project["tabs"] as Record<string, string>)["overview"]);
     expect(text).not.toContain("project.");
+  });
+
+  it("shows the phase and its own counter while a run is going", async () => {
+    const { fixture, bus } = mount(bridge({ ...detail, state: "running" }));
+    await fixture.whenStable();
+
+    bus.emit("run.progress", { projectId: "p1", phase: "code-index", done: 7, total: 298 });
+    fixture.detectChanges();
+
+    const bar = fixture.nativeElement.querySelector("[data-testid=phase-progress]");
+    expect(bar).not.toBeNull();
+    expect(bar.getAttribute("value")).toBe("2");
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-counts]").textContent)
+      .toContain("7");
+  });
+
+  /**
+   * A phase bar left on screen after the run is a lie with a date on it.
+   */
+  it("drops the phase bar when the run ends", async () => {
+    const { fixture, bus } = mount(bridge({ ...detail, state: "done" }));
+    await fixture.whenStable();
+
+    bus.emit("run.progress", { projectId: "p1", phase: "translate", done: 3, total: 9 });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-progress]")).not.toBeNull();
+
+    bus.emit("project.changed", { id: "p1" });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-progress]")).toBeNull();
   });
 });

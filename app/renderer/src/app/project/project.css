@@ -12,6 +12,10 @@
 .project__phase { color: var(--accent); }
 .project__actions { display: flex; gap: 0.5rem; }
 
+.project__phase-bar { display: grid; gap: 0.2rem; }
+.project__phase-name { color: var(--accent); font-size: 0.85rem; }
+.project__phase-counts { color: var(--text-muted); font-size: 0.85rem; }
+
 .project__panel { padding-top: 0.5rem; }
 
 .overview { display: grid; gap: 0.6rem; }
