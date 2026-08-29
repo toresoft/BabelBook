@@ -16,8 +16,17 @@ import { createHash } from "node:crypto";
  * format you are given" and naming none of it. Under version 1 a model that
  * translated perfectly answered in prose, and every unit fell back to source;
  * nothing produced under it is worth reusing, which is what this bump says.
+ *
+ * 3: version 2 overcorrected. It was 1631 characters, 78% of them protocol and
+ * 47 of them the work, and a model spends its attention where the words are:
+ * on a real book, one obeyed every rule of the format and answered 645 units
+ * of 1686 in another language. Version 3 states the rules once, lets the example
+ * carry what prose belaboured, and says the work twice — first and last — with
+ * the target language repeated in the payload, immediately above the units.
+ * Work made under version 2 was produced under instructions that let this
+ * happen, and is not worth reusing.
  */
-export const PROMPT_VERSION = 2;
+export const PROMPT_VERSION = 3;
 export const CONTEXT_VERSION = 1;
 
 /**

@@ -1,5 +1,5 @@
 import { isWork } from "../epub/index.ts";
-import { buildSystem } from "./instructions.ts";
+import { buildSystem, languageName } from "./instructions.ts";
 import type { ParsedResponse, TranslationRequest } from "./types.ts";
 
 export { buildSystem };
@@ -62,7 +62,12 @@ export function buildPayload(request: TranslationRequest): string {
       ...context.interleaved);
   }
 
-  lines.push("", `Translate the ${request.units.length} units below.`,
+  // The language is named here and not only in the instructions: this is the
+  // last line before the work, and the last line is where a model looks when
+  // it starts writing. Version 2 said only "translate the units below", 1600
+  // characters after the only mention of the target language.
+  lines.push("", `Translate the ${request.units.length} units below into `
+    + `${languageName(context.targetLanguage)}.`,
     "Answer with the same markers, in the same order, and finish with END.", "");
   lines.push(`UNITS ${request.units.length}`);
   for (const unit of request.units) {

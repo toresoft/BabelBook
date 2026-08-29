@@ -23,6 +23,19 @@ describe("buildPayload", () => {
     expect(payload.trimEnd().endsWith("END")).toBe(true);
   });
 
+  /**
+   * Production break: the last instruction before the units was about the
+   * format, and the only line naming the language sat 1600 characters above
+   * it. A model that had spent all its attention on the protocol translated
+   * one book in three into Chinese.
+   */
+  it("names the target language where the work is actually asked for", () => {
+    const payload = buildPayload({ units: [unit(1, "One"), unit(2, "Two")], context, terms: [] });
+    const asked = payload.split("\n").find((line) => line.startsWith("Translate the"))!;
+
+    expect(asked).toContain("Italian");
+  });
+
   it("refuses a unit that is not work", () => {
     expect(() => buildPayload({ units: [unit(1, "x = 1", "code")], context, terms: [] }))
       .toThrow(/c1\.xhtml#1/);
@@ -86,6 +99,22 @@ describe("buildSystem", () => {
     expect(system).toMatch(/UNITS <n>|UNITS \d/);
     expect(system).toContain("[u:");
     expect(system).toContain("END");
+  });
+
+  /**
+   * The instructions were 1631 characters, 78% of them about the format and
+   * 47 about the work. What a model gives its attention to is what it is
+   * mostly told, and it showed: the protocol was obeyed to the letter and the
+   * language was forgotten.
+   */
+  it("spends itself on the work, not on the protocol", () => {
+    const system = buildSystem({ units: [unit(1, "One")], context, terms: [] });
+    const lines = system.split("\n");
+
+    expect(system.length).toBeLessThan(1100);
+    // Said first and said last: the two positions a model reads hardest.
+    expect(lines[0]).toContain("Italian");
+    expect(lines.filter((line) => line !== "").at(-1)).toContain("Italian");
   });
 
   it("shows a whole answer, and our own reader accepts it", () => {
