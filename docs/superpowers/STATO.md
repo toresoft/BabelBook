@@ -47,7 +47,7 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 9. La corsa osservabile e il discovery | **completo**, 11/11 + revisione finale dell'intero ramo | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
 | Difetti trovati sul primo libro vero | **quattro, corretti** | `app/renderer/src/app/project/`, `app/main/providers/`, `app/main/run/`, `core/workflow/` |
 
-Suite: **836 test verdi** (299 core, 403 app, 134 componenti) piu' **13 prove
+Suite: **868 test verdi** (325 core, 408 app, 135 componenti) piu' **13 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
 ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
 la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
@@ -94,7 +94,25 @@ Il primo era visibile a occhio, gli altri tre solo leggendo il database della
 corsa. `makeRunRuntime` non era importato da nessun test: è il buco da cui è
 passato il terzo.
 
-Resta da rifare la stessa prova end-to-end sull'applicazione corretta. Ora si fa tutto dall'interfaccia:
+Il secondo libro, tradotto con la correzione del ragionamento, ne ha trovato
+un quinto: **il modello ha risposto in cinese a 645 unita' su 1686**,
+rispettando ogni regola del protocollo. Da li' sono venute quattro cose:
+
+- **il sesto livello di validazione**, che guarda la scrittura in cui la
+  risposta arriva. I cinque livelli chiedono tutti se la forma e' giusta, e
+  una traduzione nella lingua sbagliata ha la forma giusta;
+- **le istruzioni riequilibrate**: erano 1631 caratteri, il 78% sul formato e
+  47 sul lavoro. Ora 937, il 39%, e la lingua e' nominata anche subito sopra
+  le unita';
+- **l'output strutturato** dove il provider lo regge: la forma la impone lo
+  schema, e le istruzioni tornano a parlare di traduzione. Due contratti, e
+  la chiave di cache li distingue;
+- **il ragionamento a forza** (`off`, `low`, `high`, `max`) invece che a
+  interruttore: era l'assenza di una via di mezzo a produrre il difetto.
+
+Resta da rifare la prova end-to-end sull'applicazione corretta — e ora c'e'
+anche una domanda da decidere con i numeri: se al modello basti `low` per
+tradurre nella lingua giusta, o se serva di piu'. Ora si fa tutto dall'interfaccia:
 Impostazioni → Provider → un preset → la chiave → Verifica; poi un libro corto,
 con l'auto-accettazione spenta per vedere i due gate. Con questo piano, la
 prova guarda anche **la barra della fase muoversi durante il code-index** e
