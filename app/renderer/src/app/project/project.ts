@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, OnDestroy, signal } from "@angular/core";
+import {
+  ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, signal,
+} from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
-import type { ProjectDetail, RunPhase } from "../../../../shared/dto.js";
+import { RUN_PHASES, type ProjectDetail, type RunPhase } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
 import { Exclusions } from "./exclusions/exclusions";
 import { ReportView } from "./report/report";
@@ -41,10 +43,35 @@ export class Project implements OnDestroy {
    * Two numbers, not one. `project.progress` says how much of the book is
    * translated: a fact of the database, monotone, true with nothing running.
    * This says how far the current phase has got, and it restarts at every
-   * phase. Conflated, they made a bar that was the first but moved only during
-   * the last phase of the second — correctly still, and unreadably so.
+   * phase — and it counts what its own phase counts, which is samples in one
+   * phase and batches in another, not units of the book. Written into both,
+   * it made the screen ask one question twice and answer it wrong.
    */
   readonly phaseProgress = signal<{ phase: RunPhase; done: number; total: number } | null>(null);
+
+  /** How many phases a run declares: the denominator of the upper bar. */
+  readonly phaseCount = RUN_PHASES.length;
+
+  /**
+   * The phase the run is in, from the phase event; the last progress event is
+   * the fallback for the moment before one arrives.
+   */
+  readonly currentPhase = computed<RunPhase | null>(() => {
+    const named = this.phase();
+    if (named !== null && RUN_PHASES.includes(named as RunPhase)) return named as RunPhase;
+    return this.phaseProgress()?.phase ?? null;
+  });
+
+  /**
+   * The counter of the phase on screen, and of no other. A counter kept from
+   * the phase before would sit under the new phase's name claiming a progress
+   * nobody measured.
+   */
+  readonly phaseCounts = computed(() => {
+    const running = this.phaseProgress();
+    if (running === null || running.total === 0) return null;
+    return running.phase === this.currentPhase() ? running : null;
+  });
 
   /**
    * Live spend, from `run.usage`. It overrides `found.tokens` only while the
@@ -72,9 +99,15 @@ export class Project implements OnDestroy {
     }));
     this.#unsubscribe.push(this.#ipc.on("run.progress", (progress) => {
       if (progress.projectId !== this.id()) return;
-      this.project.update((found) => found === null
-        ? found
-        : { ...found, progress: { done: progress.done, total: progress.total } });
+      // Only `translate` counts the book: its `done`/`total` are the units of
+      // the book itself, the same two numbers the database answers with. Every
+      // other phase counts its own work — samples, batches — and writing those
+      // into the book's count made the book claim a progress it did not have.
+      if (progress.phase === "translate") {
+        this.project.update((found) => found === null
+          ? found
+          : { ...found, progress: { done: progress.done, total: progress.total } });
+      }
       this.phaseProgress.set({ phase: progress.phase, done: progress.done, total: progress.total });
     }));
     this.#unsubscribe.push(this.#ipc.on("run.usage", (usage) => {
@@ -95,6 +128,7 @@ export class Project implements OnDestroy {
     // it: the reloaded state is the only thing that gets to say the run is
     // still going, so a reload that finds it isn't clears both live signals.
     if (found?.state !== "running") {
+      this.phase.set(null);
       this.phaseProgress.set(null);
       this.liveTokens.set(null);
     }
@@ -123,6 +157,25 @@ export class Project implements OnDestroy {
     return running.total === 0
       ? 0
       : Math.round((running.done / running.total) * 100);
+  }
+
+  /**
+   * The translating phase counts the units of the book: its counter and the
+   * book's are the same sentence, word for word. The bar stays — it is the
+   * longest phase, and a phase without one reads as a phase that is stuck —
+   * and the sentence is printed once, under the count that owns it.
+   */
+  duplicatesBookCount(phase: RunPhase): boolean {
+    return phase === "translate";
+  }
+
+  /** Which of the run's phases this one is, counted from one. */
+  phaseStep(phase: RunPhase): number {
+    return RUN_PHASES.indexOf(phase) + 1;
+  }
+
+  stepPercent(phase: RunPhase): number {
+    return Math.round((this.phaseStep(phase) / this.phaseCount) * 100);
   }
 
   /** The live spend while a run is going, the database's own answer otherwise. */

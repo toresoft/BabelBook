@@ -8,13 +8,20 @@
 .project__author, .project__languages, .project__counts, .project__missing {
   color: var(--text-muted); font-size: 0.85rem; margin: 0.15rem 0 0;
 }
-.project__state, .project__phase { margin-left: 0.6rem; }
-.project__phase { color: var(--accent); }
+.project__state { margin-left: 0.6rem; }
 .project__actions { display: flex; gap: 0.5rem; }
 
-.project__phase-bar { display: grid; gap: 0.2rem; }
-.project__phase-name { color: var(--accent); font-size: 0.85rem; }
-.project__phase-counts { color: var(--text-muted); font-size: 0.85rem; }
+.project__run { display: grid; gap: 0.2rem; }
+.project__phase-line {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin: 0; font-size: 0.85rem;
+}
+.project__phase-name { color: var(--accent); }
+.project__phase-step { color: var(--text-muted); }
+/* The phase's own counter is subordinate to the phase it counts: indented
+   under it, and thinner, so the two bars cannot be read as one pair. */
+.project__phase-inner { margin-left: 1.2rem; width: calc(100% - 1.2rem); height: 0.4rem; }
+.project__phase-counts { color: var(--text-muted); font-size: 0.85rem; margin-left: 1.2rem; }
 
 .project__panel { padding-top: 0.5rem; }
 

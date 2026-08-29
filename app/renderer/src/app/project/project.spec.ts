@@ -68,6 +68,7 @@ function mount(invoke = bridge(), bus = events()) {
 
 const catalogue = it_IT as unknown as {
   library: Record<string, string>;
+  phaseCounts: Record<string, string>;
   project: Record<string, unknown>;
 };
 
@@ -158,12 +159,123 @@ describe("Project", () => {
   });
 
   /**
+   * Production break: both bars were fed the same two numbers, so the screen
+   * asked one question twice. The upper one is where the run has got to
+   * between its phases; the lower one is how far this phase has got.
+   */
+  it("asks two questions with two bars: which phase, and how far into it", async () => {
+    const { fixture, bus } = mount(bridge({ ...detail, state: "running" }));
+    await fixture.whenStable();
+
+    bus.emit("run.phase", { projectId: "p1", phase: "code-index" });
+    bus.emit("run.progress", { projectId: "p1", phase: "code-index", done: 7, total: 298 });
+    fixture.detectChanges();
+
+    // Third of the five phases the run declares.
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-step]").getAttribute("value"))
+      .toBe("60");
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-progress]").getAttribute("value"))
+      .toBe("2");
+  });
+
+  /**
+   * Production break: a phase counter written into the book's own count made
+   * the book jump to 7 of 298 while nothing of it had been translated.
+   */
+  it("moves the book's own count only in the phase that translates it", async () => {
+    const { fixture, bus } = mount(bridge({ ...detail, state: "running" }));
+    await fixture.whenStable();
+
+    bus.emit("run.phase", { projectId: "p1", phase: "code-index" });
+    bus.emit("run.progress", { projectId: "p1", phase: "code-index", done: 7, total: 298 });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=book-counts]").textContent)
+      .toContain("0");
+    expect(fixture.nativeElement.querySelector("[data-testid=book-counts]").textContent)
+      .toContain("10");
+
+    bus.emit("run.phase", { projectId: "p1", phase: "translate" });
+    bus.emit("run.progress", { projectId: "p1", phase: "translate", done: 4, total: 10 });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=book-counts]").textContent)
+      .toContain("4");
+  });
+
+  /**
+   * The counter belongs to the phase that reported it. Left under the next
+   * phase's name it would claim a progress nobody measured.
+   */
+  it("does not carry a phase's counter over into the next phase", async () => {
+    const { fixture, bus } = mount(bridge({ ...detail, state: "running" }));
+    await fixture.whenStable();
+
+    bus.emit("run.phase", { projectId: "p1", phase: "code-index" });
+    bus.emit("run.progress", { projectId: "p1", phase: "code-index", done: 7, total: 298 });
+    fixture.detectChanges();
+
+    bus.emit("run.phase", { projectId: "p1", phase: "translate" });
+    fixture.detectChanges();
+
+    const bar = fixture.nativeElement.querySelector("[data-testid=phase-progress]");
+    expect(bar.getAttribute("value")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-counts]")).toBeNull();
+  });
+
+  /** A phase counts what its own phase counts: batches are not units. */
+  it("names what the phase is counting, and does not call batches units", async () => {
+    const { fixture, bus } = mount(bridge({ ...detail, state: "running" }));
+    await fixture.whenStable();
+
+    bus.emit("run.phase", { projectId: "p1", phase: "code-index" });
+    bus.emit("run.progress", { projectId: "p1", phase: "code-index", done: 7, total: 298 });
+    fixture.detectChanges();
+
+    const counts = fixture.nativeElement.querySelector("[data-testid=phase-counts]").textContent as string;
+    expect(counts).toContain(catalogue.phaseCounts["code-index"].replace("{{done}}", "7").replace("{{total}}", "298"));
+  });
+
+  /**
+   * In the translating phase the phase's counter and the book's are the same
+   * sentence, word for word. It is printed once, under the bar that owns it.
+   */
+  it("does not print the same count twice while translating", async () => {
+    const { fixture, bus } = mount(bridge({ ...detail, state: "running" }));
+    await fixture.whenStable();
+
+    bus.emit("run.phase", { projectId: "p1", phase: "translate" });
+    bus.emit("run.progress", { projectId: "p1", phase: "translate", done: 4, total: 10 });
+    fixture.detectChanges();
+
+    // The bar stays: it is the longest phase, and a phase with no bar reads
+    // as a phase that is not moving.
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-progress]").getAttribute("value"))
+      .toBe("40");
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-counts]")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=book-counts]").textContent)
+      .toContain("4");
+  });
+
+  /** With no run going, the one bar on the screen is the book's own. */
+  it("shows the book's bar at rest and the run's bars while it runs", async () => {
+    const { fixture, bus } = mount(bridge({ ...detail, state: "running" }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=book-progress]")).not.toBeNull();
+
+    bus.emit("run.phase", { projectId: "p1", phase: "translate" });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=book-progress]")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-step]")).not.toBeNull();
+  });
+
+  /**
    * A phase bar left on screen after the run is a lie with a date on it.
    */
   it("drops the phase bar when the run ends", async () => {
     const { fixture, bus } = mount(bridge({ ...detail, state: "done" }));
     await fixture.whenStable();
 
+    bus.emit("run.phase", { projectId: "p1", phase: "translate" });
     bus.emit("run.progress", { projectId: "p1", phase: "translate", done: 3, total: 9 });
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector("[data-testid=phase-progress]")).not.toBeNull();
@@ -173,6 +285,7 @@ describe("Project", () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector("[data-testid=phase-progress]")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=phase-step]")).toBeNull();
   });
 
   /**

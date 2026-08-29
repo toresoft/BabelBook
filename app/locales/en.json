@@ -40,7 +40,9 @@
     "cost": "Spent so far",
     "layout": "Layout",
     "fixedLayout": "Fixed layout: translated text does not reflow and may overflow the page.",
-    "gone": "This project no longer exists."
+    "gone": "This project no longer exists.",
+    "phaseStep": "Phase {{step}} of {{total}}",
+    "translated": "{{done}} of the book's {{total}} units translated"
   },
   "phase": {
     "analyze": "Analysing the book",
@@ -48,6 +50,13 @@
     "code-index": "Recognising code",
     "translate": "Translating",
     "compose": "Composing the EPUB"
+  },
+  "phaseCounts": {
+    "analyze": "{{done}} of {{total}}",
+    "candidates": "{{done}} of {{total}} samples",
+    "code-index": "{{done}} of {{total}} batches",
+    "translate": "{{done}} of {{total}} units",
+    "compose": "{{done}} of {{total}} files"
   },
   "newProject": {
     "title": "New project",

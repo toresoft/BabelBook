@@ -72,6 +72,12 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
   const { config, emit, signal, store } = deps;
   signal.throwIfAborted();
 
+  // The run's first phase has a name, and says it before the first model is
+  // asked. Without it the screen's first word is `candidates` — the second of
+  // the five phases a run declares — and a bar counting them opens already
+  // filled, on a run that has done nothing yet.
+  emit({ type: "phase", phase: "analyze" });
+
   // Mounted once, around the backend every phase already shares. A phase
   // added later has to be remembered to count if this were a parameter on
   // each call; mounted here, it never has to be remembered again. `spent`

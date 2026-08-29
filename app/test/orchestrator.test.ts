@@ -177,6 +177,26 @@ describe("runProject", () => {
     expect(summary.units).toEqual({ total: 1, translated: 1, fellBack: 0, identical: 0 });
   });
 
+  /**
+   * The run opens with a phase the screen can name. Without it the first
+   * message the screen ever gets is `candidates`, the second of the five
+   * phases a run declares, and a bar counting them starts already filled.
+   */
+  it("names the phase it opens with, before any model is asked", async () => {
+    const store = new FakeStore([unit(1)]);
+    const { seen, emit } = collect();
+
+    await runProject({
+      store,
+      backend: scriptedBackend(),
+      config: config({ autoAcceptTerms: true, autoAcceptExclusions: true }),
+      emit,
+      signal: new AbortController().signal,
+    });
+
+    expect(seen[0]).toEqual({ type: "phase", phase: "analyze" });
+  });
+
   // Production break: orchestration omits the exclusions gate after code indexing.
   it("returns at the code gate before translation", async () => {
     const store = new FakeStore([unit(1)]);

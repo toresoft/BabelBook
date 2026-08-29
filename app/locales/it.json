@@ -40,7 +40,9 @@
     "cost": "Speso finora",
     "layout": "Impaginazione",
     "fixedLayout": "Impaginazione fissa: il testo tradotto non si riadatta e può traboccare dalla pagina.",
-    "gone": "Questo progetto non esiste più."
+    "gone": "Questo progetto non esiste più.",
+    "phaseStep": "Fase {{step}} di {{total}}",
+    "translated": "Tradotte {{done}} di {{total}} unità del libro"
   },
   "phase": {
     "analyze": "Analisi del libro",
@@ -48,6 +50,13 @@
     "code-index": "Riconoscimento del codice",
     "translate": "Traduzione",
     "compose": "Composizione dell'EPUB"
+  },
+  "phaseCounts": {
+    "analyze": "{{done}} di {{total}}",
+    "candidates": "{{done}} di {{total}} campioni",
+    "code-index": "{{done}} di {{total}} batch",
+    "translate": "{{done}} di {{total}} unità",
+    "compose": "{{done}} di {{total}} file"
   },
   "newProject": {
     "title": "Nuovo progetto",

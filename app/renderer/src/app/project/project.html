@@ -17,9 +17,6 @@
           <span class="project__state" [attr.data-testid]="'state-' + found.state">
             {{ t('state.' + found.state) }}
           </span>
-          @if (phase(); as running) {
-            <span class="project__phase">{{ t('phase.' + running) }}</span>
-          }
         </p>
       </div>
 
@@ -42,31 +39,52 @@
       </div>
     </header>
 
-    <progress class="progress progress-primary" max="100" [value]="percent(found)"></progress>
-    <p class="project__counts">
-      {{ t('library.progress', { done: found.progress.done, total: found.progress.total }) }}
-    </p>
+    <!-- Two questions, so two bars. Which phase the run is in, and how far
+         that phase has got. One number in both was the same answer twice. -->
+    @if (currentPhase(); as running) {
+      <div class="project__run" data-testid="run-progress">
+        <p class="project__phase-line">
+          <span class="project__phase-name">{{ t('phase.' + running) }}</span>
+          <span class="project__phase-step" data-testid="phase-step-counts">
+            {{ t('project.phaseStep', { step: phaseStep(running), total: phaseCount }) }}
+          </span>
+        </p>
+        <progress
+          class="progress progress-primary"
+          max="100"
+          data-testid="phase-step"
+          [value]="stepPercent(running)"></progress>
 
-    @if (phaseProgress(); as running) {
-      <div class="project__phase-bar">
-        <span class="project__phase-name">{{ t('phase.' + running.phase) }}</span>
-        @if (running.total > 0) {
+        @if (phaseCounts(); as counts) {
           <progress
-            class="progress progress-primary"
+            class="progress progress-primary project__phase-inner"
             max="100"
             data-testid="phase-progress"
-            [value]="phasePercent(running)"></progress>
-          <span class="project__phase-counts" data-testid="phase-counts">
-            {{ t('library.progress', { done: running.done, total: running.total }) }}
-          </span>
+            [value]="phasePercent(counts)"></progress>
+          @if (!duplicatesBookCount(counts.phase)) {
+            <span class="project__phase-counts" data-testid="phase-counts">
+              {{ t('phaseCounts.' + counts.phase, { done: counts.done, total: counts.total }) }}
+            </span>
+          }
         } @else {
           <!-- A bar that moves without claiming progress: nothing here knows
                how far along this phase is, and a bar that filled up would be
                inventing it. Same rule the splash follows, same reason. -->
-          <progress class="progress progress-primary" data-testid="phase-progress"></progress>
+          <progress
+            class="progress progress-primary project__phase-inner"
+            data-testid="phase-progress"></progress>
         }
       </div>
+    } @else {
+      <progress
+        class="progress progress-primary"
+        max="100"
+        data-testid="book-progress"
+        [value]="percent(found)"></progress>
     }
+    <p class="project__counts" data-testid="book-counts">
+      {{ t('project.translated', { done: found.progress.done, total: found.progress.total }) }}
+    </p>
 
     <nav class="tabs tabs-border">
       @for (name of tabs; track name) {
