@@ -46,7 +46,7 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | Provider inclusi | scritto, non iniziato | `app/main/providers/` |
 | 9. La corsa osservabile e il discovery | **completo**, 11/11, su ramo `corsa-osservabile` in attesa di revisione finale e confluenza | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
 
-Suite: **817 test verdi** (297 core, 393 app, 127 componenti) piu' **13 prove
+Suite: **818 test verdi** (297 core, 394 app, 127 componenti) piu' **13 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
 ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
 la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
@@ -159,7 +159,7 @@ Non sono nei piani originali. Sono nel codice e nei commit.
 ## Cosa nessuna suite dimostra
 
 - **Nessun test costruisce un backend funzionante**: servirebbe la rete. Un
-  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti gli 817 test.
+  errore di cablaggio in `resolve.ts` o `sdk.ts` passerebbe tutti gli 818 test.
   Va provato a mano con un provider vero, ed è il rischio numero uno.
 - **Font offuscati**: mai passati dalla pipeline. `RSC-004` fa saltare a
   EPUBCheck il contenuto delle risorse cifrate, quindi il fallimento è

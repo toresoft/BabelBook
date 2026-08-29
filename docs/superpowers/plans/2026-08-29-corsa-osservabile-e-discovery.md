@@ -18,7 +18,7 @@ finale dell'intero ramo e della confluenza.
 | 10. Il ragionamento per modello | completo, 1 round di correzione | `d7e2daa`, `2e74404` |
 | 11. L'interruttore e il nome | completo | `55e760e` |
 
-Suite a fine lavori: **817 test verdi** (297 core, 393 processo main, 127
+Suite a fine lavori: **818 test verdi** (297 core, 394 processo main, 127
 componenti), typecheck pulito. Ogni task è passato per un implementer fresco e
 una revisione indipendente; quattro round di correzione in tutto, uno per task
 dall'ottavo.
