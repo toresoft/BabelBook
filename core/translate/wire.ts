@@ -101,10 +101,17 @@ export function buildPayload(request: TranslationRequest): string {
  */
 export function parseResponse(raw: string): ParsedResponse {
   const lines = raw.split(/\r?\n/);
-  const start = lines.findIndex((line) => HEADER.test(line.trim()));
-  if (start === -1) return { declared: null, lines: [], terminated: false };
+  const header = lines.findIndex((line) => HEADER.test(line.trim()));
 
-  const declared = Number(HEADER.exec(lines[start].trim())![1]);
+  // The header anchors the block when it is there, and the first marker
+  // anchors it when it is not. A model that copies every marker, closes with
+  // END and translates correctly has not failed to answer because it left out
+  // a count — and discarding that answer whole costs three paid attempts and
+  // a chapter of the book, which is what it cost before this line existed.
+  const first = lines.findIndex((line) => MARKER.test(line.trim()));
+  if (header === -1 && first === -1) return { declared: null, lines: [], terminated: false };
+
+  const start = header === -1 ? first - 1 : header;
   const end = lines.findIndex((line, at) => at > start && line.trim() === TERMINATOR);
   const body = lines.slice(start + 1, end === -1 ? undefined : end);
 
@@ -127,6 +134,13 @@ export function parseResponse(raw: string): ParsedResponse {
     if (current !== null) text.push(line);
   }
   flush();
+
+  // Nothing declared, nothing to disagree with: the count becomes what
+  // arrived, so level 2 stands down and level 4 reports what is missing, unit
+  // by unit, which is the more useful answer anyway.
+  const declared = header === -1
+    ? parsed.length
+    : Number(HEADER.exec(lines[header]!.trim())![1]);
 
   return { declared, lines: parsed, terminated: end !== -1 };
 }

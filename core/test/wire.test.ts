@@ -79,6 +79,44 @@ describe("buildPayload", () => {
   });
 });
 
+/**
+ * Production break: the instructions stopped naming the `UNITS` header and a
+ * model stopped writing it — while copying every marker, closing with END and
+ * translating correctly. The parser demanded the header, discarded the whole
+ * answer at level 1, and 180 units of a book fell back to English after three
+ * paid attempts each.
+ */
+describe("an answer without the header", () => {
+  it("is read from its first marker, because the marker is anchor enough", () => {
+    const parsed = parseResponse("[u:c1.xhtml#1]\nUno\n[u:c1.xhtml#2]\nDue\nEND");
+
+    expect(parsed.lines).toEqual([
+      { unitId: "c1.xhtml#1", text: "Uno" }, { unitId: "c1.xhtml#2", text: "Due" },
+    ]);
+    // Nothing was declared, so there is no declaration to disagree with: what
+    // is missing is level 4's to report, unit by unit.
+    expect(parsed.declared).toBe(2);
+  });
+
+  it("still skips whatever a model said before the block", () => {
+    const parsed = parseResponse("Certo, ecco la traduzione:\n\n[u:c1.xhtml#1]\nUno\nEND");
+
+    expect(parsed.lines).toEqual([{ unitId: "c1.xhtml#1", text: "Uno" }]);
+  });
+
+  /** Neither a header nor a marker is an answer nothing can be read out of. */
+  it("is no structure at all when there is no marker either", () => {
+    expect(parseResponse("Uno e Due, ecco.")).toEqual({
+      declared: null, lines: [], terminated: false,
+    });
+  });
+
+  /** With a header, its count is still the model's own declaration. */
+  it("keeps the declared count when the header is there", () => {
+    expect(parseResponse("UNITS 5\n[u:c1.xhtml#1]\nUno\nEND").declared).toBe(5);
+  });
+});
+
 describe("buildSystem", () => {
   it("names the languages and the rules that carry weight", () => {
     const system = buildSystem({ units: [unit(1, "One")], context, terms: [] });
