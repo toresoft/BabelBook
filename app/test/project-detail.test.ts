@@ -107,6 +107,19 @@ describe("projectDetail", () => {
   it("answers null for a project that is not there", () => {
     expect(projectDetail(seeded(), "ghost")).toBeNull();
   });
+
+  it("shows the tokens of a run still going, not only of one finished", () => {
+    const db = seeded("running");
+    // A second run row, without ended_at: the case that never existed before,
+    // because tokens used to be written only once the run was over.
+    db.prepare(`
+      INSERT INTO run (id, project_id, phase, started_at, tokens_in, tokens_out, reasoning_tokens)
+      VALUES ('r2','p1','translate','2026-08-29',120,30,8)
+    `).run();
+
+    const detail = projectDetail(db, "p1")!;
+    expect(detail.tokens).toEqual({ in: 820, out: 330, reasoning: 8 });
+  });
 });
 
 describe("listUnits", () => {

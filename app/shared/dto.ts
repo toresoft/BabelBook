@@ -91,7 +91,7 @@ export interface ProjectDetail extends ProjectSummary {
   providerId: string | null;
   modelId: string | null;
   actions: string[];
-  tokens: { in: number; out: number };
+  tokens: { in: number; out: number; reasoning: number };
   /**
    * What the runs have cost, when every one of them could be priced. Null
    * when any could not: a sum that skipped the unpriced part would name a

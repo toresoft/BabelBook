@@ -48,6 +48,9 @@ export function isEngineMessage(message: unknown): message is Exclude<EngineMess
     case "progress":
       return typeof message.done === "number" && typeof message.total === "number"
         && RUN_PHASES.includes(message.phase as RunPhase);
+    case "usage":
+      return typeof message.tokensIn === "number" && typeof message.tokensOut === "number"
+        && typeof message.reasoningTokens === "number";
     case "gate": return message.gate === "terms" || message.gate === "code";
     case "transition": return message.event === "TERMS_READY"
       || message.event === "CODE_INDEXED"

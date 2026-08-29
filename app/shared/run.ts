@@ -47,6 +47,8 @@ export interface RunSummary {
   notTranslated: Record<string, number>;
   tokensIn: number;
   tokensOut: number;
+  /** Part of `tokensOut`, not on top of it: what was spent thinking. */
+  reasoningTokens: number;
 }
 
 export type EngineCommand =
@@ -90,6 +92,7 @@ export type StoreResponse =
 export type EngineMessage =
   | { type: "phase"; phase: string }
   | { type: "progress"; phase: RunPhase; done: number; total: number }
+  | { type: "usage"; tokensIn: number; tokensOut: number; reasoningTokens: number }
   | { type: "gate"; gate: "terms" | "code" }
   | { type: "transition"; event: RunTransition }
   | { type: "done"; summary: RunSummary }

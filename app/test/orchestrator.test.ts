@@ -366,6 +366,31 @@ describe("runProject", () => {
     expect(seen).toContainEqual({ type: "gate", gate: "terms" });
     expect((await store.translations("k1")).size).toBe(0);
   });
+
+  /**
+   * The failure this test exists for: a run that stops at the terms gate has
+   * already paid for the sampling, and used to record zero.
+   */
+  it("reports what it spent even when it stops at a gate", async () => {
+    const store = new FakeStore([unit(1)]);
+    const { seen, emit } = collect();
+
+    const summary = await runProject({
+      store,
+      backend: scriptedBackend(),
+      config: config(),
+      emit,
+      signal: new AbortController().signal,
+    });
+
+    const usage = seen.filter((message) => message.type === "usage");
+    expect(usage.length).toBeGreaterThan(0);
+    // `scriptedBackend` answers the sampling with tokensIn: 10, and the run
+    // stops at the terms gate right after. Before the counter existed this
+    // summary said zero — a book's worth of sampling, recorded as free.
+    expect(summary.tokensIn).toBe(10);
+    expect(summary.tokensIn).toBe(usage[usage.length - 1]!.tokensIn);
+  });
 });
 
 describe("persisted project machine", () => {

@@ -193,6 +193,8 @@ export interface Events {
   "providers.changed": Record<string, never>;
   "run.phase": { projectId: string; phase: string };
   "run.progress": { projectId: string; phase: RunPhase; done: number; total: number };
+  /** Written as it arrives, not only at the end: what a run has spent so far. */
+  "run.usage": { projectId: string; tokensIn: number; tokensOut: number; reasoningTokens: number };
   /** The system changed its mind, or the window opened into a new desktop. */
   "theme.changed": { dark: boolean };
 }
@@ -221,7 +223,7 @@ export const INVOCATIONS = [
 ] as const satisfies ReadonlyArray<keyof Invocations>;
 
 export const EVENTS = [
-  "project.changed", "providers.changed", "run.phase", "run.progress", "theme.changed",
+  "project.changed", "providers.changed", "run.phase", "run.progress", "run.usage", "theme.changed",
 ] as const satisfies ReadonlyArray<keyof Events>;
 
 export type Handlers = {

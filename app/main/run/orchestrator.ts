@@ -3,6 +3,7 @@ import { indexCodeBlocks } from "../../../core/analyze/code.ts";
 import { isWork, type TranslationUnit } from "../../../core/epub/index.ts";
 import type { LlmBackend, ProjectStore } from "../../../core/ports.ts";
 import { translateUnits } from "../../../core/translate/engine.ts";
+import { countingBackend, type Usage } from "../../../core/translate/usage.ts";
 import {
   createProjectActor, projectMachine,
 } from "../../../core/workflow/project.machine.ts";
@@ -24,6 +25,7 @@ export interface RunProjectDeps {
 function summaryBeforeTranslation(
   units: TranslationUnit[],
   held: Awaited<ReturnType<ProjectStore["translations"]>>,
+  spent: Usage,
 ): RunSummary {
   const notTranslated: Record<string, number> = {};
   for (const unit of units) {
@@ -44,14 +46,15 @@ function summaryBeforeTranslation(
       identical: translations.filter((translation) => translation.outcome === "identical").length,
     },
     notTranslated,
-    tokensIn: 0,
-    tokensOut: 0,
+    tokensIn: spent.tokensIn,
+    tokensOut: spent.tokensOut,
+    reasoningTokens: spent.reasoningTokens,
   };
 }
 
-async function stoppedSummary(store: ProjectStore, config: RunConfig): Promise<RunSummary> {
+async function stoppedSummary(store: ProjectStore, config: RunConfig, spent: Usage): Promise<RunSummary> {
   const units = await store.units();
-  return summaryBeforeTranslation(units, await store.translations(config.cacheKey));
+  return summaryBeforeTranslation(units, await store.translations(config.cacheKey), spent);
 }
 
 /**
@@ -65,8 +68,21 @@ async function stoppedSummary(store: ProjectStore, config: RunConfig): Promise<R
  * every report say the book cost nothing.
  */
 export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
-  const { backend, config, emit, signal, store } = deps;
+  const { config, emit, signal, store } = deps;
   signal.throwIfAborted();
+
+  // Mounted once, around the backend every phase already shares. A phase
+  // added later has to be remembered to count if this were a parameter on
+  // each call; mounted here, it never has to be remembered again. `spent`
+  // is what a stopped-at-a-gate summary reports instead of the zeros that
+  // used to claim a sampled, paid-for book cost nothing.
+  const spent: Usage = { tokensIn: 0, tokensOut: 0, reasoningTokens: 0 };
+  const backend = countingBackend(deps.backend, (total) => {
+    spent.tokensIn = total.tokensIn;
+    spent.tokensOut = total.tokensOut;
+    spent.reasoningTokens = total.reasoningTokens;
+    emit({ type: "usage", ...total });
+  });
 
   const actor = deps.machineSnapshot === undefined
     ? createProjectActor({
@@ -80,15 +96,15 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
   if (actor.getSnapshot().value === "ready") actor.send({ type: "START" });
   if (actor.getSnapshot().value === "waiting-terms") {
     emit({ type: "gate", gate: "terms" });
-    return stoppedSummary(store, config);
+    return stoppedSummary(store, config, spent);
   }
   if (actor.getSnapshot().value === "waiting-code") {
     emit({ type: "gate", gate: "code" });
-    return stoppedSummary(store, config);
+    return stoppedSummary(store, config, spent);
   }
   if (actor.getSnapshot().value === "composing") {
     emit({ type: "phase", phase: "compose" });
-    return stoppedSummary(store, config);
+    return stoppedSummary(store, config, spent);
   }
   if (actor.getSnapshot().value !== "running") {
     throw new Error(`RUN_STATE_${String(actor.getSnapshot().value).toUpperCase()}`);
@@ -124,7 +140,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
     emit({ type: "transition", event: "TERMS_READY" });
     if (actor.getSnapshot().value === "waiting-terms") {
       emit({ type: "gate", gate: "terms" });
-      return stoppedSummary(store, config);
+      return stoppedSummary(store, config, spent);
     }
   }
 
@@ -147,7 +163,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
     emit({ type: "transition", event: "CODE_INDEXED" });
     if (actor.getSnapshot().value === "waiting-code") {
       emit({ type: "gate", gate: "code" });
-      return stoppedSummary(store, config);
+      return stoppedSummary(store, config, spent);
     }
   }
 
@@ -173,7 +189,10 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
   actor.send({ type: "TRANSLATED" });
   emit({ type: "transition", event: "TRANSLATED" });
   emit({ type: "phase", phase: "compose" });
-  return summary;
+  // The run's totals, not the translation phase's own: candidates and
+  // code-index spent tokens too, and the summary is the only record of what
+  // the whole run cost.
+  return { ...summary, tokensIn: spent.tokensIn, tokensOut: spent.tokensOut, reasoningTokens: spent.reasoningTokens };
 }
 
 /** Narrow production adapter the runtime registers. */

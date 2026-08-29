@@ -22,7 +22,7 @@ const detail: ProjectDetail = {
   providerId: null,
   modelId: null,
   actions: ["START"],
-  tokens: { in: 0, out: 0 },
+  tokens: { in: 0, out: 0, reasoning: 0 },
   cost: null,
   createdAt: "2026-08-24",
 };

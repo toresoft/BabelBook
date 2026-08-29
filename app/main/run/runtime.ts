@@ -103,6 +103,28 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     deps.broadcast("project.changed", { id: projectId });
   };
 
+  /**
+   * The price of a run's tokens, at whatever the model was known to cost when
+   * the run began: whatever the catalogue says tomorrow, this book was billed
+   * at what was known then, which is what makes yesterday's report still
+   * explainable. Null when the run was never priced: an estimate that
+   * quietly guessed would be worse than one that says it does not know.
+   */
+  const costOf = (projectId: string, tokensIn: number, tokensOut: number): number | null => {
+    const configured = db.prepare(
+      "SELECT provider_id, model_id FROM project WHERE id = ?",
+    ).get(projectId) as { provider_id: string | null; model_id: string | null } | undefined;
+    const prices = configured?.provider_id != null && configured.model_id != null
+      ? modelPricesOf(db, configured.provider_id, configured.model_id)
+      : null;
+    // The same arithmetic the estimate used before the run started, so the
+    // figure quoted beforehand and the one charged afterwards cannot drift
+    // apart.
+    return prices === null ? null : priceTokens({
+      tokensIn, tokensOut, priceIn: prices.priceIn, priceOut: prices.priceOut,
+    });
+  };
+
   async function compose(projectId: string, row: ProjectRow): Promise<void> {
     const host = machineHost(projectId);
     if (host.state !== "composing") return;
@@ -142,6 +164,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
           notTranslated: {},
           tokensIn: 0,
           tokensOut: 0,
+          reasoningTokens: 0,
         },
       });
     }
@@ -166,35 +189,35 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       });
       return;
     }
+    if (message.type === "usage") {
+      // Written as it arrives, not at the end. A run that stops at a gate, is
+      // paused, or dies with the process has still spent what it spent, and
+      // the row is the only place that survives to say so.
+      if (activeRunId !== null) {
+        const cost = costOf(activeId, message.tokensIn, message.tokensOut);
+        db.prepare(
+          "UPDATE run SET tokens_in = ?, tokens_out = ?, reasoning_tokens = ?, cost = ? WHERE id = ?",
+        ).run(message.tokensIn, message.tokensOut, message.reasoningTokens, cost, activeRunId);
+      }
+      deps.broadcast("run.usage", {
+        projectId: activeId,
+        tokensIn: message.tokensIn,
+        tokensOut: message.tokensOut,
+        reasoningTokens: message.reasoningTokens,
+      });
+      return;
+    }
     if (message.type === "done") {
       // The engine is the only one that counts tokens, and it says so once.
       // Without this the run row keeps its default of zero and every report
       // ever written claims the book cost nothing.
       lastSummary = message.summary;
       if (activeRunId !== null) {
-        // The price is the model's as saved when the run began: whatever the
-        // catalogue says tomorrow, this book was billed at what was known
-        // then, which is what makes yesterday's report still explainable.
-        const configured = db.prepare(
-          "SELECT provider_id, model_id FROM project WHERE id = ?",
-        ).get(activeId) as { provider_id: string | null; model_id: string | null } | undefined;
-        const prices = configured?.provider_id != null && configured.model_id != null
-          ? modelPricesOf(db, configured.provider_id, configured.model_id)
-          : null;
-        // The same arithmetic the estimate used before the run started, so
-        // the figure quoted beforehand and the one charged afterwards cannot
-        // drift apart.
-        const cost = prices === null ? null : priceTokens({
-          tokensIn: message.summary.tokensIn,
-          tokensOut: message.summary.tokensOut,
-          priceIn: prices.priceIn,
-          priceOut: prices.priceOut,
-        });
-
+        const cost = costOf(activeId, message.summary.tokensIn, message.summary.tokensOut);
         db.prepare(
-          "UPDATE run SET tokens_in = ?, tokens_out = ?, cost = ?, ended_at = ? WHERE id = ?",
+          "UPDATE run SET tokens_in = ?, tokens_out = ?, reasoning_tokens = ?, cost = ?, ended_at = ? WHERE id = ?",
         ).run(
-          message.summary.tokensIn, message.summary.tokensOut, cost,
+          message.summary.tokensIn, message.summary.tokensOut, message.summary.reasoningTokens, cost,
           new Date().toISOString(), activeRunId,
         );
       }
