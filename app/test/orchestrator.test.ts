@@ -239,6 +239,45 @@ describe("runProject", () => {
     expect(backend.prompts[0]).toContain("UNITS 1");
   });
 
+  // Production break: indexing writes a shared-key checkpoint that a fresh store cannot find.
+  it("persists a cold code index under the key a fresh store looks up", async () => {
+    const db = database();
+    insertProject(db);
+    db.prepare("INSERT INTO project_document (id, project_id, zip_path, spine_order) VALUES ('d1','p1','c1.xhtml',1)").run();
+    db.prepare(`
+      INSERT INTO unit (id, project_id, document_id, ordinal, unit_id, kind,
+                        range_start, range_end, state, source_text, raw_text)
+      VALUES ('u1','p1','d1',1,'c1.xhtml#1','block',0,10,'translate','Sentence 1','Sentence 1')
+    `).run();
+    db.prepare("INSERT INTO run (id, project_id, phase, started_at) VALUES ('r1','p1','run','2026-08-24')").run();
+    const firstStore = new SqliteProjectStore(db, "p1", "r1");
+    const firstBackend = scriptedBackend();
+
+    await runProject({
+      store: firstStore,
+      backend: firstBackend,
+      config: config({ autoAcceptTerms: true, autoAcceptExclusions: true }),
+      emit: collect().emit,
+      signal: new AbortController().signal,
+    });
+
+    expect(firstBackend.prompts.some((prompt) => prompt.includes("#CODEINDEX"))).toBe(true);
+
+    db.prepare("INSERT INTO run (id, project_id, phase, started_at) VALUES ('r2','p1','run','2026-08-24')").run();
+    const secondStore = new SqliteProjectStore(db, "p1", "r2");
+    const secondBackend = scriptedBackend();
+
+    await runProject({
+      store: secondStore,
+      backend: secondBackend,
+      config: config({ autoAcceptTerms: true, autoAcceptExclusions: true }),
+      emit: collect().emit,
+      signal: new AbortController().signal,
+    });
+
+    expect(secondBackend.prompts.some((prompt) => prompt.includes("#CODEINDEX"))).toBe(false);
+  });
+
   // Production break: malformed code verdict batches are checkpointed without a degradation declaration.
   it("records code-index abstention so composition becomes incomplete", async () => {
     const db = database();
