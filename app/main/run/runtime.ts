@@ -30,6 +30,8 @@ interface ProjectRow {
   source_language: string | null;
   target_language: string;
   source_sha256: string;
+  /** The key the run wrote its work under. Null until a run has written one. */
+  cache_key: string | null;
 }
 
 /** A failure the interface can name, because it was foreseen. */
@@ -79,7 +81,8 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
 
   const project = (projectId: string): ProjectRow => {
     const row = db.prepare(`
-      SELECT title, workspace_path, source_language, target_language, source_sha256
+      SELECT title, workspace_path, source_language, target_language, source_sha256,
+             cache_key
         FROM project WHERE id = ?
     `).get(projectId) as ProjectRow | undefined;
     if (row === undefined) throw new RunRefusedError("NO_SUCH_PROJECT");
@@ -129,10 +132,18 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     const host = machineHost(projectId);
     if (host.state !== "composing") return;
 
+    // The key the run translated under, which every other screen already reads
+    // from here. The source hash names the book, not the work done on it: no
+    // translation answers to it, so every unit re-emitted its source and the
+    // book that came out was the untranslated one with the target language
+    // written on its cover — and no invariant broke, because a book with
+    // nothing translated in it is exactly what had been asked for.
+    if (row.cache_key === null) throw new Error("COMPOSE_NO_CACHE_KEY");
+
     const result = await composeEpub({
       workspace: workspaceOf(row),
       store: new SqliteProjectStore(db, projectId, activeRunId),
-      cacheKey: row.source_sha256,
+      cacheKey: row.cache_key,
       targetLanguage: row.target_language,
       title: row.title,
     });
@@ -147,7 +158,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       VALUES (?, 'compose', ?, ?)
       ON CONFLICT (project_id, phase, cache_key) DO UPDATE SET
         result_json = excluded.result_json, created_at = excluded.created_at
-    `).run(projectId, row.source_sha256, JSON.stringify(result));
+    `).run(projectId, row.cache_key, JSON.stringify(result));
 
     // COMPOSED is claimed only after the book was written and validated; a
     // gate that refuses leaves the file behind for inspection and fails the run.
