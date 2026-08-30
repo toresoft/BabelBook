@@ -1,8 +1,17 @@
-/* The header holds still and the panel takes what is left: the tab decides
-   what scrolls inside it — a list its rows, a long report itself. */
+/* Two columns: the work, and the book it is about. The right one is fixed in
+   character and elastic in width; below 60rem the window is too narrow for
+   two and it goes under the list rather than squeezing it. */
 .project {
-  padding: 1.5rem; max-width: 62rem; height: 100%; box-sizing: border-box;
-  display: flex; flex-direction: column; gap: 0.75rem;
+  padding: 0; max-width: none; height: 100%; box-sizing: border-box;
+  display: flex; flex-direction: row; gap: 0; align-items: stretch;
+}
+.project__main {
+  flex: 3 1 35rem; min-width: 24.75rem; display: flex; flex-direction: column;
+  gap: 0.75rem; padding: 1.5rem; box-sizing: border-box; min-height: 0;
+}
+@media (max-width: 60rem) {
+  .project { flex-direction: column; overflow-y: auto; }
+  .project__main { flex: none; }
 }
 
 /* Where you are, and the way back from it. */
@@ -12,15 +21,9 @@
 .crumbs__sep { color: var(--text-faint); }
 .crumbs__here { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
 
-.project__head { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
-.project__cover { width: 5rem; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
-.project__identity { flex: 1; min-width: 14rem; }
-.project__identity h1 { margin: 0; font-size: 1.2rem; }
-.project__author, .project__languages, .project__counts, .project__missing {
+.project__counts, .project__missing {
   color: var(--text-muted); font-size: 0.85rem; margin: 0.15rem 0 0;
 }
-.project__state { margin-left: 0.6rem; }
-.project__actions { display: flex; gap: 0.5rem; }
 
 .project__run { display: grid; gap: 0.2rem; }
 .project__phase-line {

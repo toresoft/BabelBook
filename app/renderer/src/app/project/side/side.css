@@ -1,0 +1,13 @@
+.side {
+  flex: 1 1 20rem; min-width: 16.5rem; max-width: 28.75rem;
+  border-left: 1px solid var(--line); background: var(--surface-raised);
+  display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
+}
+
+.project__head { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; padding: 1.5rem; }
+.project__cover { width: 5rem; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
+.project__identity { flex: 1; min-width: 14rem; }
+.project__identity h1 { margin: 0; font-size: 1.2rem; }
+.project__author, .project__languages { color: var(--text-muted); font-size: 0.85rem; margin: 0.15rem 0 0; }
+.project__state { margin-left: 0.6rem; }
+.project__actions { display: flex; gap: 0.5rem; }

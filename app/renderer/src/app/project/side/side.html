@@ -1,0 +1,45 @@
+<aside class="side" data-testid="side" *transloco="let t">
+  @if (project(); as found) {
+    <header class="project__head">
+      @if (found.coverPath) {
+        <img class="project__cover" [src]="found.coverPath" [alt]="found.title" />
+      }
+
+      <div class="project__identity">
+        <h1>{{ found.title }}</h1>
+        @if (found.author) {
+          <p class="project__author">{{ found.author }}</p>
+        }
+        <p class="project__languages">
+          {{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}
+          <span class="project__state" [attr.data-testid]="'state-' + found.state">
+            {{ t('state.' + found.state) }}
+          </span>
+        </p>
+      </div>
+
+      <div class="project__actions">
+        @if (can('START')) {
+          <button type="button" class="btn" data-testid="project-start" (click)="start.emit()">
+            {{ t('library.translate') }}
+          </button>
+        }
+        @if (can('RESUME')) {
+          <button type="button" class="btn" data-testid="project-resume" (click)="start.emit()">
+            {{ t('library.resume') }}
+          </button>
+        }
+        @if (can('PAUSE')) {
+          <button type="button" class="btn" data-testid="project-pause" (click)="pause.emit()">
+            {{ t('library.pause') }}
+          </button>
+        }
+        @if (can('COMPOSE')) {
+          <button type="button" class="btn" data-testid="project-compose" (click)="compose.emit()">
+            {{ t('library.compose') }}
+          </button>
+        }
+      </div>
+    </header>
+  }
+</aside>

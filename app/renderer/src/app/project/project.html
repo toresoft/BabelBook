@@ -1,167 +1,134 @@
 <section class="project" data-testid="project" *transloco="let t">
   @if (project(); as found) {
-    <nav class="crumbs" data-testid="project-crumbs" [attr.aria-label]="t('project.back')">
-      <button type="button" class="btn btn-xs crumbs__back" data-testid="project-back"
-              [attr.aria-label]="t('project.back')" [attr.title]="t('project.back')"
-              (click)="toLibrary()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14 6l-6 6 6 6"></path>
-        </svg>
-      </button>
-      <a routerLink="/">{{ t('app.library') }}</a>
-      <span class="crumbs__sep">/</span>
-      <span class="crumbs__here" aria-current="page">{{ found.title }}</span>
-    </nav>
+    <div class="project__main">
+      <nav class="crumbs" data-testid="project-crumbs" [attr.aria-label]="t('project.back')">
+        <button type="button" class="btn btn-xs crumbs__back" data-testid="project-back"
+                [attr.aria-label]="t('project.back')" [attr.title]="t('project.back')"
+                (click)="toLibrary()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 6l-6 6 6 6"></path>
+          </svg>
+        </button>
+        <a routerLink="/">{{ t('app.library') }}</a>
+        <span class="crumbs__sep">/</span>
+        <span class="crumbs__here" aria-current="page">{{ found.title }}</span>
+      </nav>
 
-    <header class="project__head">
-      @if (found.coverPath) {
-        <img class="project__cover" [src]="found.coverPath" [alt]="found.title" />
-      }
+      <!-- Two questions, so two bars. Which phase the run is in, and how far
+           that phase has got. One number in both was the same answer twice. -->
+      @if (currentPhase(); as running) {
+        <div class="project__run" data-testid="run-progress">
+          <p class="project__phase-line">
+            <span class="project__phase-name">{{ t('phase.' + running) }}</span>
+            <span class="project__phase-step" data-testid="phase-step-counts">
+              {{ t('project.phaseStep', { step: phaseStep(running), total: phaseCount }) }}
+            </span>
+          </p>
+          <progress
+            class="progress progress-primary"
+            max="100"
+            data-testid="phase-step"
+            [value]="stepPercent(running)"></progress>
 
-      <div class="project__identity">
-        <h1>{{ found.title }}</h1>
-        @if (found.author) {
-          <p class="project__author">{{ found.author }}</p>
-        }
-        <p class="project__languages">
-          {{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}
-          <span class="project__state" [attr.data-testid]="'state-' + found.state">
-            {{ t('state.' + found.state) }}
-          </span>
-        </p>
-      </div>
-
-      <div class="project__actions">
-        @if (can('START')) {
-          <button type="button" class="btn" data-testid="project-start" (click)="start()">
-            {{ t('library.translate') }}
-          </button>
-        }
-        @if (can('RESUME')) {
-          <button type="button" class="btn" data-testid="project-resume" (click)="start()">
-            {{ t('library.resume') }}
-          </button>
-        }
-        @if (can('PAUSE')) {
-          <button type="button" class="btn" data-testid="project-pause" (click)="pause()">
-            {{ t('library.pause') }}
-          </button>
-        }
-        @if (can('COMPOSE')) {
-          <button type="button" class="btn" data-testid="project-compose" (click)="compose()">
-            {{ t('library.compose') }}
-          </button>
-        }
-      </div>
-    </header>
-
-    <!-- Two questions, so two bars. Which phase the run is in, and how far
-         that phase has got. One number in both was the same answer twice. -->
-    @if (currentPhase(); as running) {
-      <div class="project__run" data-testid="run-progress">
-        <p class="project__phase-line">
-          <span class="project__phase-name">{{ t('phase.' + running) }}</span>
-          <span class="project__phase-step" data-testid="phase-step-counts">
-            {{ t('project.phaseStep', { step: phaseStep(running), total: phaseCount }) }}
-          </span>
-        </p>
+          @if (phaseCounts(); as counts) {
+            <progress
+              class="progress progress-primary project__phase-inner"
+              max="100"
+              data-testid="phase-progress"
+              [value]="phasePercent(counts)"></progress>
+            @if (!duplicatesBookCount(counts.phase)) {
+              <span class="project__phase-counts" data-testid="phase-counts">
+                {{ t('phaseCounts.' + counts.phase, { done: counts.done, total: counts.total }) }}
+              </span>
+            }
+          } @else {
+            <!-- A bar that moves without claiming progress: nothing here knows
+                 how far along this phase is, and a bar that filled up would be
+                 inventing it. Same rule the splash follows, same reason. -->
+            <progress
+              class="progress progress-primary project__phase-inner"
+              data-testid="phase-progress"></progress>
+          }
+        </div>
+      } @else {
         <progress
           class="progress progress-primary"
           max="100"
-          data-testid="phase-step"
-          [value]="stepPercent(running)"></progress>
+          data-testid="book-progress"
+          [value]="percent(found)"></progress>
+      }
+      <p class="project__counts" data-testid="book-counts">
+        {{ t('project.translated', { done: found.progress.done, total: found.progress.total }) }}
+      </p>
 
-        @if (phaseCounts(); as counts) {
-          <progress
-            class="progress progress-primary project__phase-inner"
-            max="100"
-            data-testid="phase-progress"
-            [value]="phasePercent(counts)"></progress>
-          @if (!duplicatesBookCount(counts.phase)) {
-            <span class="project__phase-counts" data-testid="phase-counts">
-              {{ t('phaseCounts.' + counts.phase, { done: counts.done, total: counts.total }) }}
-            </span>
+      <nav class="tabs tabs-border">
+        @for (name of tabs; track name) {
+          <button
+            type="button"
+            class="tab"
+            [class.tab-active]="tab() === name"
+            [attr.data-testid]="'tab-' + name"
+            (click)="show(name)">
+            {{ t('project.tabs.' + name) }}
+          </button>
+        }
+      </nav>
+
+      <div class="project__panel">
+        @switch (tab()) {
+          @case ("overview") {
+            <section class="overview" data-testid="overview">
+              @if (found.description) {
+                <p class="overview__description">{{ found.description }}</p>
+              } @else {
+                <p class="overview__none">{{ t('project.noDescription') }}</p>
+              }
+
+              <dl class="overview__facts">
+                <div>
+                  <dt>{{ t('project.cost') }}</dt>
+                  <dd data-testid="project-cost">
+                    {{ t('report.tokens', {
+                      tokensIn: tokens(found).in, tokensOut: tokens(found).out
+                    }) }}
+                    @if (found.cost !== null) {
+                      · {{ t('report.money', { amount: found.cost.toFixed(2) }) }}
+                    }
+                  </dd>
+                </div>
+                <div>
+                  <dt>{{ t('project.layout') }}</dt>
+                  <dd>{{ t('layout.' + found.layout) }}</dd>
+                </div>
+              </dl>
+
+              @if (found.layout !== 'reflowable') {
+                <p class="overview__warning" data-testid="layout-warning">
+                  {{ t('project.fixedLayout') }}
+                </p>
+              }
+              @if (found.hasOverlays) {
+                <p class="overview__warning" data-testid="overlay-warning">
+                  {{ t('overlays.warning') }}
+                </p>
+              }
+            </section>
           }
-        } @else {
-          <!-- A bar that moves without claiming progress: nothing here knows
-               how far along this phase is, and a bar that filled up would be
-               inventing it. Same rule the splash follows, same reason. -->
-          <progress
-            class="progress progress-primary project__phase-inner"
-            data-testid="phase-progress"></progress>
+          @case ("terms") { <bb-terms [projectId]="found.id" /> }
+          @case ("exclusions") { <bb-exclusions [projectId]="found.id" /> }
+          @case ("units") { <bb-units [projectId]="found.id" /> }
+          @case ("report") { <bb-report [projectId]="found.id" /> }
         }
       </div>
-    } @else {
-      <progress
-        class="progress progress-primary"
-        max="100"
-        data-testid="book-progress"
-        [value]="percent(found)"></progress>
-    }
-    <p class="project__counts" data-testid="book-counts">
-      {{ t('project.translated', { done: found.progress.done, total: found.progress.total }) }}
-    </p>
-
-    <nav class="tabs tabs-border">
-      @for (name of tabs; track name) {
-        <button
-          type="button"
-          class="tab"
-          [class.tab-active]="tab() === name"
-          [attr.data-testid]="'tab-' + name"
-          (click)="show(name)">
-          {{ t('project.tabs.' + name) }}
-        </button>
-      }
-    </nav>
-
-    <div class="project__panel">
-      @switch (tab()) {
-        @case ("overview") {
-          <section class="overview" data-testid="overview">
-            @if (found.description) {
-              <p class="overview__description">{{ found.description }}</p>
-            } @else {
-              <p class="overview__none">{{ t('project.noDescription') }}</p>
-            }
-
-            <dl class="overview__facts">
-              <div>
-                <dt>{{ t('project.cost') }}</dt>
-                <dd data-testid="project-cost">
-                  {{ t('report.tokens', {
-                    tokensIn: tokens(found).in, tokensOut: tokens(found).out
-                  }) }}
-                  @if (found.cost !== null) {
-                    · {{ t('report.money', { amount: found.cost.toFixed(2) }) }}
-                  }
-                </dd>
-              </div>
-              <div>
-                <dt>{{ t('project.layout') }}</dt>
-                <dd>{{ t('layout.' + found.layout) }}</dd>
-              </div>
-            </dl>
-
-            @if (found.layout !== 'reflowable') {
-              <p class="overview__warning" data-testid="layout-warning">
-                {{ t('project.fixedLayout') }}
-              </p>
-            }
-            @if (found.hasOverlays) {
-              <p class="overview__warning" data-testid="overlay-warning">
-                {{ t('overlays.warning') }}
-              </p>
-            }
-          </section>
-        }
-        @case ("terms") { <bb-terms [projectId]="found.id" /> }
-        @case ("exclusions") { <bb-exclusions [projectId]="found.id" /> }
-        @case ("units") { <bb-units [projectId]="found.id" /> }
-        @case ("report") { <bb-report [projectId]="found.id" /> }
-      }
     </div>
+
+    <bb-side
+      [project]="found"
+      (start)="start()"
+      (pause)="pause()"
+      (compose)="compose()"
+      (remove)="remove()" />
   } @else {
     <p class="project__missing" data-testid="project-missing">{{ t('project.gone') }}</p>
   }

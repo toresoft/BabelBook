@@ -7,6 +7,7 @@ import { RUN_PHASES, type ProjectDetail, type RunPhase } from "../../../../share
 import { IpcService } from "../core/ipc.service";
 import { Exclusions } from "./exclusions/exclusions";
 import { ReportView } from "./report/report";
+import { Side } from "./side/side";
 import { Terms } from "./terms/terms";
 import { Units } from "./units/units";
 
@@ -24,7 +25,7 @@ type Tab = (typeof TABS)[number];
 @Component({
   selector: "bb-project",
   standalone: true,
-  imports: [RouterLink, TranslocoDirective, Terms, Exclusions, Units, ReportView],
+  imports: [RouterLink, TranslocoDirective, Terms, Exclusions, Units, ReportView, Side],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./project.html",
   styleUrl: "./project.css",
@@ -209,6 +210,23 @@ export class Project implements OnDestroy {
 
   /** The way back, as a button: the trail beside it is the link. */
   toLibrary(): void {
+    void this.#router.navigate(["/"]);
+  }
+
+  /**
+   * Deleting asks first, and the question names the book — same act as the
+   * library's, just reached from the book's own screen.
+   */
+  async remove(): Promise<void> {
+    const found = this.project();
+    if (found === null) return;
+
+    const { confirmed } = await this.#ipc.invoke("ui.confirm", {
+      kind: "deleteProject", detail: { title: found.title },
+    });
+    if (!confirmed) return;
+
+    await this.#ipc.invoke("project.delete", { id: found.id });
     void this.#router.navigate(["/"]);
   }
 }
