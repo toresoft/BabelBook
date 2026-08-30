@@ -54,7 +54,9 @@ describe("migrate", () => {
     );
 
     expect(migrate(db, migrations).applied)
-      .toEqual(["011-model-reasoning", "012-model-reasoning-level"]);
+      .toEqual([
+        "011-model-reasoning", "012-model-reasoning-level", "013-machinery-not-a-unit",
+      ]);
 
     const rows = db.prepare("SELECT id, options FROM provider ORDER BY id").all() as
       Array<{ id: string; options: string }>;
@@ -70,5 +72,36 @@ describe("migrate", () => {
           options: { deepseek: { temperature: 0.4, thinking: "manual" } },
         },
       ]);
+  });
+
+  it("drops the style and script units of books analysed before they stopped being units", () => {
+    const db = openDatabase(":memory:");
+    const migrations = loadMigrations("app/main/db/migrations");
+    migrate(db, migrations.filter((migration) => migration.id < "013-machinery-not-a-unit"));
+
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state, layout)
+      VALUES ('p1', 'b.epub', 'Book', '/w', 'sha', '2026-01-01T00:00:00Z', 'it', 'ready', 'reflowable')
+    `).run();
+    db.prepare(
+      "INSERT INTO project_document (id, project_id, zip_path, spine_order) VALUES ('d1','p1','c1.xhtml',0)",
+    ).run();
+
+    const unit = db.prepare(`
+      INSERT INTO unit (id, project_id, document_id, ordinal, unit_id, kind,
+                        range_start, range_end, state, source_text, forced_state, owner_unit_id)
+      VALUES (?,'p1','d1',?,?,?,0,1,?,?,?,?)
+    `);
+    unit.run("u1", 1, "c1.xhtml#1", "block", "never-translated", "body { margin: 0 }", null, null);
+    unit.run("u2", 2, "c1.xhtml#2", "block", "never-translated", "var a = 1;", "translate", null);
+    unit.run("u3", 3, "c1.xhtml#3", "block", "never-translated", "<0/>", null, null);
+    unit.run("u4", 4, "c1.xhtml#4", "attribute", "translate", "A cat", null, "c1.xhtml#3");
+    unit.run("u5", 5, "c1.xhtml#5", "block", "translate", "One", null, null);
+
+    expect(migrate(db, migrations).applied).toEqual(["013-machinery-not-a-unit"]);
+
+    const rows = db.prepare("SELECT id FROM unit ORDER BY ordinal").all() as Array<{ id: string }>;
+    expect(rows.map((row) => row.id)).toEqual(["u2", "u3", "u4", "u5"]);
   });
 });

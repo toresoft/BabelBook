@@ -11,6 +11,7 @@ const FIXTURES = [
   { name: "attributes", documents: [{ path: "OEBPS/c1.xhtml", xhtml: `<p>See <img src="c.png" alt="A cat" title="Cat"/></p>` }] },
   { name: "entities", documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>&copy; 2026 &hellip; &#8212;</p>" }] },
   { name: "nested-blocks", documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<div><blockquote><p>Deep</p></blockquote>loose text</div>" }] },
+  { name: "machinery", documents: [{ path: "OEBPS/c1.xhtml", xhtml: `<style>p { color: red }</style><p>Plate</p><div><script>var a = 1;</script>Loose</div>` }] },
   { name: "table", documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<table><tr><td>Cell</td><th>Head</th></tr></table>" }] },
   { name: "translate-no", documents: [{ path: "OEBPS/c1.xhtml", xhtml: `<p translate="no">Brand</p><p>Text</p>` }] },
   { name: "pre-paginated", documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>Plate</p>", layout: "pre-paginated" as const }] },

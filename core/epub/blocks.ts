@@ -9,7 +9,13 @@ export type UnitState =
   | "maybe-code"
   /** code: not translated */
   | "code"
-  /** script, style: not the book's text */
+  /**
+   * Not the book's text.
+   *
+   * No extraction deduces it any more: a script or a stylesheet never becomes
+   * a unit at all. It stays in the vocabulary because the books analysed
+   * before that change still carry units that say it.
+   */
   | "never-translated"
   /** the author wrote translate="no" */
   | "translate-no"
@@ -261,7 +267,7 @@ class Extractor {
   }
 
   isUnitElement(name: string): boolean {
-    return this.unitElements.has(name) || NEVER_TRANSLATED.has(name);
+    return this.unitElements.has(name);
   }
 
   hasUnitDescendant(node: ElementNode): boolean {
@@ -314,7 +320,8 @@ class Extractor {
 
       const index = out.placeholders.length;
       const open = this.input.source.slice(child.openStart, child.openEnd);
-      const opaque = OPAQUE.has(child.name);
+      const machinery = NEVER_TRANSLATED.has(child.name);
+      const opaque = machinery || OPAQUE.has(child.name);
       const placeholder: Placeholder = {
         index,
         open,
@@ -322,6 +329,19 @@ class Extractor {
         opaque,
       };
       out.placeholders.push(placeholder);
+
+      // A stylesheet or a script sitting inside a block is not text and has no
+      // text: an opaque placeholder with empty content leaves it out of what
+      // the model reads, and `rawContent` puts it back byte for byte. Nothing
+      // inside it is looked at — not its nested elements, not its `title`.
+      if (machinery) {
+        placeholder.content = "";
+        placeholder.rawContent = child.selfClosing
+          ? ""
+          : this.input.source.slice(child.openEnd, child.closeStart);
+        out.source += child.selfClosing ? `<${index}/>` : `<${index}></${index}>`;
+        continue;
+      }
 
       if (!isPageMarker(child)) {
         for (const name of translatableAttributes(child.name)) {
@@ -374,7 +394,6 @@ class Extractor {
     frame: Frame,
     content: Content,
   ): { state: UnitState; reason?: string } {
-    if (node && NEVER_TRANSLATED.has(node.name)) return { state: "never-translated" };
     if (frame.translateNo) return { state: "translate-no" };
     if (node && CODE_ELEMENTS.has(node.name)) return { state: "code" };
     const surfaces = this.input.codeSurfaces;

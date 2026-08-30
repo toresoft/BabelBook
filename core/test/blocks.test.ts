@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { extract } from "../epub/blocks.ts";
+import { render } from "../epub/splice.ts";
 
 const doc = (body: string) =>
   `<?xml version="1.0" encoding="utf-8"?>`
@@ -26,9 +27,28 @@ describe("extract", () => {
     expect(units.map((u) => u.state)).toEqual(["translate-no", "translate-no"]);
   });
 
-  it("never translates script and style", () => {
+  it("makes no unit of script and style: they are not the book's text", () => {
     const { units } = extract({ source: doc("<script>var a = 1;</script><p>Hi</p>"), doc: "c1.xhtml" });
-    expect(units[0].state).toBe("never-translated");
+    expect(units.map((u) => u.source)).toEqual(["Hi"]);
+  });
+
+  it("makes no unit of the stylesheet the head carries", () => {
+    const source = `<?xml version="1.0" encoding="utf-8"?>`
+      + `<html xmlns="http://www.w3.org/1999/xhtml">`
+      + `<head><style>@page {padding: 0pt}\n body { text-align: center; }</style></head>`
+      + `<body><p>Hi</p></body></html>`;
+    const { units } = extract({ source, doc: "titlepage.xhtml" });
+    expect(units.map((u) => u.source)).toEqual(["Hi"]);
+  });
+
+  it("keeps a style inside a block out of the text, and gives it back verbatim", () => {
+    const source = doc("<div><style>p { color: red }</style>Loose text</div>");
+    const { units } = extract({ source, doc: "c1.xhtml" });
+    expect(units).toHaveLength(1);
+    expect(units[0].source).toBe("<0></0>Loose text");
+    expect(units[0].state).toBe("translate");
+    expect(render(units[0], "<0></0>Testo sciolto"))
+      .toBe("<style>p { color: red }</style>Testo sciolto");
   });
 
   it("in the navigation document the leaf is the anchor, not the list item", () => {
