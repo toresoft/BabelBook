@@ -98,11 +98,23 @@ export class Project implements OnDestroy {
       // the book itself, the same two numbers the database answers with. Every
       // other phase counts its own work — samples, batches — and writing those
       // into the book's count made the book claim a progress it did not have.
-      if (progress.phase === "translate") {
-        this.project.update((found) => found === null
-          ? found
-          : { ...found, progress: { done: progress.done, total: progress.total } });
-      }
+      // The counts themselves are written into the running phase of `phases`
+      // whatever the phase: the column's bar reads them there, and a book
+      // reloaded mid-run would otherwise stare at the counts the run began
+      // with until the next state change.
+      this.project.update((found) => {
+        if (found === null) return found;
+        const phases = found.phases.map((entry) => entry.phase === progress.phase
+          ? { ...entry, done: progress.done, total: progress.total }
+          : entry);
+        return {
+          ...found,
+          phases,
+          progress: progress.phase === "translate"
+            ? { done: progress.done, total: progress.total }
+            : found.progress,
+        };
+      });
       this.phaseProgress.set({ phase: progress.phase, done: progress.done, total: progress.total });
     }));
     // The live spend, written straight into the book the column reads: the

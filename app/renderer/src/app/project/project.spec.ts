@@ -220,6 +220,31 @@ describe("Project", () => {
       .toContain("7");
   });
 
+  /*
+   * The column's phase bar reads `ProjectDetail.phases`, which the last
+   * `project.get` filled: without this, it shows the counts the run started
+   * with and never moves again until a state change reloads the book.
+   */
+  it("feeds the column's own phase bar from the live counts, not the last reload", async () => {
+    const running = {
+      ...detail,
+      state: "running",
+      phases: detail.phases.map((entry) => entry.phase === "translate"
+        ? { ...entry, state: "running" as const, done: 0, total: 10 }
+        : entry),
+    };
+    const { fixture, bus } = mount(bridge(running));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    bus.emit("run.progress", { projectId: "p1", phase: "translate", done: 7, total: 10 });
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector("[data-testid=side-phase-translate]");
+    expect(row.textContent).toContain("7 / 10");
+    expect(row.querySelector("progress").getAttribute("value")).toBe("7");
+  });
+
   /**
    * Production break: both bars were fed the same two numbers, so the screen
    * asked one question twice. The upper one is where the run has got to
