@@ -2,10 +2,11 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildEpub } from "../../core/test/corpus/build.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import { createProject } from "../main/projects/create.ts";
+import { statesOf } from "../main/run/states.ts";
 
 async function setup() {
   const dir = await mkdtemp(join(tmpdir(), "babelbook-create-"));
@@ -41,6 +42,49 @@ describe("createProject", () => {
     expect(created.units.byState.code).toBe(1);
     expect(count(db, "unit")).toBe(created.units.total);
     expect(count(db, "project_document")).toBe(created.documents);
+  });
+
+  it("writes the analysis down as a phase that happened, with what it found", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "book.epub", {
+      title: "The Book", language: "en",
+      documents: [
+        { path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" },
+        { path: "OEBPS/c2.xhtml", xhtml: "<p>Two</p>" },
+      ],
+    });
+
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+
+    const phases = statesOf(db, created.id).filter((state) => state.kind === "phase");
+    expect(phases).toHaveLength(1);
+    expect(phases[0]).toMatchObject({ name: "analyze", outcome: "done" });
+    // The corpus builder adds its navigation document beside the two chapters.
+    expect(phases[0]!.info).toMatchObject({ documents: 3 });
+    expect(phases[0]!.leftAt).not.toBeNull();
+  });
+
+  it("measures analysis from before the book is read, not after it is finished", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "book.epub", {
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    });
+
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-30T09:00:00.000Z"));
+      const creating = createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+      vi.setSystemTime(new Date("2026-08-30T09:02:00.000Z"));
+
+      const created = await creating;
+      const analysis = statesOf(db, created.id).find(
+        (state) => state.kind === "phase" && state.name === "analyze",
+      );
+      expect(analysis?.enteredAt).toBe("2026-08-30T09:00:00.000Z");
+      expect(analysis?.leftAt).toBe("2026-08-30T09:02:00.000Z");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps the bytes of each unit apart from its decoded text", async () => {

@@ -9,6 +9,7 @@ import { SqliteProjectStore } from "../main/db/store.ts";
 import { createProject } from "../main/projects/create.ts";
 import { makeMachineHost } from "../main/run/machine-host.ts";
 import { makeRunRuntime } from "../main/run/runtime.ts";
+import { statesOf } from "../main/run/states.ts";
 
 /**
  * The key the run wrote its work under, which is not the hash of the book.
@@ -87,6 +88,8 @@ describe("the runtime's composition", () => {
     expect(doc).toContain("TRADOTTO One");
     expect(doc).not.toContain("<p>One</p>");
     expect(path.startsWith(dir)).toBe(true);
+    expect(statesOf(db, id).find((state) => state.kind === "phase" && state.name === "compose"))
+      .toMatchObject({ outcome: "done", leftAt: expect.any(String) });
   });
 
   /**

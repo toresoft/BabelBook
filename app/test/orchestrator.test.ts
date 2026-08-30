@@ -10,6 +10,7 @@ import { SqliteProjectStore } from "../main/db/store.ts";
 import {
   makeMachineHost, restoreRunningProjects, USER_EVENTS,
 } from "../main/run/machine-host.ts";
+import { enterState, statesOf } from "../main/run/states.ts";
 import { codeIndexKey } from "../main/run/code-index-key.ts";
 import { makeEngineRunner, runProject } from "../main/run/orchestrator.ts";
 import type { EngineMessage, RunConfig } from "../shared/run.ts";
@@ -527,6 +528,8 @@ describe("persisted project machine", () => {
     const snapshot = JSON.parse(row.machine_snapshot) as { value: string };
     expect(row.state).toBe("waiting-terms");
     expect(snapshot.value).toBe("waiting-terms");
+    expect(statesOf(db, "p1").filter((state) => state.kind === "project").map((state) => state.name))
+      .toEqual(["running", "waiting-terms"]);
   });
 
   // Production break: a refused event overwrites the last lawful persisted snapshot.
@@ -545,6 +548,21 @@ describe("persisted project machine", () => {
       "SELECT state, machine_snapshot FROM project WHERE id='p1'",
     ).get() as { state: string; machine_snapshot: string };
     expect(after).toEqual(before);
+  });
+
+  it("does not invent another project state when only machine context changes", () => {
+    const db = database();
+    insertProject(db);
+    const host = makeMachineHost(db, "p1", {
+      hasLanguage: true, autoAcceptTerms: true, autoAcceptExclusions: true,
+    });
+
+    expect(host.send({ type: "START" })).toBe(true);
+    expect(host.send({ type: "TERMS_READY" })).toBe(true);
+
+    expect(host.state).toBe("running");
+    expect(statesOf(db, "p1").filter((state) => state.kind === "project").map((state) => state.name))
+      .toEqual(["running"]);
   });
 
   // Production break: rehydration treats the denormalized library index as truth over the stored XState snapshot.
@@ -628,6 +646,7 @@ describe("restoreRunningProjects", () => {
   it("moves running projects to paused and updates their persisted snapshots", () => {
     const db = database();
     insertProject(db, "running");
+    enterState(db, { projectId: "p1", kind: "phase", name: "translate" });
 
     expect(restoreRunningProjects(db)).toEqual(["p1"]);
 
@@ -636,6 +655,10 @@ describe("restoreRunningProjects", () => {
     ).get() as { state: string; machine_snapshot: string };
     expect(row.state).toBe("paused");
     expect((JSON.parse(row.machine_snapshot) as { value: string }).value).toBe("paused");
+    expect(statesOf(db, "p1").find((state) => state.kind === "phase" && state.name === "translate"))
+      .toMatchObject({ outcome: "paused", leftAt: expect.any(String) });
+    expect(statesOf(db, "p1").filter((state) => state.kind === "project").at(-1))
+      .toMatchObject({ name: "paused" });
   });
 
   // Production break: recovery filters on a stale paused column and misses an authoritative running snapshot.

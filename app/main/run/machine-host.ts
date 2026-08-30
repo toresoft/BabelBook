@@ -7,6 +7,7 @@ import {
   type ProjectEvent,
   type ProjectState,
 } from "../../../core/workflow/project.machine.ts";
+import { enterState, leaveState } from "./states.ts";
 
 interface ProjectRow {
   state: ProjectState;
@@ -55,7 +56,12 @@ function degradationCount(db: DatabaseSync, projectId: string): number {
   return row.total;
 }
 
-function persist(db: DatabaseSync, projectId: string, actor: ProjectActor): void {
+function persist(
+  db: DatabaseSync,
+  projectId: string,
+  actor: ProjectActor,
+  previousState: ProjectState,
+): void {
   const snapshot = actor.getPersistedSnapshot();
   const state = stateValue(actor);
 
@@ -68,6 +74,9 @@ function persist(db: DatabaseSync, projectId: string, actor: ProjectActor): void
       UPDATE project SET machine_snapshot = ?, state = ? WHERE id = ?
     `).run(JSON.stringify(snapshot), state, projectId);
     if (changed.changes !== 1) throw new Error(`no such project: ${projectId}`);
+    if (state !== previousState) {
+      enterState(db, { projectId, kind: "project", name: state });
+    }
     db.exec("RELEASE SAVEPOINT babelbook_machine_transition");
   } catch (error) {
     db.exec("ROLLBACK TO SAVEPOINT babelbook_machine_transition");
@@ -136,6 +145,7 @@ export function makeMachineHost(
 
     send(event): boolean {
       if (!actor.getSnapshot().can(event)) return false;
+      const previousState = stateValue(actor);
 
       if (event.type === "COMPOSED") {
         const context = {
@@ -149,7 +159,7 @@ export function makeMachineHost(
       }
 
       actor.send(event);
-      persist(db, projectId, actor);
+      persist(db, projectId, actor, previousState);
       return true;
     },
   };
@@ -167,7 +177,20 @@ export function restoreRunningProjects(db: DatabaseSync): string[] {
   const paused: string[] = [];
   for (const row of rows) {
     const host = makeMachineHost(db, row.id);
-    if (host.state === "running" && host.send({ type: "PAUSE" })) paused.push(row.id);
+    if (host.state !== "running") continue;
+
+    db.exec("SAVEPOINT babelbook_restore_running");
+    try {
+      if (host.send({ type: "PAUSE" })) {
+        leaveState(db, { projectId: row.id, kind: "phase", outcome: "paused" });
+        paused.push(row.id);
+      }
+      db.exec("RELEASE SAVEPOINT babelbook_restore_running");
+    } catch (error) {
+      db.exec("ROLLBACK TO SAVEPOINT babelbook_restore_running");
+      db.exec("RELEASE SAVEPOINT babelbook_restore_running");
+      throw error;
+    }
   }
   return paused;
 }

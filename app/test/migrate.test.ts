@@ -56,6 +56,7 @@ describe("migrate", () => {
     expect(migrate(db, migrations).applied)
       .toEqual([
         "011-model-reasoning", "012-model-reasoning-level", "013-machinery-not-a-unit",
+        "014-project-state",
       ]);
 
     const rows = db.prepare("SELECT id, options FROM provider ORDER BY id").all() as
@@ -99,9 +100,31 @@ describe("migrate", () => {
     unit.run("u4", 4, "c1.xhtml#4", "attribute", "translate", "A cat", null, "c1.xhtml#3");
     unit.run("u5", 5, "c1.xhtml#5", "block", "translate", "One", null, null);
 
-    expect(migrate(db, migrations).applied).toEqual(["013-machinery-not-a-unit"]);
+    expect(migrate(db, migrations).applied)
+      .toEqual(["013-machinery-not-a-unit", "014-project-state"]);
 
     const rows = db.prepare("SELECT id FROM unit ORDER BY ordinal").all() as Array<{ id: string }>;
     expect(rows.map((row) => row.id)).toEqual(["u2", "u3", "u4", "u5"]);
+  });
+
+  it("gives an existing project one honest starting point for its history", () => {
+    const db = openDatabase(":memory:");
+    const migrations = loadMigrations("app/main/db/migrations");
+    migrate(db, migrations.filter((migration) => migration.id < "014-project-state"));
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state, layout)
+      VALUES ('p1', 'b.epub', 'Book', '/w', 'sha', '2026-01-02T03:04:05.000Z',
+              'it', 'paused', 'reflowable')
+    `).run();
+
+    expect(migrate(db, migrations).applied).toEqual(["014-project-state"]);
+    expect(db.prepare(`
+      SELECT project_id, kind, name, entered_at, left_at
+        FROM project_state WHERE project_id = 'p1'
+    `).all()).toEqual([{
+      project_id: "p1", kind: "project", name: "paused",
+      entered_at: "2026-01-02T03:04:05.000Z", left_at: null,
+    }]);
   });
 });

@@ -7,6 +7,7 @@ import { EVENTS, INVOCATIONS, type LocalRuntime } from "../shared/channels.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import { buildHandlers, type IpcDeps } from "../main/ipc.ts";
 import { readKey } from "../main/providers/store.ts";
+import { statesOf } from "../main/run/states.ts";
 
 /**
  * A keyring that actually hides what it is given.
@@ -185,6 +186,8 @@ describe("project.update", () => {
 
     expect(db.prepare("SELECT state, source_language FROM project WHERE id=?").get(project.id))
       .toMatchObject({ state: "ready", source_language: "en" });
+    expect(statesOf(db, project.id).filter((state) => state.kind === "project").map((state) => state.name))
+      .toEqual(["needs-language", "ready"]);
   });
 
   it("leaves alone what the request does not name", async () => {

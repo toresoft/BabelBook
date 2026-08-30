@@ -25,6 +25,7 @@ import { buildReport } from "./report/build.ts";
 import { projectDetail } from "./projects/detail.ts";
 import { countProjects, listProjects } from "./projects/query.ts";
 import { listUnits } from "./units/list.ts";
+import { enterState } from "./run/states.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
 export interface IpcDeps {
@@ -267,21 +268,36 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       // The language decides the cache key, so it is not a label: changing it
       // makes every stored translation belong to another contract. Confirming
       // it before any run starts is the cheap moment to get it right.
-      const changed = deps.db.prepare(`
-        UPDATE project
-           SET target_language = coalesce(?, target_language),
-               source_language = coalesce(?, source_language),
-               description     = coalesce(?, description),
-               provider_id     = coalesce(?, provider_id),
-               model_id        = coalesce(?, model_id),
-               state = CASE
-                 WHEN state = 'needs-language' AND coalesce(?, source_language) IS NOT NULL
-                   THEN 'ready' ELSE state END
-         WHERE id = ?
-      `).run(targetLanguage ?? null, sourceLanguage ?? null, description ?? null,
-        providerId ?? null, modelId ?? null, sourceLanguage ?? null, id);
+      const before = deps.db.prepare("SELECT state FROM project WHERE id = ?").get(id) as
+        { state: string } | undefined;
+      if (before === undefined) throw new Error(`no such project: ${id}`);
 
-      if (changed.changes === 0) throw new Error(`no such project: ${id}`);
+      deps.db.exec("SAVEPOINT babelbook_project_update");
+      try {
+        deps.db.prepare(`
+          UPDATE project
+             SET target_language = coalesce(?, target_language),
+                 source_language = coalesce(?, source_language),
+                 description     = coalesce(?, description),
+                 provider_id     = coalesce(?, provider_id),
+                 model_id        = coalesce(?, model_id),
+                 state = CASE
+                   WHEN state = 'needs-language' AND coalesce(?, source_language) IS NOT NULL
+                     THEN 'ready' ELSE state END
+           WHERE id = ?
+        `).run(targetLanguage ?? null, sourceLanguage ?? null, description ?? null,
+          providerId ?? null, modelId ?? null, sourceLanguage ?? null, id);
+
+        const after = deps.db.prepare("SELECT state FROM project WHERE id = ?").get(id) as { state: string };
+        if (after.state !== before.state) {
+          enterState(deps.db, { projectId: id, kind: "project", name: after.state });
+        }
+        deps.db.exec("RELEASE SAVEPOINT babelbook_project_update");
+      } catch (error) {
+        deps.db.exec("ROLLBACK TO SAVEPOINT babelbook_project_update");
+        deps.db.exec("RELEASE SAVEPOINT babelbook_project_update");
+        throw error;
+      }
       deps.broadcast("project.changed", { id });
     },
 

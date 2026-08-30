@@ -7,6 +7,7 @@ import {
   type TranslationUnit,
 } from "../../../core/epub/index.ts";
 import type { CreatedProject, CreateProjectRequest as CreateInput } from "../../shared/dto.ts";
+import { enterState, leaveState } from "../run/states.ts";
 import { createWorkspace, copySource, deleteWorkspace, extractCover, type Workspace } from "../workspace.ts";
 
 export type { CreatedProject, CreateProjectRequest as CreateInput } from "../../shared/dto.ts";
@@ -81,6 +82,7 @@ export async function createProject(
   base: string,
   input: CreateInput,
 ): Promise<CreatedProject> {
+  const analysisStartedAt = new Date().toISOString();
   const head = Buffer.alloc(1024);
   const whole = await readFile(input.epubPath);
   whole.copy(head, 0, 0, Math.min(head.length, whole.length));
@@ -182,6 +184,20 @@ export async function createProject(
           );
         }
       }
+
+      // The analysis is a phase like the others; it just happens before any
+      // run exists, and the units are what it produced.
+      enterState(db, {
+        projectId, kind: "phase", name: "analyze", enteredAt: analysisStartedAt,
+      });
+      leaveState(db, {
+        projectId, kind: "phase", outcome: "done",
+        info: { documents: documents.length, units: allUnits.length, skipped },
+      });
+      enterState(db, {
+        projectId, kind: "project",
+        name: sourceLanguage === null ? "needs-language" : "ready",
+      });
 
       if (skipped > 0) {
         db.prepare(`

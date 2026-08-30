@@ -12,6 +12,7 @@ import type {
 import { projectCacheKey } from "./cache-key.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
+import { enterState, leaveState } from "./states.ts";
 import { modelContextOf, modelPricesOf, reasoningOf } from "../providers/store.ts";
 import type { Workspace } from "../workspace.ts";
 import type { ProjectEvent } from "../../../core/workflow/project.machine.ts";
@@ -76,6 +77,8 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
   let engine: EngineHandle | null = null;
   let activeId: string | null = null;
   let activeRunId: string | null = null;
+  /** Identifies the one composer whose eventual result still owns the run. */
+  let activeComposition: symbol | null = null;
   /** The engine's accounting, held until the book exists to report it against. */
   let lastSummary: RunSummary | null = null;
 
@@ -128,56 +131,96 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     });
   };
 
-  async function compose(projectId: string, row: ProjectRow): Promise<void> {
-    const host = machineHost(projectId);
-    if (host.state !== "composing") return;
+  async function compose(
+    projectId: string,
+    row: ProjectRow,
+    runId: string | null = activeRunId,
+  ): Promise<void> {
+    if (machineHost(projectId).state !== "composing") return;
 
-    // The key the run translated under, which every other screen already reads
-    // from here. The source hash names the book, not the work done on it: no
-    // translation answers to it, so every unit re-emitted its source and the
-    // book that came out was the untranslated one with the target language
-    // written on its cover — and no invariant broke, because a book with
-    // nothing translated in it is exactly what had been asked for.
-    if (row.cache_key === null) throw new Error("COMPOSE_NO_CACHE_KEY");
+    const operation = Symbol("composition");
+    activeComposition = operation;
+    try {
+      const openPhase = db.prepare(`
+        SELECT name FROM project_state
+         WHERE project_id = ? AND kind = 'phase' AND left_at IS NULL
+         ORDER BY entered_at DESC, rowid DESC LIMIT 1
+      `).get(projectId) as { name: string } | undefined;
+      // A normal run announces this phase before calling us; recomposition and
+      // crash recovery enter here directly. Both paths must tell one history.
+      if (openPhase?.name !== "compose") {
+        enterState(db, { projectId, runId, kind: "phase", name: "compose" });
+      }
 
-    const result = await composeEpub({
-      workspace: workspaceOf(row),
-      store: new SqliteProjectStore(db, projectId, activeRunId),
-      cacheKey: row.cache_key,
-      targetLanguage: row.target_language,
-      title: row.title,
-    });
+      // The key the run translated under, which every other screen already reads
+      // from here. The source hash names the book, not the work done on it: no
+      // translation answers to it, so every unit re-emitted its source.
+      if (row.cache_key === null) throw new Error("COMPOSE_NO_CACHE_KEY");
 
-    // Kept, not just acted on. The invariants, the EPUBCheck verdict and the
-    // path are the only evidence of why a gate refused a book — or of which
-    // checks a published one passed — and the report has nowhere else to read
-    // them from. Written before the transition, so a crash in between leaves
-    // the evidence rather than the claim.
-    db.prepare(`
-      INSERT INTO project_phase_result (project_id, phase, cache_key, result_json)
-      VALUES (?, 'compose', ?, ?)
-      ON CONFLICT (project_id, phase, cache_key) DO UPDATE SET
-        result_json = excluded.result_json, created_at = excluded.created_at
-    `).run(projectId, row.cache_key, JSON.stringify(result));
-
-    // COMPOSED is claimed only after the book was written and validated; a
-    // gate that refuses leaves the file behind for inspection and fails the run.
-    if (result.status === "failed") host.send({ type: "FAIL", reason: "GATE_REFUSED" });
-    else host.send({ type: "COMPOSED" });
-
-    activeId = null;
-    changed(projectId);
-    if (result.status !== "failed") {
-      feed({
-        type: "done",
-        summary: lastSummary ?? {
-          units: { total: 0, translated: 0, fellBack: 0, identical: 0 },
-          notTranslated: {},
-          tokensIn: 0,
-          tokensOut: 0,
-          reasoningTokens: 0,
-        },
+      const result = await composeEpub({
+        workspace: workspaceOf(row),
+        store: new SqliteProjectStore(db, projectId, runId),
+        cacheKey: row.cache_key,
+        targetLanguage: row.target_language,
+        title: row.title,
       });
+
+      // A crash or pause may have moved the machine while file I/O was in
+      // flight. That later result belongs to the abandoned operation.
+      if (activeComposition !== operation || activeId !== projectId || activeRunId !== runId) return;
+      const current = machineHost(projectId);
+      if (current.state !== "composing") return;
+
+      // Kept, not just acted on: this is the evidence of why a gate refused a
+      // book, or of which checks a published one passed.
+      db.prepare(`
+        INSERT INTO project_phase_result (project_id, phase, cache_key, result_json)
+        VALUES (?, 'compose', ?, ?)
+        ON CONFLICT (project_id, phase, cache_key) DO UPDATE SET
+          result_json = excluded.result_json, created_at = excluded.created_at
+      `).run(projectId, row.cache_key, JSON.stringify(result));
+
+      if (result.status === "failed") {
+        leaveState(db, {
+          projectId, kind: "phase", outcome: "failed", info: { code: "GATE_REFUSED" },
+        });
+        current.send({ type: "FAIL", reason: "GATE_REFUSED" });
+      } else {
+        leaveState(db, {
+          projectId, kind: "phase", outcome: "done", info: { units: lastSummary?.units ?? null },
+        });
+        current.send({ type: "COMPOSED" });
+      }
+
+      activeId = null;
+      changed(projectId);
+      if (result.status !== "failed") {
+        feed({
+          type: "done",
+          summary: lastSummary ?? {
+            units: { total: 0, translated: 0, fellBack: 0, identical: 0 },
+            notTranslated: {},
+            tokensIn: 0,
+            tokensOut: 0,
+            reasoningTokens: 0,
+          },
+        });
+      }
+    } catch (error) {
+      if (activeComposition !== operation || activeId !== projectId || activeRunId !== runId) return;
+      const code = (error as { code?: unknown }).code;
+      const named = typeof code === "string" ? code : "COMPOSE_FAILED";
+      const current = machineHost(projectId);
+      if (current.state === "composing") {
+        leaveState(db, {
+          projectId, kind: "phase", outcome: "failed", info: { code: named },
+        });
+        current.send({ type: "FAIL", reason: named });
+      }
+      activeId = null;
+      changed(projectId);
+    } finally {
+      if (activeComposition === operation) activeComposition = null;
     }
   }
 
@@ -190,8 +233,14 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       return;
     }
     if (message.type === "phase") {
+      // The engine has one final `done`, not one per phase. Reaching the next
+      // phase is therefore the durable evidence that the previous one ended.
+      leaveState(db, { projectId: activeId, kind: "phase", outcome: "done" });
+      enterState(db, {
+        projectId: activeId, runId: activeRunId, kind: "phase", name: message.phase,
+      });
       deps.broadcast("run.phase", { projectId: activeId, phase: message.phase });
-      if (message.phase === "compose") void compose(activeId, project(activeId));
+      if (message.phase === "compose") void compose(activeId, project(activeId), activeRunId);
       return;
     }
     if (message.type === "progress") {
@@ -232,6 +281,14 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
           new Date().toISOString(), activeRunId,
         );
       }
+      // The engine is finished before the main-owned composer is. Its summary
+      // closes the model process and supplies accounting; the composer alone
+      // can close its own phase and release ownership of the project.
+      if (machineHost(activeId).state === "composing") return;
+
+      leaveState(db, {
+        projectId: activeId, kind: "phase", outcome: "done", info: { units: message.summary.units },
+      });
       // The engine's turn is over, whether it finished the book or stopped at
       // a gate. Leaving `activeId` set would make the next approval refuse
       // itself with ENGINE_BUSY — a gate that can be opened but never closed.
@@ -250,21 +307,35 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     }
     if (message.type === "failed") {
       const projectId = activeId;
+      leaveState(db, {
+        projectId, kind: "phase", outcome: "failed", info: { code: message.code },
+      });
       machineHost(projectId).send({ type: "FAIL", reason: message.code });
+      activeComposition = null;
       activeId = null;
       changed(projectId);
     }
   }
 
   async function onCrash(projectId: string): Promise<void> {
-    const host = machineHost(projectId);
-    host.send({ type: "PAUSE" });
-    if (activeRunId !== null) {
-      db.prepare(`
-        INSERT INTO run_event (id, run_id, at, code, severity, payload_json)
-        VALUES (?, ?, ?, 'engine-exited', 'degradation', '{}')
-      `).run(randomUUID(), activeRunId, new Date().toISOString());
+    db.exec("SAVEPOINT babelbook_engine_crash");
+    try {
+      const host = machineHost(projectId);
+      host.send({ type: "PAUSE" });
+      leaveState(db, { projectId, kind: "phase", outcome: "paused" });
+      if (activeRunId !== null) {
+        db.prepare(`
+          INSERT INTO run_event (id, run_id, at, code, severity, payload_json)
+          VALUES (?, ?, ?, 'engine-exited', 'degradation', '{}')
+        `).run(randomUUID(), activeRunId, new Date().toISOString());
+      }
+      db.exec("RELEASE SAVEPOINT babelbook_engine_crash");
+    } catch (error) {
+      db.exec("ROLLBACK TO SAVEPOINT babelbook_engine_crash");
+      db.exec("RELEASE SAVEPOINT babelbook_engine_crash");
+      throw error;
     }
+    activeComposition = null;
     activeId = null;
     changed(projectId);
   }
@@ -331,6 +402,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       backend,
       machineSnapshot: machineHost(projectId).snapshot,
     });
+    changed(projectId);
   }
 
   return {
@@ -405,8 +477,20 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       if (activeId === projectId && engine !== null && engine.alive) {
         engine.send({ type: "pause" });
       }
-      machineHost(projectId).send({ type: "PAUSE" });
-      if (activeId === projectId) activeId = null;
+      db.exec("SAVEPOINT babelbook_pause_run");
+      try {
+        machineHost(projectId).send({ type: "PAUSE" });
+        leaveState(db, { projectId, kind: "phase", outcome: "paused" });
+        db.exec("RELEASE SAVEPOINT babelbook_pause_run");
+      } catch (error) {
+        db.exec("ROLLBACK TO SAVEPOINT babelbook_pause_run");
+        db.exec("RELEASE SAVEPOINT babelbook_pause_run");
+        throw error;
+      }
+      if (activeId === projectId) {
+        activeComposition = null;
+        activeId = null;
+      }
       changed(projectId);
     },
 
