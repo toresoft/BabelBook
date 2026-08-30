@@ -195,6 +195,13 @@ export class Project implements OnDestroy {
     await this.reload();
   }
 
+  /** The book the last composition wrote, opened with whatever the desktop uses — the library's own act, reached from the book's own screen. */
+  download(): void {
+    const found = this.project();
+    if (found === null || found.outputPath === null) return;
+    void this.#ipc.invoke("file.open", { path: found.outputPath }).catch(() => {});
+  }
+
   async pause(): Promise<void> {
     await this.#ipc.invoke("run.pause", { projectId: this.id() });
     this.phase.set(null);

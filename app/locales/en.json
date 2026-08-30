@@ -63,7 +63,12 @@
     "noProvider": "none",
     "gone": "This project no longer exists.",
     "phaseStep": "Phase {{step}} of {{total}}",
-    "translated": "{{done}} of the book's {{total}} units translated"
+    "translated": "{{done}} of the book's {{total}} units translated",
+    "download": "Download EPUB",
+    "createdOn": "Created on",
+    "elapsed": "Running for",
+    "endedOn": "Ended on",
+    "tokens": "Tokens"
   },
   "phase": {
     "analyze": "Analysing the book",

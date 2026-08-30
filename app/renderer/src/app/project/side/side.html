@@ -1,19 +1,16 @@
 <aside class="side" data-testid="side" *transloco="let t">
   @if (project(); as found) {
-    <!-- The acts below still belong to the header Task 2 left here: Task 4
-         rebuilds them as one contextual act plus a delete icon. Until then
-         the column keeps translating and pausing books. -->
-    <header class="project__head">
+    <header class="side__head">
       @if (found.coverPath) {
         <img class="side__cover" [src]="found.coverPath" [alt]="found.title" />
       } @else {
         <div class="side__cover side__cover--empty">{{ t('library.noCover') }}</div>
       }
 
-      <div class="project__identity">
+      <div class="side__identity">
         <h1 class="side__title" [attr.title]="found.title">{{ found.title }}</h1>
         @if (found.author) {
-          <p class="project__author">{{ found.author }}</p>
+          <p class="side__author">{{ found.author }}</p>
         }
 
         <div class="side__chips">
@@ -23,30 +20,86 @@
           }
         </div>
       </div>
-
-      <div class="project__actions">
-        @if (can('START')) {
-          <button type="button" class="btn" data-testid="project-start" (click)="start.emit()">
-            {{ t('library.translate') }}
-          </button>
-        }
-        @if (can('RESUME')) {
-          <button type="button" class="btn" data-testid="project-resume" (click)="start.emit()">
-            {{ t('library.resume') }}
-          </button>
-        }
-        @if (can('PAUSE')) {
-          <button type="button" class="btn" data-testid="project-pause" (click)="pause.emit()">
-            {{ t('library.pause') }}
-          </button>
-        }
-        @if (can('COMPOSE')) {
-          <button type="button" class="btn" data-testid="project-compose" (click)="compose.emit()">
-            {{ t('library.compose') }}
-          </button>
-        }
-      </div>
     </header>
+
+    <div class="side__status">
+      <!-- The colour is the same one the library's own shelf uses for this
+           state: two screens naming a state in two tones would teach the
+           tone rather than the state. -->
+      <span class="badge badge-{{ tone() }} badge-sm gap-1" data-testid="side-status">
+        <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
+          <circle cx="4" cy="4" r="4" fill="currentColor"></circle>
+        </svg>
+        {{ t('state.' + found.state) }}
+      </span>
+    </div>
+
+    <div class="side__actions">
+      @if (isDownloadable()) {
+        <div class="side__action" data-testid="side-action">
+          <button type="button" class="btn btn-primary" data-testid="side-download" (click)="download.emit()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
+              <path d="M12 4v11"></path><path d="M7 12l5 5 5-5"></path><path d="M5 20h14"></path>
+            </svg>
+            {{ t('project.download') }}
+          </button>
+        </div>
+      } @else if (primary(); as act) {
+        <div class="side__action" data-testid="side-action">
+          <button type="button" class="btn btn-primary" [attr.data-testid]="testIdFor(act.event)"
+                  (click)="onPrimary(act.event)">
+            {{ t(act.label) }}
+          </button>
+        </div>
+      }
+
+      <!-- An icon, and the word only where it is read out: the confirmation
+           is where the act is really decided, same rule as the library's own
+           delete button. -->
+      <button type="button" class="btn btn-ghost btn-square" data-testid="side-delete"
+              [attr.aria-label]="t('library.delete')" [attr.title]="t('library.delete')"
+              (click)="remove.emit()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 7h16"></path><path d="M10 4h4"></path><path d="M6 7l1 13h10l1-13"></path>
+          <path d="M10 11v6"></path><path d="M14 11v6"></path>
+        </svg>
+      </button>
+    </div>
+
+    <div class="side__meta-rule"></div>
+
+    <dl class="side__meta" data-testid="side-meta">
+      <div class="side__fact">
+        <dt class="side__fact-label">{{ t('project.createdOn') }}</dt>
+        <dd class="side__fact-value">{{ date(found.createdAt) }}</dd>
+      </div>
+
+      <div class="side__fact">
+        <dt class="side__fact-label">{{ t('project.elapsed') }}</dt>
+        <dd class="side__fact-value">{{ elapsed() ?? '—' }}</dd>
+      </div>
+
+      <div class="side__fact">
+        <dt class="side__fact-label">{{ t('project.endedOn') }}</dt>
+        <dd class="side__fact-value">{{ found.runEndedAt ? date(found.runEndedAt) : '—' }}</dd>
+      </div>
+
+      <div class="side__fact">
+        <dt class="side__fact-label">{{ t('project.tokens') }}</dt>
+        <dd class="side__fact-value">
+          {{ t('report.tokens', { tokensIn: found.tokens.in, tokensOut: found.tokens.out }) }}
+        </dd>
+      </div>
+
+      <div class="side__fact">
+        <dt class="side__fact-label">{{ t('project.cost') }}</dt>
+        <dd class="side__fact-value">
+          {{ found.cost !== null ? t('report.money', { amount: found.cost.toFixed(2) }) : '—' }}
+        </dd>
+      </div>
+    </dl>
 
     <div class="side__rule"></div>
 

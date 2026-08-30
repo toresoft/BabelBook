@@ -28,6 +28,8 @@ const detail: ProjectDetail = {
   cost: null,
   createdAt: "2026-08-24",
   outputPath: null,
+  runStartedAt: null,
+  runEndedAt: null,
 };
 
 function bridge(project: ProjectDetail | null = detail) {

@@ -103,6 +103,9 @@ export interface ProjectDetail extends ProjectSummary {
    * number the true total is only the floor of.
    */
   cost: number | null;
+  /** The last run's own clock: when it started, and when it ended (null while it is still going, or if none has ever run). */
+  runStartedAt: string | null;
+  runEndedAt: string | null;
 }
 
 /** One unit, with whatever has been made of it so far. */

@@ -29,6 +29,8 @@ interface DetailRow {
   /** Null when any contributing run was never priced: see `cost` below. */
   cost: number | null;
   output_path: string | null;
+  run_started_at: string | null;
+  run_ended_at: string | null;
 }
 
 /**
@@ -67,6 +69,12 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
               FROM project_phase_result c
              WHERE c.project_id = p.id AND c.phase = 'compose'
              ORDER BY c.created_at DESC LIMIT 1) AS output_path,
+           -- A project's clock is the run it is currently in, not the one
+           -- before: the last run by start time, whether or not it has ended.
+           (SELECT r.started_at FROM run r WHERE r.project_id = p.id
+             ORDER BY r.started_at DESC LIMIT 1) AS run_started_at,
+           (SELECT r.ended_at FROM run r WHERE r.project_id = p.id
+             ORDER BY r.started_at DESC LIMIT 1) AS run_ended_at,
            (SELECT pr.name FROM provider pr WHERE pr.id = p.provider_id) AS provider_name,
            -- The catalogue's display name when it has one, the model's own id
            -- when it has not: an id is worse than a name and better than blank.
@@ -106,5 +114,7 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
     // The subquery yields null when any run is unpriced, which is the only
     // honest thing to show then: not a smaller number that reads like a total.
     cost: row.cost === null ? null : Number(row.cost),
+    runStartedAt: row.run_started_at,
+    runEndedAt: row.run_ended_at,
   };
 }

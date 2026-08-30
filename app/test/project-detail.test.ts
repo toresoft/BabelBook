@@ -142,6 +142,22 @@ describe("projectDetail", () => {
 
     expect(projectDetail(db, "p1")!.modelName).toBe("claude-opus-5");
   });
+
+  it("carries the last run's clock, so the column can say how long it took", () => {
+    const db = seeded();
+    // `seeded()` already leaves a run behind under id 'r1': these two carry
+    // ids of their own so the insert does not collide with it.
+    db.prepare(`
+      INSERT INTO run (id, project_id, phase, started_at, ended_at)
+      VALUES ('r2', 'p1', 'translate', '2026-08-30T09:12:00.000Z', '2026-08-30T09:45:12.000Z'),
+             ('r3', 'p1', 'translate', '2026-08-30T10:00:00.000Z', NULL)
+    `).run();
+
+    const found = projectDetail(db, "p1")!;
+    // The last one: a project's clock is the run it is in, not the one before.
+    expect(found.runStartedAt).toBe("2026-08-30T10:00:00.000Z");
+    expect(found.runEndedAt).toBeNull();
+  });
 });
 
 describe("listUnits", () => {

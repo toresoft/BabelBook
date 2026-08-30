@@ -1,5 +1,6 @@
 import { TestBed } from "@angular/core/testing";
 import { describe, expect, it } from "vitest";
+import it_IT from "../../../../../locales/it.json";
 import type { ProjectDetail } from "../../../../../shared/dto.js";
 import { provideI18n } from "../../core/i18n";
 import { Side } from "./side";
@@ -27,6 +28,8 @@ const detail: ProjectDetail = {
   cost: null,
   createdAt: "2026-08-24",
   outputPath: null,
+  runStartedAt: null,
+  runEndedAt: null,
 };
 
 function mount(project = detail) {
@@ -67,5 +70,22 @@ describe("Side", () => {
     await without.whenStable();
     without.detectChanges();
     expect(without.nativeElement.querySelector("[data-testid=side-description]")).toBeNull();
+  });
+
+  it("offers one act, the one the machine would accept", async () => {
+    const { fixture } = mount({ ...detail, actions: ["PAUSE"] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=side-action]").textContent)
+      .toContain(it_IT.library.pause);
+  });
+
+  it("keeps deleting quiet, and asks before doing it", async () => {
+    const { fixture } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const remove = fixture.nativeElement.querySelector("[data-testid=side-delete]");
+    expect(remove.className).not.toContain("btn-error");
+    expect(remove.getAttribute("aria-label")).toBe(it_IT.library.delete);
   });
 });

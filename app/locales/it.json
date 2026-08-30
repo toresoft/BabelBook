@@ -63,7 +63,12 @@
     "noProvider": "nessuno",
     "gone": "Questo progetto non esiste più.",
     "phaseStep": "Fase {{step}} di {{total}}",
-    "translated": "Tradotte {{done}} di {{total}} unità del libro"
+    "translated": "Tradotte {{done}} di {{total}} unità del libro",
+    "download": "Scarica EPUB",
+    "createdOn": "Creato il",
+    "elapsed": "Esecuzione",
+    "endedOn": "Concluso il",
+    "tokens": "Token"
   },
   "phase": {
     "analyze": "Analisi del libro",
