@@ -144,6 +144,31 @@
       </div>
     </dl>
 
+    <section class="side__panel" aria-label="{{ t('project.panel.progress') }}">
+      <div class="side__panel-tabs" role="tablist">
+        <button type="button" role="tab" class="side__panel-tab"
+                [class.side__panel-tab--active]="panel() === 'progress'"
+                [attr.aria-selected]="panel() === 'progress'"
+                data-testid="side-tab-progress" (click)="panel.set('progress')">
+          {{ t('project.panel.progress') }}
+        </button>
+        <button type="button" role="tab" class="side__panel-tab"
+                [class.side__panel-tab--active]="panel() === 'log'"
+                [attr.aria-selected]="panel() === 'log'"
+                data-testid="side-tab-log" (click)="panel.set('log')">
+          {{ t('project.panel.log') }}
+        </button>
+      </div>
+
+      @if (panel() === "progress") {
+        <div class="side__panel-body" data-testid="side-panel-progress">
+          <bb-progress-panel [phases]="found.phases" />
+        </div>
+      } @else {
+        <div class="side__panel-body" data-testid="side-panel-log"></div>
+      }
+    </section>
+
     @if (descriptionOpen()) {
       <bb-detail [title]="t('project.descriptionTitle')" (closed)="descriptionOpen.set(false)">
         <p class="detail__text">{{ found.description }}</p>

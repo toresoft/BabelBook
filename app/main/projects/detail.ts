@@ -2,6 +2,8 @@ import type { DatabaseSync } from "node:sqlite";
 import type { LayoutKind, ProjectDetail } from "../../shared/dto.ts";
 import { coverUrl } from "../protocol.ts";
 import { makeMachineHost } from "../run/machine-host.ts";
+import { statesOf } from "../run/states.ts";
+import { phasesOf } from "./phases.ts";
 
 export type { ProjectDetail } from "../../shared/dto.ts";
 
@@ -88,6 +90,15 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
   `).get(projectId) as unknown as DetailRow | undefined;
   if (row === undefined) return null;
 
+  const history = statesOf(db, projectId);
+  const phases = phasesOf(history, row.state, {
+    done: Number(row.done), total: Number(row.total),
+  });
+  // When the book was finished, from the state that says so.
+  const finishedAt = history
+    .filter((entry) => entry.kind === "project" && entry.name === "done")
+    .at(-1)?.enteredAt ?? null;
+
   return {
     id: row.id,
     title: row.title,
@@ -116,5 +127,7 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
     cost: row.cost === null ? null : Number(row.cost),
     runStartedAt: row.run_started_at,
     runEndedAt: row.run_ended_at,
+    phases,
+    finishedAt,
   };
 }

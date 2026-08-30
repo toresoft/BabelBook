@@ -72,6 +72,10 @@
     "duration": {
       "minutes": "{{minutes}}m {{seconds}}s",
       "seconds": "{{seconds}}s"
+    },
+    "panel": {
+      "progress": "Progress",
+      "log": "Log"
     }
   },
   "phase": {
@@ -79,7 +83,11 @@
     "candidates": "Extracting terms",
     "code-index": "Recognising code",
     "translate": "Translating",
-    "compose": "Composing the EPUB"
+    "compose": "Composing the EPUB",
+    "running": "running",
+    "waiting": "waiting",
+    "failed": "failed",
+    "doneIn": "done in {{duration}}"
   },
   "phaseCounts": {
     "analyze": "{{done}} of {{total}}",

@@ -1,0 +1,37 @@
+/* The five phases as a timeline: a rail of dots and links on the left, the
+   name and the news on the right. The states speak in the palette the rest
+   of the app already uses for them — the same green the report calls
+   complete, the same red it calls refused. */
+.phases { list-style: none; margin: 0; padding: 0; }
+.phases__row { display: flex; gap: 0.75rem; }
+.phases__rail { flex: none; display: flex; flex-direction: column; align-items: center; }
+.phases__dot {
+  flex: none; width: 1.15rem; height: 1.15rem; border-radius: 50%;
+  border: 2px solid var(--line-strong); background: var(--surface);
+  display: flex; align-items: center; justify-content: center; gap: 2px;
+}
+.phases__dot--done { border-color: var(--ok); background: var(--ok); color: var(--ok-soft); }
+.phases__dot--failed { border-color: var(--danger); background: var(--danger); color: var(--danger-soft); }
+.phases__dot--paused {
+  border-color: var(--warning); background: var(--warning-box); color: var(--warning);
+}
+.phases__dot--paused i { width: 2px; height: 7px; border-radius: 1px; background: currentColor; }
+.phases__dot--spin { border: none; background: none; color: var(--accent); }
+/* The connector closes only after the row's own news: a link that ended at
+   the name would tie a phase to the one above it more tightly than to its
+   own outcome. */
+.phases__link { width: 2px; flex: 1; min-height: 0.9rem; margin: 2px 0; background: var(--line); }
+.phases__body { flex: 1; min-width: 0; padding-bottom: 0.9rem; }
+.phases__row:last-child .phases__body { padding-bottom: 0; }
+.phases__line { margin: 0; display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; }
+.phases__name { font-size: 0.85rem; }
+.phases__meta { flex: none; font-size: 0.75rem; color: var(--text-muted); }
+.phases__bar { margin-top: 0.45rem; height: 0.3rem; }
+.phases__why { margin: 0.35rem 0 0; font-size: 0.75rem; color: var(--danger); overflow-wrap: anywhere; }
+
+/* daisyUI does not respect this preference; the column does. A spinner and a
+   shimmering bar stand for motion that is really happening, and to a reader
+   whom motion distracts, stillness is the kinder lie. */
+@media (prefers-reduced-motion: reduce) {
+  .phases .loading, .phases .progress:indeterminate { animation: none; }
+}

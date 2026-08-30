@@ -30,6 +30,14 @@ const detail: ProjectDetail = {
   outputPath: null,
   runStartedAt: null,
   runEndedAt: null,
+  phases: [
+    { phase: "analyze", state: "waiting", startedAt: null, endedAt: null, done: null, total: null, info: null },
+    { phase: "candidates", state: "waiting", startedAt: null, endedAt: null, done: null, total: null, info: null },
+    { phase: "code-index", state: "waiting", startedAt: null, endedAt: null, done: null, total: null, info: null },
+    { phase: "translate", state: "waiting", startedAt: null, endedAt: null, done: 0, total: 10, info: null },
+    { phase: "compose", state: "waiting", startedAt: null, endedAt: null, done: null, total: null, info: null },
+  ],
+  finishedAt: null,
 };
 
 function mount(project = detail) {
@@ -138,5 +146,36 @@ describe("Side", () => {
 
     expect(fixture.nativeElement.querySelector("[data-testid=side-download]")).not.toBeNull();
     expect(fixture.nativeElement.querySelector("[data-testid=project-compose]")).toBeNull();
+  });
+
+  it("reads all five phases and lets the log take the panel's place", async () => {
+    const { fixture } = mount({
+      ...detail,
+      state: "running",
+      phases: [
+        {
+          phase: "analyze", state: "done",
+          startedAt: "2026-08-30T09:00:00.000Z", endedAt: "2026-08-30T09:01:05.000Z",
+          done: null, total: null, info: null,
+        },
+        detail.phases[1]!,
+        detail.phases[2]!,
+        { ...detail.phases[3]!, state: "running", done: 3, total: 10 },
+        detail.phases[4]!,
+      ],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll("[data-testid^=side-phase-]")).toHaveLength(5);
+    expect(fixture.nativeElement.querySelector("[data-testid=side-phase-analyze]").textContent)
+      .toContain("1m 05s");
+    expect(fixture.nativeElement.querySelector("[data-testid=side-phase-translate]").textContent)
+      .toContain("3 / 10");
+
+    fixture.nativeElement.querySelector("[data-testid=side-tab-log]").click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=side-panel-progress]")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=side-panel-log]")).not.toBeNull();
   });
 });

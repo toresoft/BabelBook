@@ -30,6 +30,14 @@ const detail: ProjectDetail = {
   outputPath: null,
   runStartedAt: null,
   runEndedAt: null,
+  phases: [
+    { phase: "analyze", state: "waiting", startedAt: null, endedAt: null, done: null, total: null, info: null },
+    { phase: "candidates", state: "waiting", startedAt: null, endedAt: null, done: null, total: null, info: null },
+    { phase: "code-index", state: "waiting", startedAt: null, endedAt: null, done: null, total: null, info: null },
+    { phase: "translate", state: "waiting", startedAt: null, endedAt: null, done: 0, total: 10, info: null },
+    { phase: "compose", state: "waiting", startedAt: null, endedAt: null, done: null, total: null, info: null },
+  ],
+  finishedAt: null,
 };
 
 function bridge(project: ProjectDetail | null = detail) {

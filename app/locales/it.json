@@ -72,6 +72,10 @@
     "duration": {
       "minutes": "{{minutes}}m {{seconds}}s",
       "seconds": "{{seconds}}s"
+    },
+    "panel": {
+      "progress": "Avanzamento",
+      "log": "Registro"
     }
   },
   "phase": {
@@ -79,7 +83,11 @@
     "candidates": "Estrazione dei termini",
     "code-index": "Riconoscimento del codice",
     "translate": "Traduzione",
-    "compose": "Composizione dell'EPUB"
+    "compose": "Composizione dell'EPUB",
+    "running": "in corso",
+    "waiting": "in attesa",
+    "failed": "errore",
+    "doneIn": "fatto in {{duration}}"
   },
   "phaseCounts": {
     "analyze": "{{done}} di {{total}}",

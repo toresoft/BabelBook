@@ -23,6 +23,21 @@ export const RUN_PHASES: readonly RunPhase[] = [
   "analyze", "candidates", "code-index", "translate", "compose",
 ];
 
+export type PhaseState = "done" | "running" | "waiting" | "failed" | "paused";
+
+export interface PhaseProgress {
+  phase: RunPhase;
+  state: PhaseState;
+  /** When it began and when it ended, from the state it recorded. */
+  startedAt: string | null;
+  endedAt: string | null;
+  /** Only the translation counts the book; the others count their own work. */
+  done: number | null;
+  total: number | null;
+  /** What that phase knows about itself: counts, an error code, a path. */
+  info: Record<string, unknown> | null;
+}
+
 export interface CreateProjectRequest {
   epubPath: string;
   targetLanguage: string;
@@ -106,6 +121,10 @@ export interface ProjectDetail extends ProjectSummary {
   /** The last run's own clock: when it started, and when it ended (null while it is still going, or if none has ever run). */
   runStartedAt: string | null;
   runEndedAt: string | null;
+  /** The five phases, always in the order a run walks them. */
+  phases: PhaseProgress[];
+  /** When the project entered `done`, which is not necessarily when its last run ended. */
+  finishedAt: string | null;
 }
 
 /** One unit, with whatever has been made of it so far. */

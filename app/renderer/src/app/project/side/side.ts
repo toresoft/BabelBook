@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from "@angular/core";
 import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import type { ProjectDetail } from "../../../../../shared/dto.js";
+import { between } from "../../core/durations";
 import { tone as toneOf, type Tone } from "../../core/tones";
 import { Detail } from "../detail";
+import { ProgressPanel } from "./progress-panel";
 
 /** The event names `primary()` can hand back, and the testid each one carries. */
 const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE: "project-compose" } as const;
@@ -20,7 +22,7 @@ const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE
 @Component({
   selector: "bb-side",
   standalone: true,
-  imports: [Detail, TranslocoDirective],
+  imports: [Detail, ProgressPanel, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./side.html",
   styleUrls: ["../list.css", "./side.css"],
@@ -36,6 +38,9 @@ export class Side {
 
   /** Whether the description dialog is open; the description itself stays on `project()`. */
   readonly descriptionOpen = signal(false);
+
+  /** Which of the panel's two cards is showing; the reader's choice, kept where it was made. */
+  readonly panel = signal<"progress" | "log">("progress");
 
   #transloco = inject(TranslocoService);
 
@@ -94,20 +99,12 @@ export class Side {
 
   /**
    * How long the last run has been going, or went. Null when none has ever
-   * run. Built through the catalogue rather than with the letters `m`/`s` in
-   * the code: Italian and English agree on those symbols today, which is not
-   * a reason to assume every language will.
+   * run. The words themselves come from `between`, which the phases share.
    */
   elapsed(): string | null {
     const started = this.project().runStartedAt;
     if (started === null) return null;
-    const end = this.project().runEndedAt ?? new Date().toISOString();
-    const totalSeconds = Math.max(0, Math.round((Date.parse(end) - Date.parse(started)) / 1000));
-    const minutes = Math.floor(totalSeconds / 60);
-    if (minutes === 0) return this.#transloco.translate("project.duration.seconds", { seconds: totalSeconds });
-
-    const seconds = String(totalSeconds % 60).padStart(2, "0");
-    return this.#transloco.translate("project.duration.minutes", { minutes, seconds });
+    return between(this.#transloco, started, this.project().runEndedAt ?? new Date().toISOString());
   }
 
   /** A timestamp as the reader's own calendar writes it, not as the database stored it. */

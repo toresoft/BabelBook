@@ -1,0 +1,87 @@
+<ol class="phases" *transloco="let t">
+  @for (p of phases(); track p.phase) {
+    <li class="phases__row" [attr.data-testid]="'side-phase-' + p.phase">
+      <span class="phases__rail" aria-hidden="true">
+        @switch (p.state) {
+          @case ("running") {
+            <span class="phases__dot phases__dot--spin loading loading-spinner loading-xs"></span>
+          }
+          @case ("done") {
+            <span class="phases__dot phases__dot--done">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6L9 17l-5-5"></path>
+              </svg>
+            </span>
+          }
+          @case ("failed") {
+            <span class="phases__dot phases__dot--failed">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="3.5" stroke-linecap="round">
+                <path d="M18 6L6 18"></path><path d="M6 6l12 12"></path>
+              </svg>
+            </span>
+          }
+          @case ("paused") {
+            <span class="phases__dot phases__dot--paused"><i></i><i></i></span>
+          }
+          @default {
+            <span class="phases__dot"></span>
+          }
+        }
+        @if (!$last) {
+          <span class="phases__link"></span>
+        }
+      </span>
+
+      <div class="phases__body">
+        <p class="phases__line">
+          <span class="phases__name">{{ t('phase.' + p.phase) }}</span>
+          <span class="phases__meta">
+            @switch (p.state) {
+              @case ("done") {
+                @if (spanOf(p); as span) {
+                  {{ t('phase.doneIn', { duration: span }) }}
+                }
+              }
+              @case ("running") {
+                @if (p.done !== null && p.total !== null) {
+                  {{ p.done }} / {{ p.total }}
+                } @else {
+                  {{ t('phase.running') }}
+                }
+              }
+              @case ("paused") {
+                {{ t('state.paused') }}
+              }
+              @case ("failed") {
+                {{ t('phase.failed') }}
+              }
+              @default {
+                {{ t('phase.waiting') }}
+              }
+            }
+          </span>
+        </p>
+
+        @if (p.state === "running") {
+          @if (p.done !== null && p.total !== null) {
+            <progress class="progress progress-primary phases__bar"
+                      [value]="p.done" [max]="p.total"></progress>
+          } @else {
+            <!-- A bar that moves without claiming progress: nothing here knows
+                 how far along this phase is, and a bar that filled up would be
+                 inventing it. daisyUI animates the indeterminate one itself. -->
+            <progress class="progress progress-primary phases__bar"></progress>
+          }
+        }
+
+        @if (p.state === "failed") {
+          @if (why(p); as reason) {
+            <p class="phases__why">{{ reason }}</p>
+          }
+        }
+      </div>
+    </li>
+  }
+</ol>

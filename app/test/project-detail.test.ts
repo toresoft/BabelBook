@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import { projectDetail } from "../main/projects/detail.ts";
+import { enterState, leaveState } from "../main/run/states.ts";
 import { listUnits } from "../main/units/list.ts";
 
 function seeded(state = "ready") {
@@ -157,6 +158,24 @@ describe("projectDetail", () => {
     // The last one: a project's clock is the run it is in, not the one before.
     expect(found.runStartedAt).toBe("2026-08-30T10:00:00.000Z");
     expect(found.runEndedAt).toBeNull();
+  });
+
+  it("reads phase progress and completion from state history", () => {
+    const db = seeded("done");
+    enterState(db, {
+      projectId: "p1", kind: "phase", name: "translate",
+      enteredAt: "2026-08-30T09:00:00.000Z",
+    });
+    leaveState(db, { projectId: "p1", kind: "phase", outcome: "done" });
+    enterState(db, {
+      projectId: "p1", kind: "project", name: "done",
+      enteredAt: "2026-08-30T10:00:00.000Z",
+    });
+
+    const found = projectDetail(db, "p1")!;
+    expect(found.phases).toHaveLength(5);
+    expect(found.phases[3]).toMatchObject({ phase: "translate", state: "done", done: 1, total: 2 });
+    expect(found.finishedAt).toBe("2026-08-30T10:00:00.000Z");
   });
 });
 
