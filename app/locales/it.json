@@ -99,6 +99,11 @@
     "failed": "errore",
     "doneIn": "fatto in {{duration}}"
   },
+  "alerts": {
+    "failed": "La corsa si è fermata",
+    "overlays": "L'audio non seguirà la traduzione",
+    "noDescription": "Manca la descrizione"
+  },
   "phaseCounts": {
     "analyze": "{{done}} di {{total}}",
     "candidates": "{{done}} di {{total}} campioni",

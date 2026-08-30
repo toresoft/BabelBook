@@ -225,4 +225,44 @@ describe("Side", () => {
     expect(lines[1].textContent).toContain(it_IT.codes["chunk-exhausted"]);
     expect(lines[1].className).toContain("side__log-line--warning");
   });
+
+  it("warns that synchronised reading will not survive the translation", async () => {
+    const { fixture } = mount({ ...detail, hasOverlays: true });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector("[data-testid=alert-overlays]");
+    expect(card).not.toBeNull();
+    expect(card.textContent).toContain(it_IT.overlays.warning);
+  });
+
+  /*
+   * The catalogue holds a sentence for the codes it knows (`codes.*`); an
+   * engine can fail with one it does not, and a raw code on screen beats a
+   * blank card. The fallback is the case worth pinning, because it is the one
+   * nobody writes on purpose.
+   */
+  it("says why the run stopped, and shows the bare code when it has no sentence", async () => {
+    const { fixture } = mount({
+      ...detail,
+      state: "failed",
+      phases: [{
+        phase: "translate", state: "failed", startedAt: null, endedAt: null,
+        done: null, total: null, info: { code: "provider-529" },
+      }],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=alert-failed]").textContent)
+      .toContain("provider-529");
+  });
+
+  it("says nothing when there is nothing to say", async () => {
+    const { fixture } = mount({ ...detail, description: "C'è." });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll("[data-testid^=alert-]")).toHaveLength(0);
+  });
 });

@@ -1,5 +1,5 @@
 import {
-  ChangeDetectionStrategy, Component, effect, inject, input, OnDestroy, output, signal,
+  ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, output, signal,
 } from "@angular/core";
 import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import type { LogLine, ProjectDetail } from "../../../../../shared/dto.js";
@@ -11,6 +11,20 @@ import { ProgressPanel } from "./progress-panel";
 
 /** The event names `primary()` can hand back, and the testid each one carries. */
 const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE: "project-compose" } as const;
+
+/** One card of the things worth knowing before spending. */
+interface AlertCard {
+  kind: "failed" | "overlays" | "description";
+  testid: string;
+  tone: "danger" | "warning" | "muted";
+}
+
+/** The card's title, keyed by catalogue. */
+const ALERT_TITLES: Record<AlertCard["kind"], string> = {
+  failed: "alerts.failed",
+  overlays: "alerts.overlays",
+  description: "alerts.noDescription",
+};
 
 /**
  * The book, beside the work.
@@ -74,6 +88,49 @@ export class Side implements OnDestroy {
   /** True when the machine would accept this event right now. */
   can(action: string): boolean {
     return this.project().actions.includes(action);
+  }
+
+  /**
+   * The cards the column shows before anything is spent on the book: why the
+   * last run stopped, what the translation will not keep, what would help it.
+   *
+   * At most three, each built from a fact the project already holds — a card
+   * that asked the main process a question would be a second screen inside
+   * this one.
+   */
+  readonly alerts = computed<AlertCard[]>(() => {
+    const found = this.project();
+    const cards: AlertCard[] = [];
+    if (found.state === "failed") {
+      cards.push({ kind: "failed", testid: "alert-failed", tone: "danger" });
+    }
+    if (found.hasOverlays) {
+      cards.push({ kind: "overlays", testid: "alert-overlays", tone: "warning" });
+    }
+    if (found.description === null) {
+      cards.push({ kind: "description", testid: "alert-description", tone: "muted" });
+    }
+    return cards;
+  });
+
+  /** The card's title key: the three titles are the only new sentences. */
+  titleOf(card: AlertCard): string {
+    return ALERT_TITLES[card.kind];
+  }
+
+  /** The card's sentence, already in the reader's language. */
+  bodyOf(card: AlertCard): string | null {
+    if (card.kind === "overlays") return this.#transloco.translate("overlays.warning");
+    if (card.kind === "description") return this.#transloco.translate("project.noDescription");
+    const code = this.#failureCode();
+    return code === null ? null : this.#sentence(`codes.${code}`, code);
+  }
+
+  /** The code the failed phase died of, when it left one. */
+  #failureCode(): string | null {
+    const phase = this.project().phases.find((entry) => entry.state === "failed");
+    const code = phase?.info?.["code"];
+    return typeof code === "string" ? code : null;
   }
 
   /** The badge tone the state wears: the colour of what the state means. */

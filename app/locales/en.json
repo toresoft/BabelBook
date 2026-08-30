@@ -99,6 +99,11 @@
     "failed": "failed",
     "doneIn": "done in {{duration}}"
   },
+  "alerts": {
+    "failed": "The run stopped",
+    "overlays": "The audio will not follow the translation",
+    "noDescription": "No description"
+  },
   "phaseCounts": {
     "analyze": "{{done}} of {{total}}",
     "candidates": "{{done}} of {{total}} samples",

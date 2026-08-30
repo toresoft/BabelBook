@@ -15,6 +15,20 @@
 
 .side__status { padding: 0.75rem 1.5rem 0; }
 
+/* The cards of what is worth knowing before anything is spent: the tone is a
+   ground and a border, in the palette the rest of the app already speaks. */
+.side__alerts { display: flex; flex-direction: column; gap: 0.6rem; margin: 0 1.5rem; }
+.side__alert {
+  display: flex; gap: 0.6rem; align-items: flex-start;
+  padding: 0.65rem 0.8rem; border-radius: 6px; border: 1px solid;
+}
+.side__alert--danger { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger); }
+.side__alert--warning { background: var(--warning-soft); border-color: var(--warning-line); color: var(--warning-soft-text); }
+.side__alert--muted { background: var(--surface); border-color: var(--line); color: var(--text-muted); }
+.side__alert-icon { flex: none; margin-top: 0.1rem; }
+.side__alert-title { margin: 0; font-size: 0.78rem; font-weight: 600; }
+.side__alert-body { margin: 0.15rem 0 0; font-size: 0.78rem; line-height: 1.4; overflow-wrap: anywhere; }
+
 /* The one contextual act fills the row; the delete icon beside it takes only
    the room its own glyph needs — an icon, not a second sentence, next to the
    one the column is actually offering. */

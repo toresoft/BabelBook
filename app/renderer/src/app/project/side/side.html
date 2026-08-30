@@ -56,6 +56,38 @@
       </div>
     </dl>
 
+    @if (alerts().length > 0) {
+      <div class="side__alerts">
+        @for (card of alerts(); track card.testid) {
+          <aside class="side__alert side__alert--{{ card.tone }}" [attr.data-testid]="card.testid">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="side__alert-icon">
+              @switch (card.tone) {
+                @case ("danger") {
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 8v4"></path><path d="M12 16h.01"></path>
+                }
+                @case ("warning") {
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+                  <path d="M12 9v4"></path><path d="M12 17h.01"></path>
+                }
+                @default {
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 16v-4"></path><path d="M12 8h.01"></path>
+                }
+              }
+            </svg>
+            <div class="side__alert-text">
+              <p class="side__alert-title">{{ t(titleOf(card)) }}</p>
+              @if (bodyOf(card); as body) {
+                <p class="side__alert-body">{{ body }}</p>
+              }
+            </div>
+          </aside>
+        }
+      </div>
+    }
+
     <div class="side__status">
       <!-- The colour is the same one the library's own shelf uses for this
            state: two screens naming a state in two tones would teach the
