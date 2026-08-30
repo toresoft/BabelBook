@@ -1,7 +1,7 @@
 import {
   ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, signal,
 } from "@angular/core";
-import { RouterLink } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
 import { RUN_PHASES, type ProjectDetail, type RunPhase } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
@@ -81,6 +81,7 @@ export class Project implements OnDestroy {
   readonly liveTokens = signal<{ in: number; out: number; reasoning: number } | null>(null);
 
   #ipc = inject(IpcService);
+  #router = inject(Router);
   #unsubscribe: Array<() => void> = [];
 
   constructor() {
@@ -204,5 +205,10 @@ export class Project implements OnDestroy {
     this.phaseProgress.set(null);
     this.liveTokens.set(null);
     await this.reload();
+  }
+
+  /** The way back, as a button: the trail beside it is the link. */
+  toLibrary(): void {
+    void this.#router.navigate(["/"]);
   }
 }

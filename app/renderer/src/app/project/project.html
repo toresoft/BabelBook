@@ -1,8 +1,20 @@
 <section class="project" data-testid="project" *transloco="let t">
   @if (project(); as found) {
-    <header class="project__head">
-      <a class="project__back" routerLink="/">{{ t('app.library') }}</a>
+    <nav class="crumbs" data-testid="project-crumbs" [attr.aria-label]="t('project.back')">
+      <button type="button" class="btn btn-xs crumbs__back" data-testid="project-back"
+              [attr.aria-label]="t('project.back')" [attr.title]="t('project.back')"
+              (click)="toLibrary()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M14 6l-6 6 6 6"></path>
+        </svg>
+      </button>
+      <a routerLink="/">{{ t('app.library') }}</a>
+      <span class="crumbs__sep">/</span>
+      <span class="crumbs__here" aria-current="page">{{ found.title }}</span>
+    </nav>
 
+    <header class="project__head">
       @if (found.coverPath) {
         <img class="project__cover" [src]="found.coverPath" [alt]="found.title" />
       }

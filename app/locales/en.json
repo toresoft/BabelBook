@@ -42,6 +42,7 @@
     "last": "Last page"
   },
   "project": {
+    "back": "Back to the library",
     "tabs": {
       "overview": "Overview",
       "terms": "Terms",

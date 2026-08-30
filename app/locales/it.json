@@ -42,6 +42,7 @@
     "last": "Ultima pagina"
   },
   "project": {
+    "back": "Torna alla libreria",
     "tabs": {
       "overview": "Panoramica",
       "terms": "Termini",

@@ -345,4 +345,18 @@ describe("Project", () => {
     expect(cost()).toContain("100");
     expect(cost()).not.toContain("999");
   });
+
+  it("names the book in the trail, not only the way back", async () => {
+    const { fixture } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const crumbs = fixture.nativeElement.querySelector("[data-testid=project-crumbs]");
+    expect(crumbs.textContent).toContain(it_IT.app.library);
+    expect(crumbs.textContent).toContain("A Book");
+
+    // The way back is a button with a name for whoever reads instead of looks.
+    const back = fixture.nativeElement.querySelector("[data-testid=project-back]");
+    expect(back.getAttribute("aria-label")).toBe(it_IT.project.back);
+  });
 });
