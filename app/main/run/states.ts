@@ -66,6 +66,8 @@ export function leaveState(db: DatabaseSync, entry: {
   projectId: string;
   kind: StateRecord["kind"];
   outcome: NonNullable<StateRecord["outcome"]>;
+  /** A fact captured before the close was written down, as `enteredAt` is. */
+  leftAt?: string;
   info?: Record<string, unknown>;
 }): void {
   const current = db.prepare(`
@@ -82,7 +84,7 @@ export function leaveState(db: DatabaseSync, entry: {
        SET left_at = ?, outcome = ?, info_json = coalesce(?, info_json)
      WHERE project_id = ? AND kind = ? AND left_at IS NULL
   `).run(
-    now(), entry.outcome, learned, entry.projectId, entry.kind,
+    entry.leftAt ?? now(), entry.outcome, learned, entry.projectId, entry.kind,
   );
 }
 

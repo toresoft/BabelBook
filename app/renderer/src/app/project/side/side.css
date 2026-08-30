@@ -62,6 +62,21 @@
 .side__panel-tab--active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
 .side__panel-body { padding-top: 1rem; }
 
+/* The log reads oldest first, like everything else in the column: a story is
+   told forwards. The severity is the colour — the same warning and danger the
+   rest of the app speaks — and the moment is monospaced, so the sentences
+   line up beside their times instead of dancing with them. */
+.side__log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.side__log-line { display: flex; gap: 0.6rem; align-items: baseline; font-size: 0.78rem; color: var(--text-soft); }
+.side__log-time {
+  flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem; color: var(--text-faint);
+}
+.side__log-text { min-width: 0; overflow-wrap: anywhere; }
+.side__log-line--warning .side__log-text { color: var(--warning); }
+.side__log-line--error .side__log-text { color: var(--danger); }
+.side__log-empty { margin: 0; font-size: 0.8rem; color: var(--text-faint); }
+
 .side__facts { margin: 0 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
 
 /* Each pair reads on one line — label left, value right — the way the design

@@ -25,6 +25,7 @@ import { buildReport } from "./report/build.ts";
 import { projectDetail } from "./projects/detail.ts";
 import { countProjects, listProjects } from "./projects/query.ts";
 import { listUnits } from "./units/list.ts";
+import { runLog } from "./run/log.ts";
 import { enterState } from "./run/states.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
@@ -351,6 +352,8 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       await deps.approveGate(projectId, gate);
       deps.broadcast("project.changed", { id: projectId });
     },
+
+    "run.events": async ({ projectId }) => runLog(deps.db, projectId),
 
     "provider.verify": async (request) => deps.verifyProvider(request),
 

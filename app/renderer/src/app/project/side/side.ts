@@ -1,7 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from "@angular/core";
+import {
+  ChangeDetectionStrategy, Component, effect, inject, input, OnDestroy, output, signal,
+} from "@angular/core";
 import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
-import type { ProjectDetail } from "../../../../../shared/dto.js";
-import { between } from "../../core/durations";
+import type { LogLine, ProjectDetail } from "../../../../../shared/dto.js";
+import { IpcService } from "../../core/ipc.service";
+import { between, spell } from "../../core/durations";
 import { tone as toneOf, type Tone } from "../../core/tones";
 import { Detail } from "../detail";
 import { ProgressPanel } from "./progress-panel";
@@ -27,7 +30,7 @@ const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE
   templateUrl: "./side.html",
   styleUrls: ["../list.css", "./side.css"],
 })
-export class Side {
+export class Side implements OnDestroy {
   readonly project = input.required<ProjectDetail>();
 
   readonly start = output<void>();
@@ -42,7 +45,31 @@ export class Side {
   /** Which of the panel's two cards is showing; the reader's choice, kept where it was made. */
   readonly panel = signal<"progress" | "log">("progress");
 
+  /** The last run's story, read when its tab is the one open. */
+  readonly log = signal<LogLine[]>([]);
+
   #transloco = inject(TranslocoService);
+  #ipc = inject(IpcService);
+  #off: Array<() => void> = [];
+  #beat: ReturnType<typeof setTimeout> | null = null;
+  #pending = false;
+
+  constructor() {
+    // The log is the one thing the column does not arrive with: it asks for
+    // it when its tab opens, and again whenever the project says something
+    // changed — a run reports far oftener than an eye reads.
+    effect(() => {
+      if (this.panel() === "log") void this.#loadLog();
+    });
+    this.#off.push(this.#ipc.on("project.changed", (changed) => {
+      if (changed.id === this.project().id && this.panel() === "log") this.#soon();
+    }));
+  }
+
+  ngOnDestroy(): void {
+    for (const off of this.#off) off();
+    if (this.#beat !== null) clearTimeout(this.#beat);
+  }
 
   /** True when the machine would accept this event right now. */
   can(action: string): boolean {
@@ -110,5 +137,60 @@ export class Side {
   /** A timestamp as the reader's own calendar writes it, not as the database stored it. */
   date(iso: string): string {
     return new Intl.DateTimeFormat(this.#transloco.getActiveLang(), { dateStyle: "medium" }).format(new Date(iso));
+  }
+
+  /** A line's moment as the reader's own clock writes it: the log is a story of today before it is one of dates. */
+  time(iso: string): string {
+    return new Intl.DateTimeFormat(this.#transloco.getActiveLang(), { timeStyle: "medium" }).format(new Date(iso));
+  }
+
+  /**
+   * The sentence a line says, in the reader's language. Event codes carry
+   * their own catalogue entries; state codes are assembled from the phase's
+   * name and how it ended. A code nobody catalogued shows as itself: a bare
+   * word the reader can quote beats a blank line where a reason should be.
+   */
+  phrase(line: LogLine): string {
+    if (line.kind === "event") {
+      return this.#sentence(`codes.${line.code}`, line.code);
+    }
+    const [, subject, outcome = "left"] = line.code.split(".");
+    if (line.code.startsWith("phase.")) {
+      const seconds = line.info?.["durationSeconds"];
+      return this.#transloco.translate(`project.log.phase.${outcome}`, {
+        phase: this.#sentence(`phase.${subject}`, subject),
+        duration: typeof seconds === "number" ? spell(this.#transloco, seconds) : "—",
+      });
+    }
+    return this.#sentence(`state.${subject}`, subject);
+  }
+
+  /** The catalogue's sentence for a key, or the fallback when it has none. */
+  #sentence(key: string, fallback: string): string {
+    const sentence = this.#transloco.translate(key);
+    return sentence === key ? fallback : sentence;
+  }
+
+  async #loadLog(): Promise<void> {
+    this.log.set(await this.#ipc.invoke("run.events", { projectId: this.project().id }));
+  }
+
+  /**
+   * A reload now, and no more than one a second after it — the same breath
+   * the units take, for the same reason: the first message is answered at
+   * once, and whatever arrives during that second by one reload at its end.
+   */
+  #soon(): void {
+    if (this.#beat !== null) {
+      this.#pending = true;
+      return;
+    }
+    void this.#loadLog();
+    this.#beat = setTimeout(() => {
+      this.#beat = null;
+      if (!this.#pending) return;
+      this.#pending = false;
+      this.#soon();
+    }, 1000);
   }
 }

@@ -76,6 +76,16 @@
     "panel": {
       "progress": "Progress",
       "log": "Log"
+    },
+    "log": {
+      "empty": "The log is empty.",
+      "phase": {
+        "done": "Phase completed in {{duration}}: {{phase}}",
+        "failed": "Phase failed: {{phase}}",
+        "paused": "Phase paused: {{phase}}",
+        "cancelled": "Phase cancelled: {{phase}}",
+        "left": "Phase left open: {{phase}}"
+      }
     }
   },
   "phase": {

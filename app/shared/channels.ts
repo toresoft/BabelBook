@@ -1,6 +1,6 @@
 import type {
   CatalogEntry, CatalogState, CreatedProject, CreateProjectRequest, ExclusionGroup, GlossaryView,
-  InvalidationPreview, ProjectSummary,
+  InvalidationPreview, LogLine, ProjectSummary,
   Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset, ReasoningLevel,
   RunPhase, Settings, TermRow,
   TermRule, ProjectDetail, Report, UnitQuery, UnitRow, UpdateProjectRequest, VerifyOutcome, LocalRuntime,
@@ -10,7 +10,7 @@ import type { Bucket } from "./buckets.ts";
 export type {
   CatalogEntry, CatalogState,
   CreatedProject, CreateProjectRequest, ExcludedState, ExclusionGroup, GlossaryTerm, GlossaryView,
-  InvalidationPreview,
+  InvalidationPreview, LogLine,
   ProjectSummary, Provider, ProviderInput, ProviderModel, ProviderPatch, ProviderPreset,
   ReasoningLevel, RunPhase,
   Settings, ProjectDetail, Report, ReportLine, TermRow, TermRule, UnitQuery, UnitRow,
@@ -93,6 +93,8 @@ export interface Invocations {
   "run.compose": { req: { projectId: string }; res: void };
   "run.pause": { req: { projectId: string }; res: void };
   "run.approve": { req: { projectId: string; gate: "terms" | "code" }; res: void };
+  /** The last run's log: the states the project lived through, beside the events its engine reported. */
+  "run.events": { req: { projectId: string }; res: LogLine[] };
   "terms.list": { req: { projectId: string }; res: TermRow[] };
   "terms.decide": {
     req: {
@@ -214,7 +216,7 @@ export const INVOCATIONS = [
   "env.hasKey",
   "projects.list", "projects.counts", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "project.export", "project.get", "units.list",
-  "run.start", "run.compose", "run.pause", "run.approve",
+  "run.start", "run.compose", "run.pause", "run.approve", "run.events",
   "terms.list", "terms.decide", "terms.add", "terms.promote",
   "terms.previewInvalidation", "terms.invalidate",
   "exclusions.list", "exclusions.force", "exclusions.clear",

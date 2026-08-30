@@ -76,6 +76,16 @@
     "panel": {
       "progress": "Avanzamento",
       "log": "Registro"
+    },
+    "log": {
+      "empty": "Il registro è vuoto.",
+      "phase": {
+        "done": "Fase completata in {{duration}}: {{phase}}",
+        "failed": "Fase non riuscita: {{phase}}",
+        "paused": "Fase in pausa: {{phase}}",
+        "cancelled": "Fase annullata: {{phase}}",
+        "left": "Fase rimasta in sospeso: {{phase}}"
+      }
     }
   },
   "phase": {

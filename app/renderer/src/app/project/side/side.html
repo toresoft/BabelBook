@@ -165,7 +165,22 @@
           <bb-progress-panel [phases]="found.phases" />
         </div>
       } @else {
-        <div class="side__panel-body" data-testid="side-panel-log"></div>
+        <div class="side__panel-body" data-testid="side-panel-log">
+          @if (log().length === 0) {
+            <p class="side__log-empty">{{ t('project.log.empty') }}</p>
+          } @else {
+            <ol class="side__log">
+              @for (line of log(); track $index) {
+                <li class="side__log-line"
+                    [class.side__log-line--warning]="line.severity === 'warning'"
+                    [class.side__log-line--error]="line.severity === 'error'">
+                  <time class="side__log-time">{{ time(line.at) }}</time>
+                  <span class="side__log-text">{{ phrase(line) }}</span>
+                </li>
+              }
+            </ol>
+          }
+        </div>
       }
     </section>
 

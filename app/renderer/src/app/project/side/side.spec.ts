@@ -1,7 +1,8 @@
 import { TestBed } from "@angular/core/testing";
 import { describe, expect, it } from "vitest";
 import it_IT from "../../../../../locales/it.json";
-import type { ProjectDetail } from "../../../../../shared/dto.js";
+import type { LogLine, ProjectDetail } from "../../../../../shared/dto.js";
+import { IpcService } from "../../core/ipc.service";
 import { provideI18n } from "../../core/i18n";
 import { Side } from "./side";
 
@@ -45,7 +46,15 @@ function mount(project = detail) {
   // module each time: the first `createComponent` instantiates the testing
   // module, and Angular refuses to configure an instantiated one again.
   TestBed.resetTestingModule();
-  TestBed.configureTestingModule({ imports: [Side], providers: [...provideI18n("it")] });
+  TestBed.configureTestingModule({
+    imports: [Side],
+    providers: [
+      ...provideI18n("it"),
+      // The log asks the main process; here it answers with nothing, and no
+      // listener ever fires.
+      { provide: IpcService, useValue: { invoke: () => Promise.resolve([]), on: () => () => {} } },
+    ],
+  });
   const fixture = TestBed.createComponent(Side);
   fixture.componentRef.setInput("project", project);
   fixture.detectChanges();
@@ -177,5 +186,43 @@ describe("Side", () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector("[data-testid=side-panel-progress]")).toBeNull();
     expect(fixture.nativeElement.querySelector("[data-testid=side-panel-log]")).not.toBeNull();
+  });
+
+  it("tells the run's story: phases, degradations, and how each ended", async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [Side],
+      providers: [
+        ...provideI18n("it"),
+        { provide: IpcService, useValue: {
+          invoke: () => Promise.resolve<LogLine[]>([
+            {
+              at: "2026-08-30T09:02:00.000Z", kind: "state", code: "phase.analyze.done",
+              severity: "info", info: { durationSeconds: 65 },
+            },
+            {
+              at: "2026-08-30T09:03:00.000Z", kind: "event", code: "chunk-exhausted",
+              severity: "warning", info: null,
+            },
+          ]),
+          on: () => () => {},
+        } },
+      ],
+    });
+    const fixture = TestBed.createComponent(Side);
+    fixture.componentRef.setInput("project", detail);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector("[data-testid=side-tab-log]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const lines = fixture.nativeElement.querySelectorAll(".side__log-line");
+    expect(lines).toHaveLength(2);
+    expect(lines[0].textContent).toContain(it_IT.phase.analyze);
+    expect(lines[0].textContent).toContain("1m 05s");
+    expect(lines[1].textContent).toContain(it_IT.codes["chunk-exhausted"]);
+    expect(lines[1].className).toContain("side__log-line--warning");
   });
 });

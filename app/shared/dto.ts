@@ -38,6 +38,16 @@ export interface PhaseProgress {
   info: Record<string, unknown> | null;
 }
 
+/** One line of the run's log: a state the project lived through, or an event its engine reported. */
+export interface LogLine {
+  at: string;
+  kind: "state" | "event";
+  code: string;
+  severity: "info" | "warning" | "error";
+  /** What that line knows about itself: counts, an error code, a duration. */
+  info: Record<string, unknown> | null;
+}
+
 export interface CreateProjectRequest {
   epubPath: string;
   targetLanguage: string;
