@@ -22,6 +22,40 @@
       </div>
     </header>
 
+    <div class="side__rule"></div>
+
+    <dl class="side__facts">
+      <div class="side__fact">
+        <dt class="side__fact-label">{{ t('project.languages') }}</dt>
+        <dd class="side__fact-value">{{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}</dd>
+      </div>
+
+      <div class="side__fact">
+        <dt class="side__fact-label">{{ t('project.provider') }}</dt>
+        <dd class="side__fact-value">
+          @if (found.providerName) {
+            {{ found.providerName }} · {{ found.modelName }}
+          } @else {
+            {{ t('project.noProvider') }}
+          }
+        </dd>
+      </div>
+
+      <div class="side__fact">
+        <dt class="side__fact-label">{{ t('project.description') }}</dt>
+        <dd class="side__fact-value">
+          @if (found.description) {
+            <button type="button" class="btn btn-xs" data-testid="side-description"
+                    (click)="descriptionOpen.set(true)">
+              {{ t('project.readDescription') }}
+            </button>
+          } @else {
+            <span class="table__muted">{{ t('project.noDescriptionShort') }}</span>
+          }
+        </dd>
+      </div>
+    </dl>
+
     <div class="side__status">
       <!-- The colour is the same one the library's own shelf uses for this
            state: two screens naming a state in two tones would teach the
@@ -45,6 +79,15 @@
             {{ t('project.download') }}
           </button>
         </div>
+        @if (showComposeBeside()) {
+          <!-- The retry `done` deliberately still allows: quiet, beside the
+               download rather than instead of it, because the download stays
+               the act worth top billing. -->
+          <button type="button" class="btn btn-sm btn-ghost" data-testid="project-compose"
+                  (click)="compose.emit()">
+            {{ t('library.compose') }}
+          </button>
+        }
       } @else if (primary(); as act) {
         <div class="side__action" data-testid="side-action">
           <button type="button" class="btn btn-primary" [attr.data-testid]="testIdFor(act.event)"
@@ -97,40 +140,6 @@
         <dt class="side__fact-label">{{ t('project.cost') }}</dt>
         <dd class="side__fact-value">
           {{ found.cost !== null ? t('report.money', { amount: found.cost.toFixed(2) }) : '—' }}
-        </dd>
-      </div>
-    </dl>
-
-    <div class="side__rule"></div>
-
-    <dl class="side__facts">
-      <div class="side__fact">
-        <dt class="side__fact-label">{{ t('project.languages') }}</dt>
-        <dd class="side__fact-value">{{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}</dd>
-      </div>
-
-      <div class="side__fact">
-        <dt class="side__fact-label">{{ t('project.provider') }}</dt>
-        <dd class="side__fact-value">
-          @if (found.providerName) {
-            {{ found.providerName }} · {{ found.modelName }}
-          } @else {
-            {{ t('project.noProvider') }}
-          }
-        </dd>
-      </div>
-
-      <div class="side__fact">
-        <dt class="side__fact-label">{{ t('project.description') }}</dt>
-        <dd class="side__fact-value">
-          @if (found.description) {
-            <button type="button" class="btn btn-xs" data-testid="side-description"
-                    (click)="descriptionOpen.set(true)">
-              {{ t('project.readDescription') }}
-            </button>
-          } @else {
-            <span class="table__muted">{{ t('project.noDescriptionShort') }}</span>
-          }
         </dd>
       </div>
     </dl>

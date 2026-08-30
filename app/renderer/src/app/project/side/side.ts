@@ -1,20 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, input, output, signal } from "@angular/core";
 import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import type { ProjectDetail } from "../../../../../shared/dto.js";
+import { tone as toneOf, type Tone } from "../../core/tones";
 import { Detail } from "../detail";
-
-/** The daisyUI tone a state's badge wears — the same rule the library's tiles follow. */
-type Tone = "primary" | "success" | "error" | "warning" | "neutral";
-
-const TONES: Record<string, Tone> = {
-  ready: "primary",
-  running: "primary",
-  composing: "primary",
-  done: "success",
-  failed: "error",
-  "waiting-terms": "warning",
-  "waiting-code": "warning",
-};
 
 /** The event names `primary()` can hand back, and the testid each one carries. */
 const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE: "project-compose" } as const;
@@ -58,7 +46,7 @@ export class Side {
 
   /** The badge tone the state wears: the colour of what the state means. */
   tone(): Tone {
-    return TONES[this.project().state] ?? "neutral";
+    return toneOf(this.project().state);
   }
 
   /**
@@ -76,13 +64,21 @@ export class Side {
   }
 
   /**
-   * Once the book is downloadable, that overtakes composing it again as the
-   * one act worth top billing: the file that already exists is more useful
-   * than the offer to make another one.
+   * Once the book is downloadable, that is the act worth top billing: the
+   * file that already exists is more useful than the offer to make another
+   * one. It does not, though, take composing off the column — `done` is not
+   * final, and `COMPOSE` is the retry the machine deliberately still allows
+   * (see `project.machine.ts`'s `done` state). When both apply, `showComposeBeside()`
+   * says so, and the compose button stays, small, next to the download.
    */
   isDownloadable(): boolean {
     const found = this.project();
     return found.state === "done" && found.outputPath !== null;
+  }
+
+  /** True when composing again belongs beside the download, not instead of it. */
+  showComposeBeside(): boolean {
+    return this.isDownloadable() && this.primary()?.event === "COMPOSE";
   }
 
   /** The testid the event's own button carries, so the gates and the live run keep clicking it by name. */
@@ -96,14 +92,22 @@ export class Side {
     else this.compose.emit();
   }
 
-  /** How long the last run has been going, or went. Null when none has ever run. */
+  /**
+   * How long the last run has been going, or went. Null when none has ever
+   * run. Built through the catalogue rather than with the letters `m`/`s` in
+   * the code: Italian and English agree on those symbols today, which is not
+   * a reason to assume every language will.
+   */
   elapsed(): string | null {
     const started = this.project().runStartedAt;
     if (started === null) return null;
     const end = this.project().runEndedAt ?? new Date().toISOString();
-    const seconds = Math.max(0, Math.round((Date.parse(end) - Date.parse(started)) / 1000));
-    const minutes = Math.floor(seconds / 60);
-    return minutes === 0 ? `${seconds}s` : `${minutes}m ${String(seconds % 60).padStart(2, "0")}s`;
+    const totalSeconds = Math.max(0, Math.round((Date.parse(end) - Date.parse(started)) / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    if (minutes === 0) return this.#transloco.translate("project.duration.seconds", { seconds: totalSeconds });
+
+    const seconds = String(totalSeconds % 60).padStart(2, "0");
+    return this.#transloco.translate("project.duration.minutes", { minutes, seconds });
   }
 
   /** A timestamp as the reader's own calendar writes it, not as the database stored it. */

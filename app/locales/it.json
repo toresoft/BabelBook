@@ -68,7 +68,11 @@
     "createdOn": "Creato il",
     "elapsed": "Esecuzione",
     "endedOn": "Concluso il",
-    "tokens": "Token"
+    "tokens": "Token",
+    "duration": {
+      "minutes": "{{minutes}}m {{seconds}}s",
+      "seconds": "{{seconds}}s"
+    }
   },
   "phase": {
     "analyze": "Analisi del libro",

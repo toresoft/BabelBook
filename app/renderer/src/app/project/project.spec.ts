@@ -108,6 +108,33 @@ describe("Project", () => {
     expect(invoke).toHaveBeenCalledWith("run.compose", { projectId: "p1" });
   });
 
+  /**
+   * `done` is not final — `COMPOSE` is the retry the machine deliberately
+   * still allows — so a book that already has an EPUB must not lose the way
+   * back to composing it again. The download just outranks it for top
+   * billing: both stay reachable.
+   */
+  it("keeps composing reachable beside the download, once there is one", async () => {
+    const { fixture, invoke } = mount(bridge({
+      ...detail, state: "done", actions: ["COMPOSE"], outputPath: "/tmp/book.epub",
+    }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const download = fixture.nativeElement.querySelector("[data-testid=side-download]");
+    const compose = fixture.nativeElement.querySelector("[data-testid=project-compose]");
+    expect(download).not.toBeNull();
+    expect(compose).not.toBeNull();
+
+    download.click();
+    await fixture.whenStable();
+    expect(invoke).toHaveBeenCalledWith("file.open", { path: "/tmp/book.epub" });
+
+    compose.click();
+    await fixture.whenStable();
+    expect(invoke).toHaveBeenCalledWith("run.compose", { projectId: "p1" });
+  });
+
   it("offers nothing when the machine allows nothing", async () => {
     const { fixture } = mount(bridge({ ...detail, state: "composing", actions: [] }));
     await fixture.whenStable();

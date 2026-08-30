@@ -7,24 +7,7 @@ import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import { isBucket } from "../../../../shared/buckets.js";
 import type { ProjectSummary } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
-
-/** The daisyUI tone a state's badge wears. */
-type Tone = "primary" | "success" | "error" | "warning" | "neutral";
-
-/*
- * The state is seen before it is read: the tone is the colour of what the
- * state means, and every state that asks nothing of the user keeps the
- * neutral line.
- */
-const TONES: Record<string, Tone> = {
-  ready: "primary",
-  running: "primary",
-  composing: "primary",
-  done: "success",
-  failed: "error",
-  "waiting-terms": "warning",
-  "waiting-code": "warning",
-};
+import { tone as toneOf, type Tone } from "../core/tones";
 
 @Component({
   selector: "bb-library",
@@ -106,7 +89,7 @@ export class Library implements OnDestroy {
 
   /** The badge tone the state wears: the colour of what the state means. */
   tone(state: string): Tone {
-    return TONES[state] ?? "neutral";
+    return toneOf(state);
   }
 
   /** Start and resume are the same command: the machine decides which is lawful. */

@@ -88,4 +88,55 @@ describe("Side", () => {
     expect(remove.className).not.toContain("btn-error");
     expect(remove.getAttribute("aria-label")).toBe(it_IT.library.delete);
   });
+
+  /**
+   * The duration is built from the catalogue, not from `m`/`s` written into
+   * the code: a language that spells its minutes differently changes only
+   * the two strings below.
+   */
+  it("spells the run's duration from the catalogue, not from letters in the code", async () => {
+    const { fixture } = mount({
+      ...detail, runStartedAt: "2026-08-30T09:00:00.000Z", runEndedAt: "2026-08-30T09:01:05.000Z",
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const withMinutes = it_IT.project.duration.minutes.replace("{{minutes}}", "1").replace("{{seconds}}", "05");
+    expect(fixture.nativeElement.querySelector("[data-testid=side-meta]").textContent).toContain(withMinutes);
+
+    const { fixture: brief } = mount({
+      ...detail, runStartedAt: "2026-08-30T09:00:00.000Z", runEndedAt: "2026-08-30T09:00:07.000Z",
+    });
+    await brief.whenStable();
+    brief.detectChanges();
+
+    const secondsOnly = it_IT.project.duration.seconds.replace("{{seconds}}", "7");
+    expect(brief.nativeElement.querySelector("[data-testid=side-meta]").textContent).toContain(secondsOnly);
+  });
+
+  /**
+   * Production break: the download outranking `COMPOSE` in `primary()` left
+   * a finished book with no way to compose it again. `done` is not final.
+   */
+  it("keeps composing reachable beside the download, once there is one", async () => {
+    const { fixture } = mount({
+      ...detail, state: "done", actions: ["COMPOSE"], outputPath: "/tmp/book.epub",
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=side-download]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=project-compose]")).not.toBeNull();
+  });
+
+  it("offers only the download when the machine has nothing left to retry", async () => {
+    const { fixture } = mount({
+      ...detail, state: "done", actions: [], outputPath: "/tmp/book.epub",
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=side-download]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=project-compose]")).toBeNull();
+  });
 });
