@@ -1,21 +1,27 @@
 <aside class="side" data-testid="side" *transloco="let t">
   @if (project(); as found) {
+    <!-- The state badge and the acts below still belong to the header Task 2
+         left here: Task 4 rebuilds them as one contextual act plus a delete
+         icon. Until then the column keeps translating and pausing books. -->
     <header class="project__head">
       @if (found.coverPath) {
-        <img class="project__cover" [src]="found.coverPath" [alt]="found.title" />
+        <img class="side__cover" [src]="found.coverPath" [alt]="found.title" />
+      } @else {
+        <div class="side__cover side__cover--empty">{{ t('library.noCover') }}</div>
       }
 
       <div class="project__identity">
-        <h1>{{ found.title }}</h1>
+        <h1 class="side__title" [attr.title]="found.title">{{ found.title }}</h1>
         @if (found.author) {
           <p class="project__author">{{ found.author }}</p>
         }
-        <p class="project__languages">
-          {{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}
-          <span class="project__state" [attr.data-testid]="'state-' + found.state">
-            {{ t('state.' + found.state) }}
-          </span>
-        </p>
+
+        <div class="side__chips">
+          <span class="badge badge-outline badge-sm">{{ t('layout.' + found.layout) }}</span>
+          @if (found.hasOverlays) {
+            <span class="badge badge-outline badge-sm">{{ t('overlays.present') }}</span>
+          }
+        </div>
       </div>
 
       <div class="project__actions">
@@ -41,5 +47,45 @@
         }
       </div>
     </header>
+
+    <div class="side__rule"></div>
+
+    <dl class="side__facts">
+      <div class="side__fact">
+        <dt class="detail__label">{{ t('project.languages') }}</dt>
+        <dd class="detail__text">{{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}</dd>
+      </div>
+
+      <div class="side__fact">
+        <dt class="detail__label">{{ t('project.provider') }}</dt>
+        <dd class="detail__text">
+          @if (found.providerName) {
+            {{ found.providerName }} · {{ found.modelName }}
+          } @else {
+            {{ t('project.noProvider') }}
+          }
+        </dd>
+      </div>
+
+      <div class="side__fact">
+        <dt class="detail__label">{{ t('project.description') }}</dt>
+        <dd class="detail__text">
+          @if (found.description) {
+            <button type="button" class="btn btn-xs" data-testid="side-description"
+                    (click)="descriptionOpen.set(true)">
+              {{ t('project.readDescription') }}
+            </button>
+          } @else {
+            <span class="table__muted">{{ t('project.noDescriptionShort') }}</span>
+          }
+        </dd>
+      </div>
+    </dl>
+
+    @if (descriptionOpen()) {
+      <bb-detail [title]="t('project.descriptionTitle')" (closed)="descriptionOpen.set(false)">
+        <p class="detail__text">{{ found.description }}</p>
+      </bb-detail>
+    }
   }
 </aside>

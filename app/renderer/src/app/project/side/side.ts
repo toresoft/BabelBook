@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, input, output } from "@angular/core";
+import { ChangeDetectionStrategy, Component, input, output, signal } from "@angular/core";
 import { TranslocoDirective } from "@jsverse/transloco";
 import type { ProjectDetail } from "../../../../../shared/dto.js";
+import { Detail } from "../detail";
 
 /**
  * The book, beside the work.
@@ -15,10 +16,10 @@ import type { ProjectDetail } from "../../../../../shared/dto.js";
 @Component({
   selector: "bb-side",
   standalone: true,
-  imports: [TranslocoDirective],
+  imports: [Detail, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./side.html",
-  styleUrl: "./side.css",
+  styleUrls: ["../list.css", "./side.css"],
 })
 export class Side {
   readonly project = input.required<ProjectDetail>();
@@ -27,6 +28,9 @@ export class Side {
   readonly pause = output<void>();
   readonly compose = output<void>();
   readonly remove = output<void>();
+
+  /** Whether the description dialog is open; the description itself stays on `project()`. */
+  readonly descriptionOpen = signal(false);
 
   /** True when the machine would accept this event right now. */
   can(action: string): boolean {

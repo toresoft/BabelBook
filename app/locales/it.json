@@ -54,6 +54,13 @@
     "cost": "Speso finora",
     "layout": "Impaginazione",
     "fixedLayout": "Impaginazione fissa: il testo tradotto non si riadatta e può traboccare dalla pagina.",
+    "languages": "Lingue",
+    "provider": "Provider",
+    "description": "Descrizione",
+    "readDescription": "Leggi",
+    "noDescriptionShort": "assente",
+    "descriptionTitle": "Descrizione del libro",
+    "noProvider": "nessuno",
     "gone": "Questo progetto non esiste più.",
     "phaseStep": "Fase {{step}} di {{total}}",
     "translated": "Tradotte {{done}} di {{total}} unità del libro"
@@ -402,7 +409,8 @@
     "warning": "Impaginazione fissa: il testo tradotto non si riadatta, e può traboccare dalla pagina. {{count}} documenti su {{total}}."
   },
   "overlays": {
-    "warning": "Questo libro ha la lettura sincronizzata. L'EPUB tradotto non l'avrà: l'audio resterebbe nella lingua di partenza."
+    "warning": "Questo libro ha la lettura sincronizzata. L'EPUB tradotto non l'avrà: l'audio resterebbe nella lingua di partenza.",
+    "present": "Lettura sincronizzata"
   },
   "tray": {
     "translating": "{{title}} — {{done}} di {{total}} unità",

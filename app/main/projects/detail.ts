@@ -18,6 +18,8 @@ interface DetailRow {
   has_overlays: number;
   provider_id: string | null;
   model_id: string | null;
+  provider_name: string | null;
+  model_name: string | null;
   created_at: string;
   total: number;
   done: number;
@@ -64,7 +66,15 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
            (SELECT json_extract(c.result_json, '$.outputPath')
               FROM project_phase_result c
              WHERE c.project_id = p.id AND c.phase = 'compose'
-             ORDER BY c.created_at DESC LIMIT 1) AS output_path
+             ORDER BY c.created_at DESC LIMIT 1) AS output_path,
+           (SELECT pr.name FROM provider pr WHERE pr.id = p.provider_id) AS provider_name,
+           -- The catalogue's display name when it has one, the model's own id
+           -- when it has not: an id is worse than a name and better than blank.
+           coalesce(
+             (SELECT pm.display_name FROM provider_model pm
+               WHERE pm.provider_id = p.provider_id AND pm.model_id = p.model_id),
+             p.model_id
+           ) AS model_name
       FROM project p
      WHERE p.id = ?
   `).get(projectId) as unknown as DetailRow | undefined;
@@ -85,6 +95,8 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
     hasOverlays: row.has_overlays === 1,
     providerId: row.provider_id,
     modelId: row.model_id,
+    providerName: row.provider_name,
+    modelName: row.model_name,
     createdAt: row.created_at,
     // Asked of the machine, never derived from the state name.
     actions: makeMachineHost(db, projectId, {

@@ -54,6 +54,13 @@
     "cost": "Spent so far",
     "layout": "Layout",
     "fixedLayout": "Fixed layout: translated text does not reflow and may overflow the page.",
+    "languages": "Languages",
+    "provider": "Provider",
+    "description": "Description",
+    "readDescription": "Read",
+    "noDescriptionShort": "none",
+    "descriptionTitle": "The book's description",
+    "noProvider": "none",
     "gone": "This project no longer exists.",
     "phaseStep": "Phase {{step}} of {{total}}",
     "translated": "{{done}} of the book's {{total}} units translated"
@@ -402,7 +409,8 @@
     "warning": "Fixed layout: translated text does not reflow and may overflow the page. {{count}} of {{total}} documents."
   },
   "overlays": {
-    "warning": "This book has read-aloud. The translated EPUB will not: the audio would stay in the source language."
+    "warning": "This book has read-aloud. The translated EPUB will not: the audio would stay in the source language.",
+    "present": "Synchronised reading"
   },
   "tray": {
     "translating": "{{title}} — {{done}} of {{total}} units",

@@ -92,6 +92,9 @@ export interface ProjectDetail extends ProjectSummary {
   hasOverlays: boolean;
   providerId: string | null;
   modelId: string | null;
+  /** The provider's and the model's names, as a reader knows them. */
+  providerName: string | null;
+  modelName: string | null;
   actions: string[];
   tokens: { in: number; out: number; reasoning: number };
   /**

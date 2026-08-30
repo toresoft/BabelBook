@@ -21,6 +21,8 @@ const detail: ProjectDetail = {
   hasOverlays: false,
   providerId: null,
   modelId: null,
+  providerName: null,
+  modelName: null,
   actions: ["START"],
   tokens: { in: 0, out: 0, reasoning: 0 },
   cost: null,

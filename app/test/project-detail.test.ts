@@ -120,6 +120,28 @@ describe("projectDetail", () => {
     const detail = projectDetail(db, "p1")!;
     expect(detail.tokens).toEqual({ in: 820, out: 330, reasoning: 8 });
   });
+
+  it("names the provider and the model, not their identifiers", () => {
+    const db = seeded();
+    db.prepare("INSERT INTO provider (id, name, route) VALUES ('pr1', 'Anthropic', 'anthropic')").run();
+    db.prepare(`
+      INSERT INTO provider_model (id, provider_id, model_id, display_name)
+      VALUES ('m1', 'pr1', 'claude-opus-5', 'Claude Opus 5')
+    `).run();
+    db.prepare("UPDATE project SET provider_id = 'pr1', model_id = 'claude-opus-5' WHERE id = 'p1'").run();
+
+    const found = projectDetail(db, "p1")!;
+    expect(found.providerName).toBe("Anthropic");
+    expect(found.modelName).toBe("Claude Opus 5");
+  });
+
+  it("falls back to the model's own id when the catalogue never named it", () => {
+    const db = seeded();
+    db.prepare("INSERT INTO provider (id, name, route) VALUES ('pr1', 'Anthropic', 'anthropic')").run();
+    db.prepare("UPDATE project SET provider_id = 'pr1', model_id = 'claude-opus-5' WHERE id = 'p1'").run();
+
+    expect(projectDetail(db, "p1")!.modelName).toBe("claude-opus-5");
+  });
 });
 
 describe("listUnits", () => {

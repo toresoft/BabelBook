@@ -10,9 +10,34 @@
 }
 
 .project__head { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; padding: 1.5rem; }
-.project__cover { width: 5rem; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
 .project__identity { flex: 1; min-width: 14rem; }
-.project__identity h1 { margin: 0; font-size: 1.2rem; }
-.project__author, .project__languages { color: var(--text-muted); font-size: 0.85rem; margin: 0.15rem 0 0; }
-.project__state { margin-left: 0.6rem; }
+.project__author { color: var(--text-muted); font-size: 0.85rem; margin: 0.15rem 0 0; }
 .project__actions { display: flex; gap: 0.5rem; }
+
+/* The cover carries its own shadow — it sits on the panel's tinted ground,
+   not on a card, so it needs the lift a plain border would not give it. */
+.side__cover {
+  width: 5rem; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 6px;
+  box-shadow: var(--rest);
+}
+.side__cover--empty {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  padding: 0.4rem; border: 1px solid var(--line); background: var(--surface);
+  color: var(--text-faint); font-size: 0.68rem;
+}
+
+.side__title {
+  margin: 0; font-size: 1.2rem; line-height: 1.3;
+  /* Three lines, then an ellipsis: a long title fills the column instead of
+     pushing the rest of it off screen. `[attr.title]` carries the whole word
+     for whoever needs it. */
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.side__chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+
+.side__rule { border-top: 1px solid var(--line); margin: 0 1.5rem 1.5rem; }
+
+.side__facts { margin: 0 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.side__fact dt { margin: 0; }
+.side__fact dd { margin: 0.2rem 0 0; }
