@@ -51,16 +51,8 @@ bb-side { flex: 1 1 20rem; min-width: 16.5rem; max-width: 28.75rem; min-height: 
 }
 /* A tab is a component of its own, and its host is the link in the chain that
    carries the panel's height down to the list inside it. Named one by one: the
-   overview and the report are read from the top and sized by what they say, and
-   stretching them spreads their few lines over the whole window. */
+   report is read from the top and sized by what it says, and
+   stretching it spreads its few lines over the whole window. */
 .project__panel > bb-terms,
 .project__panel > bb-exclusions,
 .project__panel > bb-units { flex: 1; min-height: 0; }
-
-.overview { display: grid; gap: 0.6rem; }
-.overview__description { margin: 0; font-size: 0.9rem; }
-.overview__none { margin: 0; color: var(--text-muted); font-size: 0.85rem; }
-.overview__facts { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 0; }
-.overview__facts dt { color: var(--text-muted); font-size: 0.78rem; }
-.overview__facts dd { margin: 0; font-size: 0.9rem; }
-.overview__warning { color: var(--warning); font-size: 0.85rem; margin: 0; }

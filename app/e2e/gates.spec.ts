@@ -71,7 +71,7 @@ test("a person walks the book through both gates", async () => {
   await expect(tile).toBeVisible();
   await tile.locator("a.tile__title").click();
   await expect(window.getByTestId("project")).toBeVisible();
-  await expect(window.getByTestId("tab-overview")).toBeVisible();
+  await expect(window.getByTestId("tab-terms")).toBeVisible();
 
   // The button exists because the machine says START is allowed.
   await window.getByTestId("project-start").click();

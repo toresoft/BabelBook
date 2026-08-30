@@ -14,7 +14,7 @@ const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE
 
 /** One card of the things worth knowing before spending. */
 interface AlertCard {
-  kind: "failed" | "overlays" | "description";
+  kind: "failed" | "layout" | "overlays" | "description";
   testid: string;
   tone: "danger" | "warning" | "muted";
 }
@@ -22,6 +22,7 @@ interface AlertCard {
 /** The card's title, keyed by catalogue. */
 const ALERT_TITLES: Record<AlertCard["kind"], string> = {
   failed: "alerts.failed",
+  layout: "alerts.layout",
   overlays: "alerts.overlays",
   description: "alerts.noDescription",
 };
@@ -104,6 +105,9 @@ export class Side implements OnDestroy {
     if (found.state === "failed") {
       cards.push({ kind: "failed", testid: "alert-failed", tone: "danger" });
     }
+    if (found.layout !== "reflowable") {
+      cards.push({ kind: "layout", testid: "alert-layout", tone: "warning" });
+    }
     if (found.hasOverlays) {
       cards.push({ kind: "overlays", testid: "alert-overlays", tone: "warning" });
     }
@@ -113,13 +117,14 @@ export class Side implements OnDestroy {
     return cards;
   });
 
-  /** The card's title key: the three titles are the only new sentences. */
+  /** The card's title key: the titles are the only new sentences. */
   titleOf(card: AlertCard): string {
     return ALERT_TITLES[card.kind];
   }
 
   /** The card's sentence, already in the reader's language. */
   bodyOf(card: AlertCard): string | null {
+    if (card.kind === "layout") return this.#transloco.translate("project.fixedLayout");
     if (card.kind === "overlays") return this.#transloco.translate("overlays.warning");
     if (card.kind === "description") return this.#transloco.translate("project.noDescription");
     const code = this.#failureCode();

@@ -44,7 +44,6 @@
   "project": {
     "back": "Back to the library",
     "tabs": {
-      "overview": "Overview",
       "terms": "Terms",
       "exclusions": "Exclusions",
       "units": "Units",
@@ -52,7 +51,6 @@
     },
     "noDescription": "No description. Adding one helps the translation.",
     "cost": "Spent so far",
-    "layout": "Layout",
     "fixedLayout": "Fixed layout: translated text does not reflow and may overflow the page.",
     "languages": "Languages",
     "provider": "Provider",
@@ -101,6 +99,7 @@
   },
   "alerts": {
     "failed": "The run stopped",
+    "layout": "Fixed layout",
     "overlays": "The audio will not follow the translation",
     "noDescription": "No description"
   },

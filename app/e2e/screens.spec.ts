@@ -139,7 +139,9 @@ async function home(window: Page): Promise<void> {
 const openBook = async (window: Page): Promise<void> => {
   await home(window);
   await window.locator("a[data-testid^='open-']").first().click();
-  await window.getByTestId("overview").waitFor();
+  // The tab a book opens on: the overview is gone, and its facts live in the
+  // column beside the work instead.
+  await window.getByTestId("tab-terms").waitFor();
 };
 
 const tab = (name: string, panel: string) => async (window: Page): Promise<void> => {
@@ -251,7 +253,6 @@ test("every screen, in both themes, saying what it must", async () => {
   const screens: Array<{ name: string; open: (window: Page) => Promise<void> }> = [
     { name: "library", open: home },
     { name: "library-to-approve", open: bucket("to-approve") },
-    { name: "project-overview", open: openBook },
     { name: "project-units", open: tab("units", "units") },
     { name: "project-terms", open: tab("terms", "terms") },
     { name: "project-exclusions", open: tab("exclusions", "exclusions") },

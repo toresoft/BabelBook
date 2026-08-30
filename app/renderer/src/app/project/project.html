@@ -77,44 +77,6 @@
 
       <div class="project__panel">
         @switch (tab()) {
-          @case ("overview") {
-            <section class="overview" data-testid="overview">
-              @if (found.description) {
-                <p class="overview__description">{{ found.description }}</p>
-              } @else {
-                <p class="overview__none">{{ t('project.noDescription') }}</p>
-              }
-
-              <dl class="overview__facts">
-                <div>
-                  <dt>{{ t('project.cost') }}</dt>
-                  <dd data-testid="project-cost">
-                    {{ t('report.tokens', {
-                      tokensIn: tokens(found).in, tokensOut: tokens(found).out
-                    }) }}
-                    @if (found.cost !== null) {
-                      · {{ t('report.money', { amount: found.cost.toFixed(2) }) }}
-                    }
-                  </dd>
-                </div>
-                <div>
-                  <dt>{{ t('project.layout') }}</dt>
-                  <dd>{{ t('layout.' + found.layout) }}</dd>
-                </div>
-              </dl>
-
-              @if (found.layout !== 'reflowable') {
-                <p class="overview__warning" data-testid="layout-warning">
-                  {{ t('project.fixedLayout') }}
-                </p>
-              }
-              @if (found.hasOverlays) {
-                <p class="overview__warning" data-testid="overlay-warning">
-                  {{ t('overlays.warning') }}
-                </p>
-              }
-            </section>
-          }
           @case ("terms") { <bb-terms [projectId]="found.id" /> }
           @case ("exclusions") { <bb-exclusions [projectId]="found.id" /> }
           @case ("units") { <bb-units [projectId]="found.id" /> }

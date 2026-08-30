@@ -168,11 +168,13 @@ describe("Project", () => {
     expect(fixture.componentInstance.tab()).toBe("exclusions");
   });
 
-  it("stays on the overview when no gate is open", async () => {
+  it("opens on the terms when no gate is open, and offers no overview to open", async () => {
     const { fixture } = mount();
     await fixture.whenStable();
+    fixture.detectChanges();
 
-    expect(fixture.componentInstance.tab()).toBe("overview");
+    expect(fixture.componentInstance.tab()).toBe("terms");
+    expect(fixture.nativeElement.querySelector("[data-testid=tab-overview]")).toBeNull();
   });
 
   it("warns about a fixed layout and about overlays, on the book's own screen", async () => {
@@ -180,8 +182,10 @@ describe("Project", () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector("[data-testid=layout-warning]")).not.toBeNull();
-    expect(fixture.nativeElement.querySelector("[data-testid=overlay-warning]")).not.toBeNull();
+    // The cards the column carries: what the overview used to say, said where
+    // the work happens instead of a tab of its own.
+    expect(fixture.nativeElement.querySelector("[data-testid=alert-layout]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=alert-overlays]")).not.toBeNull();
   });
 
   it("says the project is gone rather than rendering an empty screen", async () => {
@@ -198,7 +202,7 @@ describe("Project", () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain((catalogue.project["tabs"] as Record<string, string>)["overview"]);
+    expect(text).toContain((catalogue.project["tabs"] as Record<string, string>)["terms"]);
     expect(text).not.toContain("project.");
   });
 
@@ -367,22 +371,23 @@ describe("Project", () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const cost = () => fixture.nativeElement.querySelector("[data-testid=project-cost]").textContent as string;
-    expect(cost()).toContain("100");
+    // The column's token row is where the spend is read now.
+    const tokens = () => fixture.nativeElement.querySelector("[data-testid=side-tokens]").textContent as string;
+    expect(tokens()).toContain("100");
 
     bus.emit("run.usage", { projectId: "p1", tokensIn: 999, tokensOut: 888, reasoningTokens: 3 });
     fixture.detectChanges();
-    expect(cost()).toContain("999");
-    expect(cost()).toContain("888");
-    expect(cost()).not.toContain("100");
+    expect(tokens()).toContain("999");
+    expect(tokens()).toContain("888");
+    expect(tokens()).not.toContain("100");
 
     current = { ...current, state: "done" };
     bus.emit("project.changed", { id: "p1" });
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(cost()).toContain("100");
-    expect(cost()).not.toContain("999");
+    expect(tokens()).toContain("100");
+    expect(tokens()).not.toContain("999");
   });
 
   it("names the book in the trail, not only the way back", async () => {

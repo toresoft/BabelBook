@@ -44,7 +44,6 @@
   "project": {
     "back": "Torna alla libreria",
     "tabs": {
-      "overview": "Panoramica",
       "terms": "Termini",
       "exclusions": "Esclusioni",
       "units": "Unità",
@@ -52,7 +51,6 @@
     },
     "noDescription": "Nessuna descrizione. Aggiungerne una aiuta la traduzione.",
     "cost": "Speso finora",
-    "layout": "Impaginazione",
     "fixedLayout": "Impaginazione fissa: il testo tradotto non si riadatta e può traboccare dalla pagina.",
     "languages": "Lingue",
     "provider": "Provider",
@@ -101,6 +99,7 @@
   },
   "alerts": {
     "failed": "La corsa si è fermata",
+    "layout": "Impaginazione fissa",
     "overlays": "L'audio non seguirà la traduzione",
     "noDescription": "Manca la descrizione"
   },

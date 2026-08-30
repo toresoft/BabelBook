@@ -11,7 +11,7 @@ import { Side } from "./side/side";
 import { Terms } from "./terms/terms";
 import { Units } from "./units/units";
 
-const TABS = ["overview", "terms", "exclusions", "units", "report"] as const;
+const TABS = ["terms", "exclusions", "units", "report"] as const;
 type Tab = (typeof TABS)[number];
 
 /**
@@ -35,7 +35,7 @@ export class Project implements OnDestroy {
   readonly tabs = TABS;
 
   readonly project = signal<ProjectDetail | null>(null);
-  readonly tab = signal<Tab>("overview");
+  readonly tab = signal<Tab>("terms");
   readonly phase = signal<string | null>(null);
 
   /**
@@ -74,13 +74,6 @@ export class Project implements OnDestroy {
     return running.phase === this.currentPhase() ? running : null;
   });
 
-  /**
-   * Live spend, from `run.usage`. It overrides `found.tokens` only while the
-   * run is alive; once reloaded state says the run is over, the database row
-   * is the truth again and this goes back to null.
-   */
-  readonly liveTokens = signal<{ in: number; out: number; reasoning: number } | null>(null);
-
   #ipc = inject(IpcService);
   #router = inject(Router);
   #unsubscribe: Array<() => void> = [];
@@ -112,9 +105,15 @@ export class Project implements OnDestroy {
       }
       this.phaseProgress.set({ phase: progress.phase, done: progress.done, total: progress.total });
     }));
+    // The live spend, written straight into the book the column reads: the
+    // token row stays current while the run is alive, and the next reload
+    // restates it from the database once state says the run is over.
     this.#unsubscribe.push(this.#ipc.on("run.usage", (usage) => {
       if (usage.projectId !== this.id()) return;
-      this.liveTokens.set({ in: usage.tokensIn, out: usage.tokensOut, reasoning: usage.reasoningTokens });
+      this.project.update((found) => found === null ? found : {
+        ...found,
+        tokens: { in: usage.tokensIn, out: usage.tokensOut, reasoning: usage.reasoningTokens },
+      });
     }));
   }
 
@@ -132,7 +131,6 @@ export class Project implements OnDestroy {
     if (found?.state !== "running") {
       this.phase.set(null);
       this.phaseProgress.set(null);
-      this.liveTokens.set(null);
     }
 
     // A gate is where the user is needed, so that is where they are put.
@@ -175,11 +173,6 @@ export class Project implements OnDestroy {
     return Math.round((this.phaseStep(phase) / this.phaseCount) * 100);
   }
 
-  /** The live spend while a run is going, the database's own answer otherwise. */
-  tokens(found: ProjectDetail): { in: number; out: number; reasoning: number } {
-    return this.liveTokens() ?? found.tokens;
-  }
-
   async start(): Promise<void> {
     await this.#ipc.invoke("run.start", { projectId: this.id() });
     await this.reload();
@@ -206,7 +199,6 @@ export class Project implements OnDestroy {
     await this.#ipc.invoke("run.pause", { projectId: this.id() });
     this.phase.set(null);
     this.phaseProgress.set(null);
-    this.liveTokens.set(null);
     await this.reload();
   }
 
