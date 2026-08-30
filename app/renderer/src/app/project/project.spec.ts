@@ -25,6 +25,7 @@ const detail: ProjectDetail = {
   tokens: { in: 0, out: 0, reasoning: 0 },
   cost: null,
   createdAt: "2026-08-24",
+  outputPath: null,
 };
 
 function bridge(project: ProjectDetail | null = detail) {

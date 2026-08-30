@@ -74,6 +74,8 @@ export interface ProjectSummary {
   progress: { done: number; total: number };
   layout: LayoutKind;
   createdAt: string;
+  /** The EPUB the last composition wrote, when there is one. */
+  outputPath: string | null;
 }
 
 /**

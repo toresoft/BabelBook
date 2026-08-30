@@ -53,6 +53,46 @@ test("creates a project from an EPUB and shows it in the library", async () => {
   await app.close();
 });
 
+/**
+ * A card is one target, not a word inside one.
+ *
+ * The title is still the link — it names the card for anything that reads
+ * rather than points — but the cover, the counters and the space between them
+ * open the book too. The buttons are the exception the sheet must not
+ * swallow: they act where they are, on the shelf.
+ */
+test("the whole card opens the book, and its buttons still act where they are", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "babelbook-e2e-"));
+  const epub = await fixture(dir, "book.epub", {
+    title: "Whole Card", language: "en",
+    documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+  });
+
+  const { app, window } = await launch(dir, epub);
+
+  await window.getByTestId("new-project").click();
+  await window.getByTestId("choose-epub").click();
+  await window.getByTestId("target-language").selectOption("it");
+  await window.getByTestId("create").click();
+  await expect(window.getByTestId("library").getByText("Whole Card")).toBeVisible();
+
+  // A point over the cover: no link and no text there, only the sheet the
+  // title lays over the card. Named as a position because the sheet is what
+  // takes the click, and a click aimed at the cover itself would be refused
+  // for being intercepted — by the very thing under test.
+  await window.locator("li.tile").click({ position: { x: 60, y: 60 } });
+  await expect(window.getByTestId("project")).toBeVisible();
+
+  await window.locator("a.project__back").click();
+  await expect(window.getByTestId("library")).toBeVisible();
+
+  // The button under the same sheet: it starts the run and stays on the shelf.
+  await window.getByTestId("start").click();
+  await expect(window.getByTestId("library")).toBeVisible();
+
+  await app.close();
+});
+
 test("warns about a fixed-layout book before anything is spent", async () => {
   const dir = await mkdtemp(join(tmpdir(), "babelbook-e2e-"));
   const epub = await fixture(dir, "comic.epub", {

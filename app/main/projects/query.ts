@@ -16,6 +16,7 @@ interface SummaryRow {
   created_at: string;
   total: number;
   done: number;
+  output_path: string | null;
 }
 
 /**
@@ -66,7 +67,11 @@ export function listProjects(db: DatabaseSync, query: LibraryQuery = {}): Projec
              WHERE u.project_id = p.id
                AND coalesce(u.forced_state, u.state) IN ('translate', 'maybe-code')
                AND t.outcome <> 'fell-back'
-               AND t.cache_key = coalesce(p.cache_key, t.cache_key)) AS done
+               AND t.cache_key = coalesce(p.cache_key, t.cache_key)) AS done,
+           (SELECT json_extract(r.result_json, '$.outputPath')
+              FROM project_phase_result r
+             WHERE r.project_id = p.id AND r.phase = 'compose'
+             ORDER BY r.created_at DESC LIMIT 1) AS output_path
       FROM project p
      WHERE (? IS NULL OR lower(p.title) LIKE lower(?))${clause}
      ORDER BY p.created_at DESC, p.title ASC
@@ -83,6 +88,7 @@ export function listProjects(db: DatabaseSync, query: LibraryQuery = {}): Projec
     progress: { done: row.done, total: row.total },
     layout: (row.layout ?? "reflowable") as LayoutKind,
     createdAt: row.created_at,
+    outputPath: row.output_path,
   }));
 }
 

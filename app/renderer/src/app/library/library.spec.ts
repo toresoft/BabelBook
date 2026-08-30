@@ -10,7 +10,7 @@ import { Library } from "./library";
 const summary: ProjectSummary = {
   id: "p1", title: "A Book", coverPath: null, sourceLanguage: "en", targetLanguage: "it",
   state: "running", progress: { done: 3, total: 9 }, layout: "reflowable",
-  createdAt: "2026-08-27T00:00:00.000Z",
+  createdAt: "2026-08-27T00:00:00.000Z", outputPath: null,
 };
 
 function bridge(answers: Record<string, unknown> = {}) {
@@ -95,6 +95,45 @@ describe("Library", () => {
     expect(state.className).toContain("badge");
     expect(state.className).toMatch(/badge-(primary|success|error|warning|neutral)/);
     expect(state.className).toContain("badge-primary");
+  });
+
+  it("offers the finished book, and opens it where the desktop opens files", async () => {
+    const done = { ...summary, state: "done", progress: { done: 9, total: 9 },
+      outputPath: "/w/p1/out/a-book-it.epub" };
+    const { fixture, invoke } = mount({ "projects.list": [done] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const download = fixture.nativeElement.querySelector("[data-testid=download-p1]");
+    expect(download).not.toBeNull();
+    download.click();
+    await fixture.whenStable();
+
+    expect(calls(invoke, "file.open")[0]![1]).toEqual({ path: "/w/p1/out/a-book-it.epub" });
+  });
+
+  it("offers nothing to open for a book that was never composed", async () => {
+    const { fixture } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=download-p1]")).toBeNull();
+  });
+
+  /*
+   * Deleting is one act among many on a shelf, and the loudest thing on a card
+   * should be the book, not the way to lose it. It keeps its name where a name
+   * is what is read: for the screen reader, and under the pointer.
+   */
+  it("keeps deleting quiet, and named for anything that reads rather than looks", async () => {
+    const { fixture } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const remove = fixture.nativeElement.querySelector("[data-testid=delete-p1]");
+    expect(remove.className).not.toContain("btn-error");
+    expect(remove.getAttribute("aria-label")).toBe(it_IT.library.delete);
+    expect(remove.querySelector("svg")).not.toBeNull();
   });
 
   it("asks the main process for the group it was routed to", async () => {

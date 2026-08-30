@@ -88,6 +88,22 @@ describe("listProjects", () => {
     expect(alpha.coverPath).not.toContain("/w/p1");
   });
 
+  it("carries the book the composition wrote, so the shelf can offer it", () => {
+    const db = seeded();
+    const write = db.prepare(`
+      INSERT INTO project_phase_result (project_id, phase, cache_key, result_json, created_at)
+      VALUES (?, 'compose', ?, ?, ?)
+    `);
+    write.run("p1", "k1", JSON.stringify({ outputPath: "/w/p1/out/old.epub" }), "2026-08-01");
+    // Two compositions of the same book: the shelf offers the last one.
+    write.run("p1", "k2", JSON.stringify({ outputPath: "/w/p1/out/alpha-it.epub" }), "2026-08-03");
+
+    const projects = listProjects(db);
+    expect(projects.find((p) => p.id === "p1")!.outputPath).toBe("/w/p1/out/alpha-it.epub");
+    // A book never composed has nothing to offer, and says so as null.
+    expect(projects.find((p) => p.id === "p2")!.outputPath).toBeNull();
+  });
+
   it("computes progress from the units, in one query", () => {
     const db = seeded();
     withUnits(db, 1, 4);

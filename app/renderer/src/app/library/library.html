@@ -26,8 +26,9 @@
           <div class="tile__cover tile__cover--none">{{ t('library.noCover') }}</div>
         }
 
+        <div class="tile__body">
         <a class="tile__title" [routerLink]="['/project', project.id]" [attr.data-testid]="'open-' + project.id">
-          <h2>{{ project.title }}</h2>
+          <h2 [attr.title]="project.title">{{ project.title }}</h2>
         </a>
         <p class="tile__meta">
           <span>{{ project.sourceLanguage ?? '—' }} → {{ project.targetLanguage }}</span>
@@ -39,25 +40,26 @@
           }
         </p>
 
-        <progress class="tile__progress progress progress-primary" max="100" [value]="percent(project)"></progress>
+        <progress class="tile__progress progress progress-{{ tone(project.state) }}"
+                  max="100" [value]="percent(project)"></progress>
         <p class="tile__counts">
-          {{ t('library.progress', { done: project.progress.done, total: project.progress.total }) }}
+          {{ t('library.progress', { done: count(project.progress.done), total: count(project.progress.total) }) }}
         </p>
 
         <div class="tile__actions">
           @switch (project.state) {
             @case ("ready") {
-              <button class="btn tile__run" data-testid="start" (click)="onStart(project)">
+              <button class="btn btn-sm btn-primary tile__run" data-testid="start" (click)="onStart(project)">
                 {{ t('library.translate') }}
               </button>
             }
             @case ("running") {
-              <button class="btn tile__run" data-testid="pause" (click)="onPause(project)">
+              <button class="btn btn-sm btn-primary tile__run" data-testid="pause" (click)="onPause(project)">
                 {{ t('library.pause') }}
               </button>
             }
             @case ("paused") {
-              <button class="btn tile__run" data-testid="resume" (click)="onStart(project)">
+              <button class="btn btn-sm btn-primary tile__run" data-testid="resume" (click)="onStart(project)">
                 {{ t('library.resume') }}
               </button>
             }
@@ -71,11 +73,36 @@
               <span class="tile__busy">{{ t('state.waiting-code') }}</span>
             }
           }
-          <button type="button" class="btn btn-sm btn-error"
+
+          @if (project.outputPath !== null) {
+            <button type="button" class="btn btn-sm tile__download"
+                    [attr.data-testid]="'download-' + project.id"
+                    (click)="open(project)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 4v11"></path><path d="M7 12l5 5 5-5"></path><path d="M5 20h14"></path>
+              </svg>
+              {{ t('library.download') }}
+            </button>
+          }
+
+          <span class="tile__spacer"></span>
+
+          <!-- An icon, and the word only where it is read out: a shelf of books
+               is not a shelf of deletions, and the confirmation is where the
+               act is really decided. -->
+          <button type="button" class="btn btn-sm btn-ghost tile__delete"
                   [attr.data-testid]="'delete-' + project.id"
+                  [attr.aria-label]="t('library.delete')"
+                  [attr.title]="t('library.delete')"
                   (click)="remove(project)">
-            {{ t('library.delete') }}
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 7h16"></path><path d="M10 4h4"></path><path d="M6 7l1 13h10l1-13"></path>
+              <path d="M10 11v6"></path><path d="M14 11v6"></path>
+            </svg>
           </button>
+        </div>
         </div>
       </li>
     }

@@ -26,6 +26,7 @@ interface DetailRow {
   tokens_reasoning: number;
   /** Null when any contributing run was never priced: see `cost` below. */
   cost: number | null;
+  output_path: string | null;
 }
 
 /**
@@ -56,7 +57,14 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
            coalesce((SELECT sum(r.tokens_out) FROM run r WHERE r.project_id = p.id), 0) AS tokens_out,
            coalesce((SELECT sum(r.reasoning_tokens) FROM run r WHERE r.project_id = p.id), 0) AS tokens_reasoning,
            (SELECT sum(r.cost) FROM run r WHERE r.project_id = p.id
-             AND NOT EXISTS (SELECT 1 FROM run r2 WHERE r2.project_id = p.id AND r2.cost IS NULL)) AS cost
+             AND NOT EXISTS (SELECT 1 FROM run r2 WHERE r2.project_id = p.id AND r2.cost IS NULL)) AS cost,
+           -- The same answer the library gives, from the same row: two screens
+           -- disagreeing about whether a book has been written would be worse
+           -- than either of them being wrong.
+           (SELECT json_extract(c.result_json, '$.outputPath')
+              FROM project_phase_result c
+             WHERE c.project_id = p.id AND c.phase = 'compose'
+             ORDER BY c.created_at DESC LIMIT 1) AS output_path
       FROM project p
      WHERE p.id = ?
   `).get(projectId) as unknown as DetailRow | undefined;
@@ -73,6 +81,7 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
     state: row.state,
     progress: { done: Number(row.done), total: Number(row.total) },
     layout: (row.layout ?? "reflowable") as LayoutKind,
+    outputPath: row.output_path,
     hasOverlays: row.has_overlays === 1,
     providerId: row.provider_id,
     modelId: row.model_id,

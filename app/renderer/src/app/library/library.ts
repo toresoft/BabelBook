@@ -3,7 +3,7 @@ import {
 } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { RouterLink } from "@angular/router";
-import { TranslocoDirective } from "@jsverse/transloco";
+import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import { isBucket } from "../../../../shared/buckets.js";
 import type { ProjectSummary } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
@@ -41,6 +41,7 @@ export class Library implements OnDestroy {
   readonly bucket = input<string>("all");
 
   #ipc = inject(IpcService);
+  #transloco = inject(TranslocoService);
   #unsubscribe: Array<() => void> = [];
 
   constructor() {
@@ -84,6 +85,23 @@ export class Library implements OnDestroy {
     return project.progress.total === 0
       ? 0
       : Math.round((project.progress.done / project.progress.total) * 100);
+  }
+
+  /**
+   * A count as the reader's language writes it.
+   *
+   * `5647` and `5.647` are the same number and not the same glance: a shelf is
+   * read at a glance, and the separator is what spares the reader from
+   * counting the figures.
+   */
+  count(n: number): string {
+    return new Intl.NumberFormat(this.#transloco.getActiveLang()).format(n);
+  }
+
+  /** The book the composition wrote, opened with whatever the desktop uses. */
+  open(project: ProjectSummary): void {
+    if (project.outputPath === null) return;
+    void this.#ipc.invoke("file.open", { path: project.outputPath }).catch(() => {});
   }
 
   /** The badge tone the state wears: the colour of what the state means. */
