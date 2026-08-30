@@ -9,7 +9,7 @@
 .crumbs { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--text-muted); }
 .crumbs a { color: var(--accent); text-decoration: none; font-weight: 500; }
 .crumbs__back { padding-inline: 0.35rem; }
-.crumbs__sep { color: var(--line-strong); }
+.crumbs__sep { color: var(--text-faint); }
 .crumbs__here { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
 
 .project__head { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
