@@ -38,6 +38,18 @@
 
 .side__rule { border-top: 1px solid var(--line); margin: 0 1.5rem 1.5rem; }
 
-.side__facts { margin: 0 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.9rem; }
-.side__fact dt { margin: 0; }
-.side__fact dd { margin: 0.2rem 0 0; }
+.side__facts { margin: 0 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+
+/* Each pair reads on one line — label left, value right — the way the design
+   sets them; only a value too long to fit wraps onto its own line under the
+   label. These belong here rather than borrowing the dialog's `.detail__*`
+   classes: those style projected dialog content and mean something else. */
+.side__fact {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 0.75rem; flex-wrap: wrap;
+}
+.side__fact-label {
+  margin: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-muted); flex: none;
+}
+.side__fact-value { margin: 0; font-size: 0.9rem; text-align: right; overflow-wrap: anywhere; }

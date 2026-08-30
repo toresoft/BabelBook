@@ -1,8 +1,8 @@
 <aside class="side" data-testid="side" *transloco="let t">
   @if (project(); as found) {
-    <!-- The state badge and the acts below still belong to the header Task 2
-         left here: Task 4 rebuilds them as one contextual act plus a delete
-         icon. Until then the column keeps translating and pausing books. -->
+    <!-- The acts below still belong to the header Task 2 left here: Task 4
+         rebuilds them as one contextual act plus a delete icon. Until then
+         the column keeps translating and pausing books. -->
     <header class="project__head">
       @if (found.coverPath) {
         <img class="side__cover" [src]="found.coverPath" [alt]="found.title" />
@@ -52,13 +52,13 @@
 
     <dl class="side__facts">
       <div class="side__fact">
-        <dt class="detail__label">{{ t('project.languages') }}</dt>
-        <dd class="detail__text">{{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}</dd>
+        <dt class="side__fact-label">{{ t('project.languages') }}</dt>
+        <dd class="side__fact-value">{{ found.sourceLanguage ?? '—' }} → {{ found.targetLanguage }}</dd>
       </div>
 
       <div class="side__fact">
-        <dt class="detail__label">{{ t('project.provider') }}</dt>
-        <dd class="detail__text">
+        <dt class="side__fact-label">{{ t('project.provider') }}</dt>
+        <dd class="side__fact-value">
           @if (found.providerName) {
             {{ found.providerName }} · {{ found.modelName }}
           } @else {
@@ -68,8 +68,8 @@
       </div>
 
       <div class="side__fact">
-        <dt class="detail__label">{{ t('project.description') }}</dt>
-        <dd class="detail__text">
+        <dt class="side__fact-label">{{ t('project.description') }}</dt>
+        <dd class="side__fact-value">
           @if (found.description) {
             <button type="button" class="btn btn-xs" data-testid="side-description"
                     (click)="descriptionOpen.set(true)">
