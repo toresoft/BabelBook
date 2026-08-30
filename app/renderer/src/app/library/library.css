@@ -1,28 +1,106 @@
-.library { padding: 1.5rem; }
+.library { padding: 1.5rem; height: 100%; overflow-y: auto; box-sizing: border-box; }
 .library__bar { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
 .library__bar h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
 .library__search { flex: 1; max-width: 22rem; }
-.tile__title { text-decoration: none; color: inherit; }
-.tile__title h2 { margin: 0.4rem 0 0.2rem; font-size: 0.95rem; }
 .library__empty { color: var(--text-muted); }
-/* auto-fit collapses the tracks nobody needs: a shelf of two still reads as
-   a full window, centred, instead of two tiles pinned to the left of an empty
-   half. The 18rem ceiling keeps a lone cover from becoming a poster. */
+
+/* The shelf starts where the bar above it starts.
+   It used to be centred, which read well with two books and aligned with
+   nothing else on the page — the revised design puts the cards under the
+   title, and auto-fill keeps the shelf answering the window's width. */
 .library__grid {
-  display: grid; gap: 1.25rem; list-style: none; margin: 0; padding: 0;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 18rem));
-  justify-content: center;
+  display: grid; gap: 1.5rem; list-style: none; margin: 0; padding: 0;
+  /* `1fr` as the ceiling, not a length: auto-fill counts its columns on the
+     maximum whenever that maximum is a definite size, so a 20rem ceiling fits
+     two cards in a window with room for three. The floor decides how many go
+     in, and they share what is there. */
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  justify-content: start;
 }
-.tile__cover { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 4px; }
+
 /* the bare daisyUI .card has no padding of its own: without this the tile's
-   content sits flush against its border. 0.75rem matches .terms__warning
-   and .group. */
-.tile { padding: 0.75rem; }
-.tile__cover--none {
-  display: grid; place-items: center; background: var(--line); color: var(--text-muted); font-size: 0.8rem;
+   content sits flush against its border. */
+/* The cover reaches the card's own edges — the body below it carries the
+   padding — so the card is a book before it is a form. */
+.tile {
+  padding: 0; overflow: hidden; position: relative;
+  display: flex; flex-direction: column;
+  box-shadow: var(--rest);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
-.tile__title { font-size: 1rem; font-weight: 600; margin: 0.6rem 0 0.2rem; }
+.tile__body { padding: 0.75rem 0.9rem 0.9rem; display: flex; flex-direction: column; flex: 1; }
+
+/*
+ * The whole card opens the book.
+ *
+ * The title keeps the link — it is the card's accessible name, and the one
+ * stop the keyboard needs — and its ::after covers the card, so the cover,
+ * the counters and the empty space open what the title opens. What acts on
+ * its own is lifted back above that sheet: the buttons stay buttons.
+ */
+.tile__title::after { content: ""; position: absolute; inset: 0; }
+.tile__actions { position: relative; }
+
+/* The card answers the pointer with a firmer edge and a shadow, and does not
+   move: a tile that jumps under the cursor takes the button the cursor was
+   going for with it. */
+@media (hover: hover) {
+  .tile:hover { border-color: var(--accent-line); box-shadow: var(--lift); }
+}
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
+
+/* The keyboard is shown what the mouse is shown: the ring goes round the card
+   the link now covers, not round the title alone. */
+.tile:has(.tile__title:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tile__title:focus-visible { outline: none; }
+
+/* The cover keeps a book's proportions and the card's full width.
+   A fixed band was tried and thrown away twice: cropped it cut the jacket,
+   and contained it shrank the one thing on the card somebody else designed
+   into a stamp on a grey field. The cards still agree on where their counters
+   and buttons are, because a row's cards share a width and therefore a cover
+   height. `contain` is what keeps the promise for the covers that are not
+   two by three: they letterbox, they are never cut. */
+.tile__cover {
+  width: 100%; aspect-ratio: 2 / 3; object-fit: contain;
+  background: var(--surface-raised); border-bottom: 1px solid var(--line);
+}
+.tile__cover--none {
+  display: grid; place-items: center; background: var(--surface-raised);
+  color: var(--text-muted); font-size: 0.8rem;
+}
+
+/* Two lines, always, whatever the publisher called the book: one shelf of
+   cards whose covers, counters and buttons line up beats one where a long
+   title pushes everything under it down. The full title is on the element,
+   for the pointer and for anything that reads. */
+.tile__title { text-decoration: none; color: inherit; }
+.tile__title h2 {
+  margin: 0.6rem 0 0.2rem; font-size: 1rem; font-weight: 600; line-height: 1.35;
+  height: 2.7em; overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+
 .tile__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-muted); margin: 0; }
 .tile__layout { color: var(--warning); }
 .tile__progress { margin-top: 0.5rem; }
 .tile__counts { font-size: 0.72rem; color: var(--text-muted); margin: 0.3rem 0 0; }
+
+/* The buttons sit on the floor of the card, not under the text: the filler
+   above them is what keeps a row of cards agreeing on where the acts are. */
+.tile__actions {
+  display: flex; align-items: center; gap: 0.5rem;
+  margin-top: auto; padding-top: 0.75rem; border-top: 1px solid var(--line);
+}
+.tile__spacer { flex: 1; }
+.tile__busy { font-size: 0.75rem; color: var(--text-muted); }
+.tile__download svg { flex: none; }
+
+/* Grey until it is meant: the trash turns red under the pointer, where the
+   act is about to be asked for. */
+.tile__delete { color: var(--text-muted); padding-inline: 0.5rem; }
+@media (hover: hover) {
+  .tile__delete:hover {
+    color: var(--danger); background: var(--danger-soft); border-color: var(--danger-line);
+  }
+}

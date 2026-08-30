@@ -16,7 +16,9 @@
 .provider__verdict--ok { color: var(--ok); }
 
 /* The add section is one button: the picker it opens lives in the modal. */
-.providers__add { display: grid; gap: 0.5rem; }
+/* Its own width, not the column's: stretched across the panel the button
+   stops looking like one. */
+.providers__add { display: grid; gap: 0.5rem; justify-items: start; }
 
 /* daisyUI keys the disabled look on the <li> (`.menu … li.menu-disabled`, or
    a `[disabled]` within it); this markup wears the class on the <a>, where

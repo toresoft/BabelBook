@@ -1,78 +1,195 @@
-<section class="exclusions" data-testid="exclusions" *transloco="let t">
-  <header class="exclusions__bar">
+<section class="list exclusions" data-testid="exclusions" *transloco="let t">
+  <header class="list__bar">
     <h2>{{ t('exclusions.title') }}</h2>
-    <p class="exclusions__lead">{{ t('exclusions.lead', { count: total() }) }}</p>
+    <p class="list__subtitle">{{ t('exclusions.lead', { count: total() }) }}</p>
+
+    <div class="list__narrow">
+      <select
+        class="select select-sm exclusions__filter"
+        data-testid="exclusion-kind"
+        [ngModel]="kind()"
+        (ngModelChange)="onKind($event)">
+        <option value="">{{ t('exclusions.allKinds') }}</option>
+        @for (name of kinds(); track name) {
+          <option [value]="name">{{ t('unitState.' + name) }}</option>
+        }
+      </select>
+
+      <input
+        class="input input-sm list__search"
+        type="search"
+        data-testid="exclusion-search"
+        [placeholder]="t('list.search')"
+        [ngModel]="query()"
+        (ngModelChange)="onQuery($event)" />
+    </div>
   </header>
 
-  @if (groups().length === 0) {
-    <p class="exclusions__empty" data-testid="exclusions-empty">{{ t('exclusions.empty') }}</p>
-  }
+  <div class="table" role="table">
+    <div class="table__head" role="row" [style.grid-template-columns]="columns">
+      <span role="columnheader">{{ t('exclusions.columns.block') }}</span>
+      <span role="columnheader">{{ t('exclusions.columns.content') }}</span>
+      <span role="columnheader">{{ t('exclusions.columns.kind') }}</span>
+      <span role="columnheader"></span>
+    </div>
 
-  @for (group of groups(); track group.state + '/' + group.reason + '/' + group.doc) {
-    <article class="group" [attr.data-testid]="'group-' + group.state + '-' + (group.reason ?? 'none')">
-      <h3 class="group__head">
-        {{ t('unitState.' + group.state) }}
-        <span class="group__doc">{{ t('exclusions.inDocument', { doc: group.doc }) }}</span>
-        <span class="group__count">{{ t('exclusions.inGroup', { count: group.units.length }) }}</span>
-      </h3>
-      <p class="group__reason">
-        {{ group.reason ? t('reasons.' + group.reason) : t('exclusions.noReason') }}
-      </p>
+    <div class="table__body">
+      @for (row of rows(); track row.unitId) {
+        <div class="table__row table__row--tall" role="row" tabindex="0"
+             [attr.data-testid]="'unit-' + row.unitId" [style.grid-template-columns]="columns"
+               (click)="opened.set(row)" (keydown.enter)="opened.set(row)"
+               (keydown.space)="opened.set(row); $event.preventDefault()">
+          <div class="table__cell" role="cell">
+            <p class="table__strong">{{ t('exclusions.position', { ordinal: row.ordinal }) }}</p>
+            <p class="table__sub">{{ row.doc }}</p>
+          </div>
 
-      <ul class="group__units">
-        @for (unit of group.units; track unit.unitId) {
-          <li class="unit" [attr.data-testid]="'unit-' + unit.unitId">
-            <p class="unit__position">{{ t('exclusions.position', { ordinal: unit.ordinal }) }}</p>
-            <p class="unit__text">{{ unit.text }}</p>
-            <div class="unit__actions">
-              <span class="unit__verdict">{{ t('unitState.' + verdict(unit.unitId, group.state)) }}</span>
-              <button
-                type="button"
-                class="btn"
-                [attr.data-testid]="'free-' + unit.unitId"
-                (click)="force(unit.unitId, 'translate')">
-                {{ t('exclusions.free') }}
+          <p class="table__cell unit__text" role="cell">{{ row.text }}</p>
+
+          <!-- The badge says what the block will be, staged changes included; the
+               line under it says who says so — the stylesheet, the scanner, or
+               the reader. A verdict repeated beside the buttons said the same
+               thing twice and left them no room. -->
+          <div class="table__cell" role="cell">
+            <span class="badge badge-outline badge-sm"
+                  [attr.data-testid]="'verdict-' + row.unitId">
+              {{ t('unitState.' + verdict(row.unitId, row.state)) }}
+            </span>
+            @if (staged()[row.unitId] || row.forced) {
+              <p class="table__sub unit__reason">{{ t('exclusions.noReason') }}</p>
+            } @else if (row.reason) {
+              <p class="table__sub unit__reason">{{ t('reasons.' + row.reason) }}</p>
+            }
+          </div>
+
+          <div class="table__cell table__acts" role="cell" (click)="$event.stopPropagation()">
+            <button type="button" class="btn btn-xs" [attr.data-testid]="'free-' + row.unitId"
+                    [attr.title]="t('exclusions.freeHint')" (click)="force(row.unitId, 'translate')">
+              {{ t('exclusions.free') }}
+            </button>
+            <button type="button" class="btn btn-xs" [attr.data-testid]="'protect-' + row.unitId"
+                    [attr.title]="t('exclusions.protectHint')" (click)="force(row.unitId, 'code')">
+              {{ t('exclusions.protect') }}
+            </button>
+            @if (staged()[row.unitId]) {
+              <button type="button" class="btn btn-xs" [attr.data-testid]="'undo-' + row.unitId"
+                      (click)="unstage(row.unitId)">{{ t('exclusions.undo') }}</button>
+            } @else if (row.forced) {
+              <button type="button" class="btn btn-xs" [attr.data-testid]="'clear-' + row.unitId"
+                      [attr.title]="t('exclusions.clearForcedHint')" (click)="clear(row.unitId)">
+                {{ t('exclusions.clearForced') }}
               </button>
-              <button
-                type="button"
-                class="btn"
-                [attr.data-testid]="'protect-' + unit.unitId"
-                (click)="force(unit.unitId, 'code')">
-                {{ t('exclusions.protect') }}
-              </button>
-              @if (staged()[unit.unitId]) {
-                <button
-                  type="button"
-                  class="btn"
-                  [attr.data-testid]="'undo-' + unit.unitId"
-                  (click)="unstage(unit.unitId)">
-                  {{ t('exclusions.undo') }}
-                </button>
-              } @else if (unit.forced) {
-                <button
-                  type="button"
-                  class="btn"
-                  [attr.data-testid]="'clear-' + unit.unitId"
-                  (click)="clear(unit.unitId)">
-                  {{ t('exclusions.clearForced') }}
-                </button>
-              }
-            </div>
-          </li>
-        }
-      </ul>
-    </article>
-  }
+            }
+          </div>
+        </div>
+      }
+
+      @if (rows().length === 0) {
+        <p class="table__empty" data-testid="exclusions-empty">
+          {{ narrowed() ? t('list.noResults') : t('exclusions.empty') }}
+        </p>
+      }
+    </div>
+
+
+    <div class="table__foot">
+      <span data-testid="exclusions-range">{{ range() }}</span>
+
+      <label class="table__perPage">
+        {{ t('list.rows') }}
+        <select class="select select-xs" data-testid="exclusions-per-page"
+                [ngModel]="pageSize()" (ngModelChange)="onPageSize(+$event)">
+          @for (size of pageSizes; track size) {
+            <option [value]="size">{{ size }}</option>
+          }
+        </select>
+      </label>
+
+      @if (pageCount() > 1) {
+        <div class="table__pager">
+          <button type="button" class="btn btn-xs" data-testid="exclusions-first"
+                  [attr.aria-label]="t('list.first')" [attr.title]="t('list.first')"
+                  [disabled]="page() === 1" (click)="goto(1)">«</button>
+          <button type="button" class="btn btn-xs" data-testid="exclusions-back"
+                  [attr.aria-label]="t('list.previous')" [attr.title]="t('list.previous')"
+                  [disabled]="page() === 1" (click)="goto(page() - 1)">‹</button>
+          @for (item of pages(); track $index) {
+            @if (item === gap) {
+              <span class="table__gap">{{ gap }}</span>
+            } @else {
+              <button type="button" class="btn btn-xs" [class.btn-primary]="item === page()"
+                      [attr.aria-current]="item === page() ? 'page' : null"
+                      (click)="goto(+item)">{{ item }}</button>
+            }
+          }
+          <button type="button" class="btn btn-xs" data-testid="exclusions-next"
+                  [attr.aria-label]="t('list.next')" [attr.title]="t('list.next')"
+                  [disabled]="page() === pageCount()" (click)="goto(page() + 1)">›</button>
+          <button type="button" class="btn btn-xs" data-testid="exclusions-last"
+                  [attr.aria-label]="t('list.last')" [attr.title]="t('list.last')"
+                  [disabled]="page() === pageCount()" (click)="goto(pageCount())">»</button>
+        </div>
+      }
+    </div>
+  </div>
 
   @if (failure()) {
     <p class="exclusions__failure" data-testid="exclusions-failure">{{ t('exclusions.failed') }}</p>
   }
 
+  @if (opened(); as row) {
+    <bb-detail
+      [title]="t('exclusions.position', { ordinal: row.ordinal })"
+      [subtitle]="row.doc"
+      (closed)="opened.set(null)">
+      <div>
+        <p class="detail__label">{{ t('exclusions.columns.content') }}</p>
+        <pre class="detail__code">{{ row.text }}</pre>
+      </div>
+
+      <dl class="detail__facts">
+        <div>
+          <dt>{{ t('exclusions.columns.kind') }}</dt>
+          <dd>{{ t('unitState.' + verdict(row.unitId, row.state)) }}</dd>
+        </div>
+        @if (staged()[row.unitId] || row.forced) {
+          <div>
+            <dt>{{ t('exclusions.why') }}</dt>
+            <dd>{{ t('exclusions.noReason') }}</dd>
+          </div>
+        } @else if (row.reason) {
+          <div>
+            <dt>{{ t('exclusions.why') }}</dt>
+            <dd>{{ t('reasons.' + row.reason) }}</dd>
+          </div>
+        }
+      </dl>
+
+      <div detail-actions>
+        <button type="button" class="btn btn-sm" [attr.data-testid]="'detail-free-' + row.unitId"
+                (click)="force(row.unitId, 'translate')">{{ t('exclusions.freeHint') }}</button>
+        <button type="button" class="btn btn-sm" [attr.data-testid]="'detail-protect-' + row.unitId"
+                (click)="force(row.unitId, 'code')">{{ t('exclusions.protectHint') }}</button>
+        @if (staged()[row.unitId]) {
+          <button type="button" class="btn btn-sm" (click)="unstage(row.unitId)">
+            {{ t('exclusions.undo') }}
+          </button>
+        } @else if (row.forced) {
+          <button type="button" class="btn btn-sm" (click)="clear(row.unitId); opened.set(null)">
+            {{ t('exclusions.clearForcedHint') }}
+          </button>
+        }
+      </div>
+    </bb-detail>
+  }
+
   <div class="exclusions__footer">
-    <button type="button" class="btn" data-testid="save-exclusions" [disabled]="saving() || changes() === 0" (click)="save()">
+    <button type="button" class="btn" data-testid="save-exclusions"
+            [disabled]="saving() || changes() === 0" (click)="save()">
       {{ t('exclusions.save', { count: changes() }) }}
     </button>
-    <button type="button" class="btn" data-testid="approve-exclusions" [disabled]="saving()" (click)="approveGate()">
+    <button type="button" class="btn btn-primary" data-testid="approve-exclusions"
+            [disabled]="saving()" (click)="approveGate()">
       {{ t('exclusions.approveGate') }}
     </button>
   </div>

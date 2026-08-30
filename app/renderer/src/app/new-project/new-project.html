@@ -1,7 +1,7 @@
 <section class="new" data-testid="new-project-screen" *transloco="let t">
   <h1>{{ t('newProject.title') }}</h1>
 
-  <button type="button" class="btn" data-testid="choose-epub" (click)="choose()">
+  <button type="button" class="btn new__choose" data-testid="choose-epub" (click)="choose()">
     {{ t('newProject.chooseEpub') }}
   </button>
   @if (chosenName()) {

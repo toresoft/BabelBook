@@ -73,7 +73,7 @@
               </button>
               <button
                 type="button"
-                class="btn btn-sm btn-error"
+                class="btn btn-sm btn-outline btn-error"
                 [attr.data-testid]="'delete-' + provider.id"
                 (click)="remove(provider)">
                 {{ t('providers.disconnect') }}
@@ -102,7 +102,7 @@
     <div class="providers__add">
       <button
         type="button"
-        class="btn"
+        class="btn btn-primary"
         data-testid="open-connect"
         (click)="openConnect()">
         {{ t('providers.connect') }}

@@ -1,7 +1,28 @@
-<section class="terms" data-testid="terms" *transloco="let t">
-  <header class="terms__bar">
+<section class="list terms" data-testid="terms" *transloco="let t">
+  <header class="list__bar">
     <h2>{{ t('terms.title') }}</h2>
-    <p class="terms__lead">{{ t('terms.lead', { count: pending().length }) }}</p>
+    <p class="list__subtitle">{{ t('terms.lead', { count: pending().length }) }}</p>
+
+    <div class="list__narrow">
+      <select
+        class="select select-sm terms__filter"
+        data-testid="term-approval"
+        [ngModel]="approval()"
+        (ngModelChange)="onApproval($event)">
+        <option value="">{{ t('terms.allApprovals') }}</option>
+        @for (name of approvals; track name) {
+          <option [value]="name">{{ t('terms.approval.' + name) }}</option>
+        }
+      </select>
+
+      <input
+        class="input input-sm list__search"
+        type="search"
+        data-testid="term-search"
+        [placeholder]="t('list.search')"
+        [ngModel]="query()"
+        (ngModelChange)="onQuery($event)" />
+    </div>
   </header>
 
   @if (invalidation(); as affected) {
@@ -13,87 +34,193 @@
         </p>
       }
       <div class="terms__warningActions">
-        <button type="button" class="btn" data-testid="confirm-invalidation" (click)="save()">
+        <button type="button" class="btn btn-sm" data-testid="confirm-invalidation" (click)="save()">
           {{ t('terms.confirmChange') }}
         </button>
-        <button type="button" class="btn" data-testid="dismiss-invalidation" (click)="dismiss()">
+        <button type="button" class="btn btn-sm" data-testid="dismiss-invalidation" (click)="dismiss()">
           {{ t('terms.cancel') }}
         </button>
       </div>
     </div>
   }
 
-  @if (terms().length === 0) {
-    <p class="terms__empty" data-testid="terms-empty">{{ t('terms.empty') }}</p>
-  }
+  <div class="table" role="table">
+    <div class="table__head" role="row" [style.grid-template-columns]="columns">
+      <span role="columnheader">{{ t('terms.columns.term') }}</span>
+      <span role="columnheader">{{ t('terms.columns.rendering') }}</span>
+      <span role="columnheader">{{ t('terms.columns.state') }}</span>
+      <span role="columnheader"></span>
+    </div>
 
-  <ul class="terms__list">
-    @for (term of terms(); track term.id) {
-      <li class="term" [attr.data-testid]="'term-' + term.id" [class.term--decided]="edits()[term.id]">
-        <div class="term__head">
-          <strong class="term__source">{{ term.source }}</strong>
-          <span class="term__occurrences">{{ t('terms.occurrences', { count: term.occurrences }) }}</span>
-          <span class="term__origin">{{ t('terms.origin.' + term.origin) }}</span>
-          <span class="term__approval">{{ t('terms.approval.' + view(term).approval) }}</span>
+    <div class="table__body">
+      @for (term of rows(); track term.id) {
+        <div class="table__row" role="row" tabindex="0"
+             [attr.data-testid]="'term-' + term.id" [style.grid-template-columns]="columns"
+             (click)="toggle(term.id)" (keydown.enter)="toggle(term.id)"
+             (keydown.space)="toggle(term.id); $event.preventDefault()">
+          <div class="table__cell" role="cell">
+            <p class="table__strong">{{ term.source }}</p>
+            <!-- The word and the sentence it was found in: a gate that shows the
+                 bare word asks the reader to recall a book they may not have read. -->
+            <p class="table__sub">
+              {{ t('terms.occurrences', { count: term.occurrences }) }}
+              @if (term.context) { · {{ term.context }} }
+            </p>
+          </div>
+
+          <div class="table__cell table__text" role="cell">{{ rendering(term) }}</div>
+
+          <div class="table__cell" role="cell">
+            <span class="badge badge-outline badge-sm"
+                  [attr.data-testid]="'approval-' + term.id">
+              {{ t('terms.approval.' + view(term).approval) }}
+            </span>
+          </div>
+
+          <div class="table__cell table__acts" role="cell" (click)="$event.stopPropagation()">
+            @if (view(term).approval === 'pending') {
+              <button type="button" class="btn btn-xs" [attr.data-testid]="'approve-' + term.id"
+                      (click)="decide(term.id, 'approved')">{{ t('terms.approve') }}</button>
+              <button type="button" class="btn btn-xs" [attr.data-testid]="'reject-' + term.id"
+                      (click)="decide(term.id, 'rejected')">{{ t('terms.reject') }}</button>
+            }
+            <!-- An icon, because the row has two verbs already and a third word
+                 pushes all three onto a second line. -->
+            <button type="button" class="btn btn-xs btn-ghost term__edit"
+                    [class.btn-active]="open() === term.id"
+                    [attr.data-testid]="'edit-' + term.id"
+                    [attr.aria-expanded]="open() === term.id"
+                    [attr.aria-label]="t('terms.edit')" [attr.title]="t('terms.edit')"
+                    (click)="toggle(term.id)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17z"></path>
+              </svg>
+            </button>
+          </div>
         </div>
+      }
 
-        @if (term.context) {
-          <p class="term__context">{{ term.context }}</p>
-        }
-        @if (term.sense) {
-          <p class="term__sense">{{ term.sense }}</p>
-        }
+      @if (rows().length === 0) {
+        <p class="table__empty" data-testid="terms-empty">
+          {{ narrowed() ? t('list.noResults') : t('terms.empty') }}
+        </p>
+      }
+    </div>
 
-        <div class="term__fields">
-          <label>
-            {{ t('terms.rule') }}
-            <select
-              class="select"
-              [attr.data-testid]="'rule-' + term.id"
-              [ngModel]="view(term).rule"
-              (ngModelChange)="edit(term.id, { rule: $event })">
-              <option value="dnt">{{ t('terms.rules.dnt') }}</option>
-              <option value="prefer">{{ t('terms.rules.prefer') }}</option>
-              <option value="must">{{ t('terms.rules.must') }}</option>
-            </select>
-          </label>
+    <div class="table__foot">
+      <span data-testid="terms-range">{{ range() }}</span>
 
-          @if (view(term).rule !== 'dnt') {
-            <label>
-              {{ t('terms.target') }}
-              <input
-                type="text"
-                class="input"
-                [attr.data-testid]="'target-' + term.id"
-                [ngModel]="view(term).target ?? ''"
-                (ngModelChange)="edit(term.id, { target: $event })" />
-            </label>
+      <label class="table__perPage">
+        {{ t('list.rows') }}
+        <select class="select select-xs" data-testid="terms-per-page"
+                [ngModel]="pageSize()" (ngModelChange)="onPageSize(+$event)">
+          @for (size of pageSizes; track size) {
+            <option [value]="size">{{ size }}</option>
           }
+        </select>
+      </label>
+
+      @if (pageCount() > 1) {
+        <div class="table__pager">
+          <button type="button" class="btn btn-xs" data-testid="terms-first"
+                  [attr.aria-label]="t('list.first')" [attr.title]="t('list.first')"
+                  [disabled]="page() === 1" (click)="goto(1)">«</button>
+          <button type="button" class="btn btn-xs" data-testid="terms-back"
+                  [attr.aria-label]="t('list.previous')" [attr.title]="t('list.previous')"
+                  [disabled]="page() === 1" (click)="goto(page() - 1)">‹</button>
+          @for (item of pages(); track $index) {
+            @if (item === gap) {
+              <span class="table__gap">{{ gap }}</span>
+            } @else {
+              <button type="button" class="btn btn-xs" [class.btn-primary]="item === page()"
+                      [attr.aria-current]="item === page() ? 'page' : null"
+                      (click)="goto(+item)">{{ item }}</button>
+            }
+          }
+          <button type="button" class="btn btn-xs" data-testid="terms-next"
+                  [attr.aria-label]="t('list.next')" [attr.title]="t('list.next')"
+                  [disabled]="page() === pageCount()" (click)="goto(page() + 1)">›</button>
+          <button type="button" class="btn btn-xs" data-testid="terms-last"
+                  [attr.aria-label]="t('list.last')" [attr.title]="t('list.last')"
+                  [disabled]="page() === pageCount()" (click)="goto(pageCount())">»</button>
         </div>
+      }
+    </div>
+  </div>
 
-        <div class="term__actions">
-          <button type="button" class="btn" [attr.data-testid]="'approve-' + term.id" (click)="decide(term.id, 'approved')">
-            {{ t('terms.approve') }}
-          </button>
-          <button type="button" class="btn" [attr.data-testid]="'reject-' + term.id" (click)="decide(term.id, 'rejected')">
-            {{ t('terms.reject') }}
-          </button>
+  @if (opened(); as term) {
+    <bb-detail
+      [title]="term.source"
+      [subtitle]="t('terms.occurrences', { count: term.occurrences }) + ' · ' + t('terms.origin.' + term.origin)"
+      (closed)="open.set(null)">
+      @if (term.context) {
+        <div>
+          <p class="detail__label">{{ t('terms.context') }}</p>
+          <p class="detail__text term__context">{{ term.context }}</p>
+        </div>
+      }
+      @if (term.sense) {
+        <p class="term__sense">{{ term.sense }}</p>
+      }
 
-          @if (glossaries().length > 0 && term.approval === 'approved') {
+      <div class="detail__fields">
+        <label>
+          {{ t('terms.rule') }}
+          <select
+            class="select select-sm"
+            [attr.data-testid]="'rule-' + term.id"
+            [ngModel]="view(term).rule"
+            (ngModelChange)="edit(term.id, { rule: $event })">
+            <option value="dnt">{{ t('terms.rules.dnt') }}</option>
+            <option value="prefer">{{ t('terms.rules.prefer') }}</option>
+            <option value="must">{{ t('terms.rules.must') }}</option>
+          </select>
+        </label>
+
+        @if (view(term).rule !== 'dnt') {
+          <label>
+            {{ t('terms.target') }}
+            <input
+              type="text"
+              class="input input-sm"
+              [attr.data-testid]="'target-' + term.id"
+              [ngModel]="view(term).target ?? ''"
+              (ngModelChange)="edit(term.id, { target: $event })" />
+          </label>
+        }
+
+        @if (glossaries().length > 0 && term.approval === 'approved') {
+          <label>
+            {{ t('terms.promote') }}
             <select
-              class="select"
+              class="select select-sm"
               [attr.data-testid]="'promote-' + term.id"
               (change)="promote(term.id, $any($event.target).value)">
-              <option value="">{{ t('terms.promote') }}</option>
+              <option value=""></option>
               @for (glossary of glossaries(); track glossary.id) {
                 <option [value]="glossary.id">{{ glossary.name }}</option>
               }
             </select>
-          }
+          </label>
+        }
+      </div>
+
+      <dl class="detail__facts">
+        <div>
+          <dt>{{ t('terms.columns.state') }}</dt>
+          <dd>{{ t('terms.approval.' + view(term).approval) }}</dd>
         </div>
-      </li>
-    }
-  </ul>
+      </dl>
+
+      <div detail-actions>
+        <button type="button" class="btn btn-sm" [attr.data-testid]="'detail-approve-' + term.id"
+                (click)="decide(term.id, 'approved'); open.set(null)">{{ t('terms.approve') }}</button>
+        <button type="button" class="btn btn-sm" [attr.data-testid]="'detail-reject-' + term.id"
+                (click)="decide(term.id, 'rejected'); open.set(null)">{{ t('terms.reject') }}</button>
+      </div>
+    </bb-detail>
+  }
 
   @if (failure()) {
     <p class="terms__failure" data-testid="terms-failure">{{ t('terms.failed') }}</p>
@@ -106,7 +233,7 @@
     <button type="button" class="btn" data-testid="save-terms" [disabled]="saving() || decided() === 0" (click)="save()">
       {{ t('terms.save', { count: decided() }) }}
     </button>
-    <button type="button" class="btn" data-testid="approve-gate" [disabled]="saving()" (click)="approveGate()">
+    <button type="button" class="btn btn-primary" data-testid="approve-gate" [disabled]="saving()" (click)="approveGate()">
       {{ t('terms.approveGate') }}
     </button>
   </div>

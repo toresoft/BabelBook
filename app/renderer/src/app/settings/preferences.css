@@ -3,7 +3,10 @@
 .prefs label { display: grid; gap: 0.2rem; font-size: 0.9rem; }
 .prefs small, .prefs__hint { color: var(--text-muted); font-size: 0.8rem; }
 
-.prefs__check { display: flex; gap: 0.5rem; align-items: flex-start; }
+/* This row is a label too, and `.prefs label` above is the more specific
+   selector: named as a bare class this rule loses, and the box stacks on top
+   of its own words. */
+.prefs label.prefs__check { display: flex; gap: 0.5rem; align-items: flex-start; }
 .prefs__check input { margin-top: 0.2rem; }
 .prefs__check span { display: grid; gap: 0.1rem; }
 
