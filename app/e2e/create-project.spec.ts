@@ -83,7 +83,8 @@ test("the whole card opens the book, and its buttons still act where they are", 
   await window.locator("li.tile").click({ position: { x: 60, y: 60 } });
   await expect(window.getByTestId("project")).toBeVisible();
 
-  await window.locator("a.project__back").click();
+  // The way back is a button that closes the book and shows the shelf again.
+  await window.getByTestId("project-back").click();
   await expect(window.getByTestId("library")).toBeVisible();
 
   // The button under the same sheet: it starts the run and stays on the shelf.
