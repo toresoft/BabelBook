@@ -9,9 +9,17 @@
   flex: 3 1 35rem; min-width: 24.75rem; display: flex; flex-direction: column;
   gap: 0.75rem; padding: 1.5rem; box-sizing: border-box; min-height: 0;
 }
+/* The flex item of `.project` is the `<bb-side>` host, not the `<aside>`
+   inside its template — same trap as `.project__panel > bb-terms` a few lines
+   down. Sizing it on `.side` itself would style an element whose parent is
+   not the flex container, and do nothing: the host would sit at its default
+   width while the aside inside stayed content-height, tall enough for its
+   header and no taller. The rule belongs on the host. */
+bb-side { flex: 1 1 20rem; min-width: 16.5rem; max-width: 28.75rem; min-height: 0; display: flex; }
 @media (max-width: 60rem) {
   .project { flex-direction: column; overflow-y: auto; }
   .project__main { flex: none; }
+  bb-side { flex: none; max-width: none; }
 }
 
 /* Where you are, and the way back from it. */

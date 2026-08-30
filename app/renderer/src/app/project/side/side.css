@@ -1,5 +1,10 @@
+/* Sizing (flex-basis, min/max-width) lives on the `bb-side` host in
+   project.css, not here: this element's parent is the host's own shadow-free
+   template boundary, not `.project`'s flex row, so a flex-item rule on
+   `.side` itself would size nothing. This rule fills whatever width the host
+   was given. */
 .side {
-  flex: 1 1 20rem; min-width: 16.5rem; max-width: 28.75rem;
+  flex: 1; min-height: 0;
   border-left: 1px solid var(--line); background: var(--surface-raised);
   display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
 }

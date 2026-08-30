@@ -144,11 +144,6 @@ export class Project implements OnDestroy {
     this.tab.set(tab);
   }
 
-  /** Asked of the machine, through the main process. Never re-derived here. */
-  can(action: string): boolean {
-    return this.project()?.actions.includes(action) ?? false;
-  }
-
   percent(found: ProjectDetail): number {
     return found.progress.total === 0
       ? 0
