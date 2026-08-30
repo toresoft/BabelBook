@@ -33,7 +33,7 @@ import { sdkBackend } from "../engine/backends/sdk.ts";
 import type { BackendSpec, EngineMessage } from "../shared/run.ts";
 import type { Events } from "../shared/channels.ts";
 import type { VerifyOutcome } from "../shared/dto.ts";
-import { notifyOn, onQuitRequested, onWindowClose, trayTooltip } from "./tray.ts";
+import { notifyOn, onQuitRequested, onWindowClose, tooltipFor } from "./tray.ts";
 import { TRAY_ICON } from "./icons.ts";
 import { createMainWindow, createSplashWindow } from "./window.ts";
 
@@ -148,17 +148,36 @@ function notify(key: string, params?: unknown): void {
 
 function updateTooltip(message: EngineMessage): void {
   if (glue.tray === null) return;
-  if (message.type === "done") {
-    glue.tray.setToolTip(glue.t("tray.idle"));
-    return;
-  }
-  if (message.type !== "progress" || glue.runtime === undefined) return;
-  const projectId = glue.runtime.active;
-  if (projectId === null) return;
-  glue.tray.setToolTip(trayTooltip(
-    { title: titleOf(projectId), done: message.done, total: message.total },
-    glue.t,
-  ));
+  const projectId = glue.runtime?.active ?? null;
+  const said = tooltipFor(message, projectId === null ? null : titleOf(projectId), glue.t);
+  if (said !== null) glue.tray.setToolTip(said);
+}
+
+/**
+ * The tray's menu, rebuilt whenever the answer to "is a book moving?" changes.
+ *
+ * Rebuilt rather than edited: on Linux an item whose `enabled` is flipped
+ * after the menu was handed over is not always redrawn by the desktop, and a
+ * pause that looks disabled while it works is worse than no pause at all.
+ */
+function trayMenu(): Menu {
+  const running = glue.runtime?.active ?? null;
+  return Menu.buildFromTemplate([
+    { label: glue.t("tray.open"), click: () => glue.window?.show() },
+    {
+      label: glue.t("tray.pause"),
+      id: "pause",
+      enabled: running !== null,
+      click: () => { if (running !== null) void glue.runtime?.pause(running); },
+    },
+    { type: "separator" },
+    { label: glue.t("tray.quit"), click: () => void askQuit() },
+  ]);
+}
+
+/** The one act the tray offers while the window is hidden: it must work. */
+function refreshTray(): void {
+  glue.tray?.setContextMenu(trayMenu());
 }
 
 function buildTray(): Tray | null {
@@ -167,12 +186,7 @@ function buildTray(): Tray | null {
   try {
     const tray = new Tray(nativeImage.createFromDataURL(TRAY_ICON));
     tray.setToolTip(glue.t("tray.idle"));
-    tray.setContextMenu(Menu.buildFromTemplate([
-      { label: glue.t("tray.open"), click: () => glue.window?.show() },
-      { label: glue.t("tray.pause"), enabled: false, id: "pause" },
-      { type: "separator" },
-      { label: glue.t("tray.quit"), click: () => void askQuit() },
-    ]));
+    tray.setContextMenu(trayMenu());
     tray.on("double-click", () => glue.window?.show());
     return tray;
   } catch {
@@ -299,6 +313,9 @@ app.whenReady().then(async () => {
 
   runtime.onMessage((message) => {
     updateTooltip(message);
+    // A run that started, stopped at a gate or ended changes what the tray can
+    // offer: the menu is asked again rather than left as it was built.
+    refreshTray();
     const notification = notifyOn(message);
     if (notification !== null) {
       notify(notification.key, runtime.active === null ? undefined : { title: titleOf(runtime.active) });

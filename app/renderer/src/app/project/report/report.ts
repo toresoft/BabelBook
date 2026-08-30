@@ -1,4 +1,6 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from "@angular/core";
+import {
+  ChangeDetectionStrategy, Component, effect, inject, input, OnDestroy, signal,
+} from "@angular/core";
 import { TranslocoDirective } from "@jsverse/transloco";
 import type { Report } from "../../../../../shared/dto.js";
 import { IpcService } from "../../core/ipc.service";
@@ -26,12 +28,23 @@ export class ReportView {
   readonly loading = signal(true);
 
   #ipc = inject(IpcService);
+  #off: Array<() => void> = [];
 
   constructor() {
     effect(() => {
       const id = this.projectId();
       if (id !== "") void this.reload(id);
     });
+
+    // A report read while the run is still going is a report of a moment: it is
+    // asked again whenever the run moves.
+    this.#off.push(this.#ipc.on("project.changed", (changed) => {
+      if (changed.id === this.projectId()) void this.reload();
+    }));
+  }
+
+  ngOnDestroy(): void {
+    for (const off of this.#off) off();
   }
 
   async reload(projectId = this.projectId()): Promise<void> {

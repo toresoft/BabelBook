@@ -33,16 +33,28 @@ export function onQuitRequested(hasRunningWork: boolean): "confirm" | "quit" {
 }
 
 /**
- * What the tray says about the book under translation.
+ * What the tray says after a message, or null to leave it saying what it says.
  *
- * The sentence comes from the catalogue: a tooltip written here would be one
+ * A tooltip is the only thing a hidden window still tells the user, so it must
+ * not go on counting a run that has stopped: a book that failed, or that is
+ * waiting at a gate, said "12 of 100" for as long as the application stayed
+ * open, and that number was a lie about work in progress.
+ *
+ * The sentences come from the catalogue: a tooltip written here would be one
  * more language the interface speaks, and the only one it speaks just once.
  */
-export function trayTooltip(
-  state: { title: string; done: number; total: number },
+export function tooltipFor(
+  message: EngineMessage,
+  title: string | null,
   t: (key: string, params?: unknown) => string,
-): string {
-  return t("tray.translating", state);
+): string | null {
+  if (message.type === "done" || message.type === "failed") return t("tray.idle");
+  if (title === null) return null;
+  if (message.type === "progress") {
+    return t("tray.translating", { title, done: message.done, total: message.total });
+  }
+  if (message.type === "gate") return t("tray.waiting", { title });
+  return null;
 }
 
 /**

@@ -28,17 +28,31 @@ function bridge(report: Report | null = base, answers: Record<string, unknown> =
       : undefined);
 }
 
-function mount(invoke = bridge()) {
+/** The main process's events, as a thing a test can fire. */
+function bus() {
+  const listeners: Record<string, Array<(payload: unknown) => void>> = {};
+  return {
+    on: (channel: string, listener: (payload: unknown) => void) => {
+      (listeners[channel] ??= []).push(listener);
+      return () => { listeners[channel] = (listeners[channel] ?? []).filter((l) => l !== listener); };
+    },
+    emit: (channel: string, payload: unknown) => {
+      for (const listener of listeners[channel] ?? []) listener(payload);
+    },
+  };
+}
+
+function mount(invoke = bridge(), events = bus()) {
   TestBed.configureTestingModule({
     imports: [ReportView],
     providers: [
       ...provideI18n("it"),
-      { provide: IpcService, useValue: { invoke, on: () => () => {} } },
+      { provide: IpcService, useValue: { invoke, on: events.on } },
     ],
   });
   const fixture = TestBed.createComponent(ReportView);
   fixture.componentRef.setInput("projectId", "p1");
-  return { fixture, invoke };
+  return { fixture, invoke, events };
 }
 
 async function render(report: Report | null): Promise<string> {
@@ -57,6 +71,21 @@ const calls = (invoke: ReturnType<typeof bridge>, channel: string) =>
   invoke.mock.calls.filter(([name]) => name === channel);
 
 describe("ReportView", () => {
+  /*
+   * A report read while a run is still moving is a report of a moment; it is
+   * asked again whenever the run says something changed.
+   */
+  it("asks again when the run says this project changed", async () => {
+    const { fixture, invoke, events } = mount();
+    await fixture.whenStable();
+    const before = invoke.mock.calls.filter(([name]) => name === "report.get").length;
+
+    events.emit("project.changed", { id: "p1" });
+    await fixture.whenStable();
+
+    expect(invoke.mock.calls.filter(([name]) => name === "report.get").length).toBe(before + 1);
+  });
+
   it("turns a code into a sentence from the catalogue", async () => {
     const text = await render({
       ...base,
