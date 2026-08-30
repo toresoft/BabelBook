@@ -1,0 +1,15 @@
+.detail { max-width: 52rem; display: flex; flex-direction: column; gap: 0.75rem; max-height: 80vh; }
+
+.detail__bar { display: flex; align-items: flex-start; gap: 1rem; }
+.detail__names { flex: 1; min-width: 0; }
+.detail__title { margin: 0; font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+.detail__subtitle {
+  margin: 0.15rem 0 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem; color: var(--text-muted); overflow-wrap: anywhere;
+}
+
+/* The body is what scrolls: the title stays, and so do the acts. */
+.detail__body { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 0.75rem; }
+
+.detail__acts { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.detail__acts:empty { display: none; }

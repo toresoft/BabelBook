@@ -1,84 +1,164 @@
-<section class="units" data-testid="units" *transloco="let t">
-  <header class="units__bar">
+<section class="list units" data-testid="units" *transloco="let t">
+  <header class="list__bar">
     <h2>{{ t('units.title') }}</h2>
+    <p class="list__subtitle">{{ t('units.count', { count: count(total()) }) }}</p>
 
-    <select
-      class="select units__state"
-      data-testid="unit-state"
-      [ngModel]="state()"
-      (ngModelChange)="onState($event)">
-      <option value="">{{ t('units.allStates') }}</option>
-      @for (name of states; track name) {
-        <option [value]="name">{{ t('unitState.' + name) }}</option>
-      }
-    </select>
+    <div class="list__narrow">
+      <select
+        class="select select-sm units__state"
+        data-testid="unit-state"
+        [ngModel]="state()"
+        (ngModelChange)="onState($event)">
+        <option value="">{{ t('units.allStates') }}</option>
+        @for (name of states; track name) {
+          <option [value]="name">{{ t('unitState.' + name) }}</option>
+        }
+      </select>
 
-    <input
-      class="input units__search"
-      type="search"
-      data-testid="unit-search"
-      [placeholder]="t('units.search')"
-      [ngModel]="search()"
-      (ngModelChange)="onSearch($event)" />
-
-    <span class="units__count">{{ t('units.count', { count: total() }) }}</span>
+      <input
+        class="input input-sm list__search"
+        type="search"
+        data-testid="unit-search"
+        [placeholder]="t('list.search')"
+        [ngModel]="search()"
+        (ngModelChange)="onSearch($event)" />
+    </div>
   </header>
 
-  @if (units().length > 0) {
-    <div class="units__columns" data-testid="unit-columns">
-      <span>{{ t('units.sourceColumn') }}</span>
-      <span>{{ t('units.translationColumn') }}</span>
+  <div class="table" role="table">
+    <div class="table__head" role="row" data-testid="unit-columns" [style.grid-template-columns]="columns">
+      <span role="columnheader">{{ t('units.sourceColumn') }}</span>
+      <span role="columnheader">{{ t('units.translationColumn') }}</span>
+      <span role="columnheader">{{ t('units.stateColumn') }}</span>
     </div>
-  }
 
-  @if (units().length === 0 && !loading()) {
-    <p class="units__empty" data-testid="units-empty">{{ t('units.empty') }}</p>
-  }
+    <div class="table__body">
+      @for (unit of units(); track unit.unitId) {
+        <div class="table__row table__row--tall" role="row" tabindex="0"
+             [attr.data-testid]="'row-' + unit.unitId" [style.grid-template-columns]="columns"
+             (click)="opened.set(unit)" (keydown.enter)="opened.set(unit)"
+             (keydown.space)="opened.set(unit); $event.preventDefault()">
+          <div class="table__cell" role="cell">
+            <p class="table__lines">{{ unit.source }}</p>
+            <p class="table__sub">{{ unit.unitId }}</p>
+          </div>
 
-  <ul class="units__list">
-    @for (unit of units(); track unit.unitId) {
-      <li class="row" [attr.data-testid]="'row-' + unit.unitId">
-        <div class="row__head">
-          <span class="row__id">{{ unit.unitId }}</span>
-          <span class="row__state">{{ t('unitState.' + unit.state) }}</span>
-          @if (unit.forced) {
-            <span class="row__forced">{{ t('units.forced') }}</span>
-          }
-          @if (unit.outcome) {
-            <span class="row__outcome">{{ t('units.outcome.' + unit.outcome) }}</span>
-          }
+          <div class="table__cell" role="cell">
+            @if (unit.translation) {
+              <p class="table__lines table__lines--soft">{{ unit.translation }}</p>
+              @if (unit.outcome) {
+                <p class="table__sub">{{ t('units.outcome.' + unit.outcome) }}</p>
+              }
+            } @else {
+              <p class="table__lines table__muted">{{ t('units.untranslated') }}</p>
+            }
+          </div>
+
+          <div class="table__cell" role="cell">
+            <span class="badge badge-outline badge-sm">{{ t('unitState.' + unit.state) }}</span>
+            @if (unit.forced) {
+              <p class="table__sub">{{ t('units.forced') }}</p>
+            }
+          </div>
         </div>
+      }
 
-        <div class="row__pair">
-          <p class="row__source">{{ unit.source }}</p>
-          @if (unit.translation) {
-            <p class="row__translation">{{ unit.translation }}</p>
+      @if (units().length === 0 && !loading()) {
+        <p class="table__empty" data-testid="units-empty">
+          {{ narrowed() ? t('list.noResults') : t('units.empty') }}
+        </p>
+      }
+    </div>
+
+
+    <div class="table__foot">
+      <span data-testid="units-range">{{ range() }}</span>
+
+      <label class="table__perPage">
+        {{ t('list.rows') }}
+        <select
+          class="select select-xs"
+          data-testid="units-per-page"
+          [ngModel]="pageSize()"
+          (ngModelChange)="onPageSize(+$event)">
+          @for (size of pageSizes; track size) {
+            <option [value]="size">{{ size }}</option>
+          }
+        </select>
+      </label>
+
+      @if (pageCount() > 1) {
+      <div class="table__pager">
+        <button type="button" class="btn btn-xs" data-testid="units-first"
+                [attr.aria-label]="t('list.first')" [attr.title]="t('list.first')"
+                [disabled]="page() === 1" (click)="goto(1)">«</button>
+        <button type="button" class="btn btn-xs" data-testid="units-back"
+                [attr.aria-label]="t('list.previous')" [attr.title]="t('list.previous')"
+                [disabled]="page() === 1" (click)="goto(page() - 1)">‹</button>
+
+        @for (item of pages(); track $index) {
+          @if (item === gap) {
+            <span class="table__gap">{{ gap }}</span>
           } @else {
-            <p class="row__translation row__translation--none">{{ t('units.untranslated') }}</p>
+            <button type="button" class="btn btn-xs"
+                    [class.btn-primary]="item === page()"
+                    [attr.data-testid]="'units-page-' + item"
+                    [attr.aria-current]="item === page() ? 'page' : null"
+                    (click)="goto(+item)">{{ item }}</button>
+          }
+        }
+
+        <button type="button" class="btn btn-xs" data-testid="units-more"
+                [attr.aria-label]="t('list.next')" [attr.title]="t('list.next')"
+                [disabled]="page() === pageCount()" (click)="goto(page() + 1)">›</button>
+        <button type="button" class="btn btn-xs" data-testid="units-last"
+                [attr.aria-label]="t('list.last')" [attr.title]="t('list.last')"
+                [disabled]="page() === pageCount()" (click)="goto(pageCount())">»</button>
+      </div>
+      }
+    </div>
+  </div>
+
+  @if (opened(); as unit) {
+    <!-- The address is the title: a paragraph as a heading is five lines of the
+         same text the dialog is about to show properly. -->
+    <bb-detail [title]="unit.unitId" [subtitle]="unit.doc" (closed)="opened.set(null)">
+      <div class="detail__pair">
+        <div>
+          <p class="detail__label">{{ t('units.sourceColumn') }}</p>
+          <p class="detail__text">{{ unit.source }}</p>
+        </div>
+        <div>
+          <p class="detail__label">{{ t('units.translationColumn') }}</p>
+          @if (unit.translation) {
+            <p class="detail__text">{{ unit.translation }}</p>
+          } @else {
+            <p class="detail__text table__muted">{{ t('units.untranslated') }}</p>
           }
         </div>
-      </li>
-    }
-  </ul>
+      </div>
 
-  @if (total() > pageSize) {
-    <div class="units__pager">
-      <button
-        type="button"
-        class="btn"
-        data-testid="units-back"
-        [disabled]="offset() === 0"
-        (click)="back()">
-        {{ t('units.previous') }}
-      </button>
-      <button
-        type="button"
-        class="btn"
-        data-testid="units-more"
-        [disabled]="offset() + units().length >= total()"
-        (click)="more()">
-        {{ t('units.next') }}
-      </button>
-    </div>
+      <dl class="detail__facts">
+        <div>
+          <dt>{{ t('units.stateColumn') }}</dt>
+          <dd>
+            {{ t('unitState.' + unit.state) }}
+            @if (unit.forced) { · {{ t('units.forced') }} }
+          </dd>
+        </div>
+        @if (unit.reason) {
+          <div>
+            <dt>{{ t('exclusions.columns.kind') }}</dt>
+            <dd>{{ t('reasons.' + unit.reason) }}</dd>
+          </div>
+        }
+        @if (unit.outcome) {
+          <div>
+            <dt>{{ t('units.translationColumn') }}</dt>
+            <dd>{{ t('units.outcome.' + unit.outcome) }}</dd>
+          </div>
+        }
+      </dl>
+    </bb-detail>
   }
 </section>

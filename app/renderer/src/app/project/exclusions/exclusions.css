@@ -1,23 +1,18 @@
-.exclusions { display: grid; gap: 0.75rem; }
-.exclusions__bar { display: flex; gap: 1rem; align-items: baseline; }
-.exclusions__bar h2 { margin: 0; font-size: 1rem; }
-.exclusions__lead, .exclusions__empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
+.exclusions__filter { width: 10rem; }
 
-.group { border: 1px solid var(--line); border-radius: 6px; padding: 0.75rem; display: grid; gap: 0.4rem; }
-.group__head { margin: 0; font-size: 0.95rem; display: flex; gap: 0.5rem; align-items: baseline; }
-.group__doc, .group__count, .group__reason { color: var(--text-muted); font-size: 0.8rem; margin: 0; font-weight: 400; }
-.group__units { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
-
-.unit { border-top: 1px solid var(--surface-raised); padding-top: 0.4rem; display: grid; gap: 0.25rem; }
-.unit__position { margin: 0; color: var(--text-muted); font-size: 0.72rem; }
-/* A listing can run to hundreds of lines: it scrolls inside its own box
-   rather than stretching the page to fit one exclusion. */
+/*
+ * The block itself, in the font it was written in.
+ *
+ * Two lines: one is not enough to tell a stylesheet from a paragraph that
+ * happens to start with a bracket, and the whole of a listing belongs to the
+ * document, not to a row of a table. The pointer carries the rest.
+ */
 .unit__text {
-  margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem;
-  white-space: pre-wrap; overflow-wrap: anywhere; max-height: 6rem; overflow-y: auto;
+  margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem;
+  color: var(--text-soft); overflow-wrap: anywhere; white-space: pre-wrap;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.unit__actions { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
-.unit__verdict { color: var(--text-muted); font-size: 0.78rem; }
+.unit__reason { font-family: inherit; white-space: normal; }
 
 .exclusions__failure { color: var(--danger); font-size: 0.85rem; margin: 0; }
 .exclusions__footer { display: flex; gap: 0.6rem; flex-wrap: wrap; }

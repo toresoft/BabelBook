@@ -1,8 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from "@angular/core";
+import {
+  ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, signal,
+} from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { TranslocoDirective } from "@jsverse/transloco";
+import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import type { GlossaryView, TermRow, TermRule } from "../../../../../shared/dto.js";
 import { IpcService } from "../../core/ipc.service";
+import { Detail } from "../detail";
+import { GAP, pageItems, type PageItem } from "../pages";
 
 /** What the user has changed about a term but not yet saved. */
 interface Edit {
@@ -10,6 +14,14 @@ interface Edit {
   rule?: TermRule;
   approval?: "approved" | "rejected";
 }
+
+/** The states the filter offers, in the order it offers them. */
+const APPROVALS = ["pending", "approved", "rejected"] as const;
+
+/** Term, rendering, state, and what can be done about it. */
+const COLUMNS = "minmax(0, 1.1fr) minmax(0, 1.4fr) 7rem minmax(0, 12rem)";
+
+const PAGE_SIZES = [10, 20, 30] as const;
 
 /**
  * The terms gate.
@@ -24,13 +36,17 @@ interface Edit {
 @Component({
   selector: "bb-terms",
   standalone: true,
-  imports: [FormsModule, TranslocoDirective],
+  imports: [Detail, FormsModule, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./terms.html",
-  styleUrl: "./terms.css",
+  styleUrls: ["../list.css", "./terms.css"],
 })
-export class Terms {
+export class Terms implements OnDestroy {
   readonly projectId = input.required<string>();
+  readonly approvals = APPROVALS;
+  readonly columns = COLUMNS;
+  readonly pageSizes = PAGE_SIZES;
+  readonly gap = GAP;
 
   readonly terms = signal<TermRow[]>([]);
   readonly glossaries = signal<GlossaryView[]>([]);
@@ -46,7 +62,44 @@ export class Terms {
   readonly pending = computed(() => this.terms().filter((term) => term.approval === "pending"));
   readonly decided = computed(() => Object.keys(this.edits()).length);
 
+  readonly approval = signal("");
+  readonly query = signal("");
+  readonly pageSize = signal<number>(20);
+  readonly page = signal(1);
+  /** The term being read in full, if any: one at a time, like a form. */
+  readonly open = signal<string | null>(null);
+  readonly opened = computed(() =>
+    this.terms().find((term) => term.id === this.open()) ?? null);
+
+  /**
+   * The rows the filter and the search leave, judged on what the row shows —
+   * `view`, not the stored term — so a term approved a moment ago leaves the
+   * "to decide" list the moment it is decided, and not at the next save.
+   */
+  readonly visible = computed(() => {
+    const approval = this.approval();
+    const query = this.query().trim().toLowerCase();
+    return this.terms().filter((term) => {
+      const shown = this.view(term);
+      if (approval !== "" && shown.approval !== approval) return false;
+      if (query === "") return true;
+      return `${term.source} ${shown.target ?? ""} ${term.context ?? ""}`
+        .toLowerCase().includes(query);
+    });
+  });
+
+  readonly pageCount = computed(() =>
+    Math.max(1, Math.ceil(this.visible().length / this.pageSize())));
+  readonly rows = computed(() => {
+    const from = (Math.min(this.page(), this.pageCount()) - 1) * this.pageSize();
+    return this.visible().slice(from, from + this.pageSize());
+  });
+  readonly pages = computed<PageItem[]>(() => pageItems(this.page(), this.pageCount()));
+  readonly narrowed = computed(() => this.approval() !== "" || this.query() !== "");
+
   #ipc = inject(IpcService);
+  #off: Array<() => void> = [];
+  #transloco = inject(TranslocoService);
 
   constructor() {
     // The input arrives after construction, so the load is an effect on it
@@ -55,6 +108,16 @@ export class Terms {
       const id = this.projectId();
       if (id !== "") void this.reload(id);
     });
+
+    // The candidates arrive when the extraction ends, and the gate may already be
+    // on screen: without this it stays empty over a book that has terms.
+    this.#off.push(this.#ipc.on("project.changed", (changed) => {
+      if (changed.id === this.projectId()) void this.reload();
+    }));
+  }
+
+  ngOnDestroy(): void {
+    for (const off of this.#off) off();
   }
 
   async reload(projectId = this.projectId()): Promise<void> {
@@ -107,6 +170,46 @@ export class Terms {
 
   dismiss(): void {
     this.invalidation.set(null);
+  }
+
+  /** What the row says the term becomes: a rule, or the rendering it asks for. */
+  rendering(term: TermRow): string {
+    const shown = this.view(term);
+    if (shown.rule === "dnt") return this.#transloco.translate("terms.rules.dnt");
+    return shown.target ?? "—";
+  }
+
+  toggle(id: string): void {
+    this.open.update((current) => (current === id ? null : id));
+  }
+
+  onApproval(approval: string): void {
+    this.page.set(1);
+    this.approval.set(approval);
+  }
+
+  onQuery(query: string): void {
+    this.page.set(1);
+    this.query.set(query);
+  }
+
+  goto(page: number): void {
+    this.page.set(Math.min(Math.max(1, page), this.pageCount()));
+  }
+
+  onPageSize(size: number): void {
+    const first = (this.page() - 1) * this.pageSize();
+    this.pageSize.set(size);
+    this.page.set(Math.floor(first / size) + 1);
+  }
+
+  /** Which rows of how many, in the reader's own figures. */
+  range(): string {
+    const total = this.visible().length;
+    const from = total === 0 ? 0 : (Math.min(this.page(), this.pageCount()) - 1) * this.pageSize() + 1;
+    return this.#transloco.translate("list.range", {
+      from, to: Math.min(from + this.rows().length - 1, total), total,
+    });
   }
 
   /** Approves everything still pending, in one call. */

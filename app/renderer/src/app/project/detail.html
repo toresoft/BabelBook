@@ -1,0 +1,27 @@
+<dialog class="modal" open data-testid="detail" *transloco="let t">
+  <div class="modal-box detail">
+    <header class="detail__bar">
+      <div class="detail__names">
+        <h3 class="detail__title">{{ title() }}</h3>
+        @if (subtitle()) {
+          <p class="detail__subtitle">{{ subtitle() }}</p>
+        }
+      </div>
+      <button type="button" class="btn btn-sm btn-ghost" data-testid="detail-close"
+              (click)="closed.emit()">{{ t('list.close') }}</button>
+    </header>
+
+    <div class="detail__body">
+      <ng-content />
+    </div>
+
+    <footer class="detail__acts">
+      <ng-content select="[detail-actions]" />
+    </footer>
+  </div>
+
+  <!-- The ground outside the box closes it, as every dialog in this window does. -->
+  <form method="dialog" class="modal-backdrop" (click)="closed.emit()">
+    <button type="button">{{ t('list.close') }}</button>
+  </form>
+</dialog>

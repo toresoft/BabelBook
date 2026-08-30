@@ -1,0 +1,115 @@
+/*
+ * The shell the three lists of a project share: a bar that says what is being
+ * looked at and narrows it, a table, and a footer that says where in the list
+ * you are.
+ *
+ * It is one file included by three components rather than three copies of the
+ * same rules: a table that drifts between tabs is read as three tables.
+ */
+
+/* The list fills the panel: its bar and its footer hold still, and the rows
+   between them are the only thing that scrolls. */
+.list { height: 100%; display: flex; flex-direction: column; gap: 0.75rem; }
+.list > :not(.table) { flex: none; }
+
+.list__bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.list__bar h2 { margin: 0; font-size: 1rem; }
+.list__subtitle { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
+.list__narrow { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
+.list__search { width: 14rem; }
+
+.table {
+  border: 1px solid var(--line); border-radius: 6px; background: var(--surface);
+  box-shadow: var(--rest); overflow: hidden;
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+}
+.table__head, .table__foot { flex: none; }
+.table__body { flex: 1; min-height: 0; overflow-y: auto; }
+
+/* The names of the columns, said once and quietly: small, spaced and in
+   capitals, so they are read as labels rather than as the first row. */
+.table__head {
+  display: grid; gap: 1rem; padding: 0.55rem 1rem;
+  background: var(--surface-raised); border-bottom: 1px solid var(--line);
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.table__row {
+  display: grid; gap: 1rem; align-items: center; padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+.table__row:last-child { border-bottom: none; }
+/* A row opens: the tint is the invitation, and the arrow stays — what opens a
+   dialog acts inside the application, and the hand is for links that leave. */
+.table__row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (hover: hover) {
+  .table__row:hover { background: var(--accent-wash); }
+}
+
+/* Every cell is allowed to be narrower than its content — without this a grid
+   column refuses to shrink past its longest word and the row runs off. */
+.table__cell { min-width: 0; }
+.table__strong {
+  font-size: 0.875rem; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.table__sub {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.7rem;
+  color: var(--text-faint); margin-top: 0.1rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.table__text {
+  font-size: 0.82rem; color: var(--text-soft);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.table__muted { color: var(--text-faint); font-style: italic; }
+.table__acts { display: flex; gap: 0.35rem; justify-content: flex-end; flex-wrap: wrap; }
+
+.table__empty { padding: 2.5rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+
+/* Where in the list you are, and the way out of it. */
+.table__foot {
+  display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
+  padding: 0.5rem 0.9rem; border-top: 1px solid var(--line); background: var(--surface-raised);
+  font-size: 0.75rem; color: var(--text-muted);
+}
+.table__perPage { display: flex; align-items: center; gap: 0.4rem; }
+.table__pager { margin-left: auto; display: flex; align-items: center; gap: 0.25rem; }
+.table__pager .btn { min-width: 1.75rem; }
+.table__gap { padding: 0 0.25rem; color: var(--text-faint); }
+
+/*
+ * What a row says when it is opened.
+ *
+ * These are worn by the content the three lists project into the dialog, so
+ * they live here with the table they belong to: the dialog's own sheet cannot
+ * reach them — projected content keeps the styles of the component that wrote
+ * it, not of the one that displays it.
+ */
+.detail__pair { display: grid; gap: 1rem; }
+@media (min-width: 46rem) {
+  .detail__pair { grid-template-columns: 1fr 1fr; }
+}
+.detail__label {
+  margin: 0 0 0.25rem; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.detail__text {
+  margin: 0; font-size: 0.9rem; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap;
+}
+.detail__code {
+  margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem;
+  line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+  background: var(--surface-raised); border: 1px solid var(--line); border-radius: 6px;
+  padding: 0.6rem 0.7rem; max-height: 22rem; overflow-y: auto;
+}
+.detail__facts {
+  margin: 0; display: flex; gap: 1.5rem; flex-wrap: wrap;
+  border-top: 1px solid var(--line); padding-top: 0.75rem;
+}
+.detail__facts dt { color: var(--text-muted); font-size: 0.68rem; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase; }
+.detail__facts dd { margin: 0.15rem 0 0; font-size: 0.85rem; }
+.detail__fields { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.detail__fields label { display: grid; gap: 0.2rem; font-size: 0.8rem; color: var(--text-muted); }

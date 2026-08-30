@@ -28,23 +28,53 @@ function bridge(answers: Partial<Record<string, unknown>> = {}) {
   });
 }
 
-function mount(invoke = bridge()) {
+/** The main process's events, as a thing a test can fire. */
+function bus() {
+  const listeners: Record<string, Array<(payload: unknown) => void>> = {};
+  return {
+    on: (channel: string, listener: (payload: unknown) => void) => {
+      (listeners[channel] ??= []).push(listener);
+      return () => { listeners[channel] = (listeners[channel] ?? []).filter((l) => l !== listener); };
+    },
+    emit: (channel: string, payload: unknown) => {
+      for (const listener of listeners[channel] ?? []) listener(payload);
+    },
+  };
+}
+
+function mount(invoke = bridge(), events = bus()) {
   TestBed.configureTestingModule({
     imports: [Terms],
     providers: [
       ...provideI18n("it"),
-      { provide: IpcService, useValue: { invoke, on: () => () => {} } },
+      { provide: IpcService, useValue: { invoke, on: events.on } },
     ],
   });
   const fixture = TestBed.createComponent(Terms);
   fixture.componentRef.setInput("projectId", "p1");
-  return { fixture, invoke };
+  return { fixture, invoke, events };
 }
 
 const calls = (invoke: ReturnType<typeof bridge>, channel: string) =>
   invoke.mock.calls.filter(([name]) => name === channel);
 
 describe("Terms", () => {
+  /*
+   * The candidates are written when the extraction ends, and the gate is often
+   * already on screen when that happens: without this it stays empty over a
+   * book that has terms to decide.
+   */
+  it("asks again when the run says this project changed", async () => {
+    const { fixture, invoke, events } = mount();
+    await fixture.whenStable();
+    const before = invoke.mock.calls.filter(([name]) => name === "terms.list").length;
+
+    events.emit("project.changed", { id: "p1" });
+    await fixture.whenStable();
+
+    expect(invoke.mock.calls.filter(([name]) => name === "terms.list").length).toBe(before + 1);
+  });
+
   it("shows each candidate with the sentence it came from", async () => {
     const { fixture } = mount();
     await fixture.whenStable();

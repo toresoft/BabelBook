@@ -27,7 +27,19 @@
     "pause": "Pause",
     "compose": "Compose the book again",
     "resume": "Resume",
-    "delete": "Delete"
+    "delete": "Delete",
+    "download": "Download"
+  },
+  "list": {
+    "search": "Search",
+    "close": "Close",
+    "rows": "Rows",
+    "range": "{{from}}–{{to}} of {{total}}",
+    "noResults": "No results for the active filters.",
+    "first": "First page",
+    "previous": "Previous page",
+    "next": "Next page",
+    "last": "Last page"
   },
   "project": {
     "tabs": {
@@ -202,6 +214,12 @@
     "title": "Terms",
     "lead": "{{count}} terms to decide. The translation will honour them.",
     "empty": "No terms were extracted for this book.",
+    "allApprovals": "All states",
+    "columns": {
+      "term": "Term",
+      "rendering": "Rendering",
+      "state": "State"
+    },
     "occurrences": "{{count}} occurrences",
     "origin": {
       "glossary": "from the glossary",
@@ -220,8 +238,10 @@
       "must": "Required rendering"
     },
     "target": "Rendering",
+    "context": "Context",
     "approve": "Approve",
     "reject": "Reject",
+    "edit": "Edit",
     "promote": "Promote to a glossary…",
     "approveAll": "Approve all",
     "save": "Save {{count}} decisions",
@@ -236,14 +256,22 @@
     "title": "Exclusions",
     "lead": "{{count}} blocks will not be translated. Check that this is right.",
     "empty": "Nothing excluded: the whole book will be translated.",
-    "inGroup": "{{count}} blocks",
-    "inDocument": "in {{doc}}",
+    "allKinds": "All kinds",
+    "columns": {
+      "block": "Block",
+      "content": "Content",
+      "kind": "Kind"
+    },
     "position": "Block {{ordinal}}",
     "noReason": "Your decision",
-    "free": "It is prose, translate it",
-    "protect": "It is code, leave it",
+    "why": "Why",
+    "free": "It is text",
+    "freeHint": "It is text, translate it",
+    "protect": "It is code",
+    "protectHint": "It is code, leave it",
     "undo": "Undo",
-    "clearForced": "Back to the automatic choice",
+    "clearForced": "Automatic",
+    "clearForcedHint": "Back to the automatic choice",
     "save": "Save {{count}} changes",
     "approveGate": "Save and continue",
     "failed": "The changes could not be saved."
@@ -271,6 +299,7 @@
     "count": "{{count}} units",
     "sourceColumn": "Source",
     "translationColumn": "Translation",
+    "stateColumn": "State",
     "empty": "No units match.",
     "forced": "your decision",
     "untranslated": "Not translated yet",
@@ -278,9 +307,7 @@
       "translated": "translated",
       "identical": "identical to the source",
       "fell-back": "fell back to the source"
-    },
-    "previous": "Previous",
-    "next": "Next"
+    }
   },
   "report": {
     "title": "Report",
@@ -378,6 +405,7 @@
   },
   "tray": {
     "translating": "{{title}} — {{done}} of {{total}} units",
+    "waiting": "{{title}} — waiting for your decision",
     "idle": "babelBook",
     "open": "Open",
     "pause": "Pause",

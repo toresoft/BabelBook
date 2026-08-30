@@ -81,13 +81,13 @@ test("a person walks the book through both gates", async () => {
   // this assertion is about.
   await until(window, "waiting-terms");
   await expect(window.getByTestId("terms")).toBeVisible();
-  await expect(window.getByTestId("terms").locator("li.term").first()).toBeVisible();
+  await expect(window.getByTestId("terms").locator(".table__row").first()).toBeVisible();
 
   // Approving is what the gate is for. Pressing "continue" without deciding
   // leaves every candidate pending, and pending terminology is dropped: the
   // run would proceed having been asked a question it never answered.
   await window.getByTestId("approve-all").click();
-  await expect(window.getByTestId("terms").locator("li.term").first())
+  await expect(window.getByTestId("terms").locator(".table__row").first())
     .toContainText(label(it, "terms.approval.approved"));
   await window.getByTestId("approve-gate").click();
 

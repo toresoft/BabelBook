@@ -23,18 +23,35 @@ function bridge(total = 2) {
     channel === "units.list" ? { units: rows, total } : undefined);
 }
 
-function mount(invoke = bridge()) {
+/** The main process's events, as a thing a test can fire. */
+function bus() {
+  const listeners: Record<string, Array<(payload: unknown) => void>> = {};
+  return {
+    on: (channel: string, listener: (payload: unknown) => void) => {
+      (listeners[channel] ??= []).push(listener);
+      return () => { listeners[channel] = (listeners[channel] ?? []).filter((l) => l !== listener); };
+    },
+    emit: (channel: string, payload: unknown) => {
+      for (const listener of listeners[channel] ?? []) listener(payload);
+    },
+  };
+}
+
+function mount(invoke = bridge(), events = bus()) {
   TestBed.configureTestingModule({
     imports: [Units],
     providers: [
       ...provideI18n("it"),
-      { provide: IpcService, useValue: { invoke, on: () => () => {} } },
+      { provide: IpcService, useValue: { invoke, on: events.on } },
     ],
   });
   const fixture = TestBed.createComponent(Units);
   fixture.componentRef.setInput("projectId", "p1");
-  return { fixture, invoke };
+  return { fixture, invoke, events };
 }
+
+const calls = (invoke: ReturnType<typeof bridge>) =>
+  invoke.mock.calls.filter(([name]) => name === "units.list");
 
 const lastQuery = (invoke: ReturnType<typeof bridge>) =>
   invoke.mock.calls.filter(([name]) => name === "units.list").at(-1)![1] as Record<string, unknown>;
@@ -64,6 +81,69 @@ describe("Units", () => {
     expect(columns.textContent).toContain(catalogue.units["translationColumn"]);
   });
 
+  /*
+   * Production break: a run wrote translations while this tab was open and the
+   * table went on saying "not yet translated" until the reader thought to
+   * change a filter. The tab a book is checked with cannot be the last to know.
+   */
+  it("asks again when the run reports progress on this book", async () => {
+    const { fixture, invoke, events } = mount();
+    await fixture.whenStable();
+    const before = calls(invoke).length;
+
+    events.emit("run.progress", { projectId: "p1", phase: "translate", done: 3, total: 9 });
+    await fixture.whenStable();
+
+    expect(calls(invoke).length).toBe(before + 1);
+  });
+
+  it("ignores a run on another book", async () => {
+    const { fixture, invoke, events } = mount();
+    await fixture.whenStable();
+    const before = calls(invoke).length;
+
+    events.emit("run.progress", { projectId: "p2", phase: "translate", done: 3, total: 9 });
+    await fixture.whenStable();
+
+    expect(calls(invoke).length).toBe(before);
+  });
+
+  it("answers the first message at once, and the storm that follows it once", async () => {
+    const { fixture, invoke, events } = mount();
+    await fixture.whenStable();
+    const before = calls(invoke).length;
+
+    for (let at = 0; at < 20; at++) {
+      events.emit("run.progress", { projectId: "p1", phase: "translate", done: at, total: 20 });
+    }
+    await fixture.whenStable();
+
+    // One query, not twenty: the rest are held for the end of the second.
+    expect(calls(invoke).length).toBe(before + 1);
+  });
+
+  it("opens a row in full, and closes it again", async () => {
+    const { fixture } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The table cuts a paragraph to three lines; this is where the whole of it
+    // is read, beside its translation.
+    expect(fixture.nativeElement.querySelector("[data-testid=detail]")).toBeNull();
+
+    fixture.nativeElement.querySelector("[data-testid='row-c1.xhtml#1']").click();
+    fixture.detectChanges();
+
+    const detail = fixture.nativeElement.querySelector("[data-testid=detail]");
+    expect(detail).not.toBeNull();
+    expect(detail.textContent).toContain("The road to Rivendell");
+    expect(detail.textContent).toContain("La strada per Gran Burrone");
+
+    detail.querySelector("[data-testid=detail-close]").click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=detail]")).toBeNull();
+  });
+
   it("keeps the pager off a single page", async () => {
     const { fixture } = mount(bridge(2));
     await fixture.whenStable();
@@ -84,16 +164,16 @@ describe("Units", () => {
     expect(fixture.nativeElement.querySelector("[data-testid=units-more]")).not.toBeNull();
   });
 
-  it("keeps the count beside the filter that produces it", async () => {
-    const { fixture } = mount();
+  it("counts under the title, and counts what the filters left", async () => {
+    const { fixture } = mount(bridge(7));
     await fixture.whenStable();
     fixture.detectChanges();
 
-    // The count answers the filters, so it lives next to them — not as a
-    // report somewhere below the list it counted.
-    const bar = fixture.nativeElement.querySelector(".units__bar");
-    const afterSearch = bar.querySelector(".units__search").nextElementSibling;
-    expect(afterSearch.classList.contains("units__count")).toBe(true);
+    // The count is the subtitle of the list, where the revised design puts it;
+    // it still answers the filters, because the number the store returns is
+    // the number of rows the current question has.
+    const subtitle = fixture.nativeElement.querySelector(".list__subtitle");
+    expect(subtitle.textContent).toContain("7");
   });
 
   it("says a unit is untranslated rather than showing an empty column", async () => {
@@ -137,11 +217,13 @@ describe("Units", () => {
   });
 
   it("returns to the first page when the question changes", async () => {
-    const { fixture, invoke } = mount();
+    // A book long enough to have a second page: the pager clamps to the last
+    // one, so a list of two units has nowhere to go.
+    const { fixture, invoke } = mount(bridge(120));
     await fixture.whenStable();
-    fixture.componentInstance.more();
+    fixture.componentInstance.goto(2);
     await fixture.whenStable();
-    expect(lastQuery(invoke)).toMatchObject({ offset: 50 });
+    expect(lastQuery(invoke)).toMatchObject({ offset: 20 });
 
     fixture.componentInstance.onState("code");
     await fixture.whenStable();

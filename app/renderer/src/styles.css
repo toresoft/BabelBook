@@ -9,6 +9,7 @@
  * so the tones the library can wear are always in the build.
  */
 @source inline("badge-primary badge-success badge-error badge-warning badge-neutral");
+@source inline("progress-primary progress-success progress-error progress-warning progress-neutral");
 
 /*
  * The palette, unchanged, in daisyUI's names.
@@ -126,6 +127,8 @@
   --accent-line: #93c5fd;
 
   --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --danger-line: #fecaca;
 
   --warning: #b45309;
   --warning-soft: #fef3c7;
@@ -136,6 +139,11 @@
   --ok: #166534;
   --ok-soft: #dcfce7;
   --ok-line: #86efac;
+
+  /* What a card wears under the pointer. A shadow is a colour too, so it is
+     declared here with the rest of them. */
+  --rest: 0 1px 2px rgb(16 24 40 / 0.06), 0 8px 20px -6px rgb(16 24 40 / 0.10);
+  --lift: 0 4px 14px rgb(17 24 39 / 0.16);
 }
 
 /*
@@ -166,6 +174,8 @@
   --accent-line: #2563eb;
 
   --danger: #f87171;
+  --danger-soft: #450a0a;
+  --danger-line: #7f1d1d;
 
   --warning: #fbbf24;
   --warning-soft: #78350f;
@@ -176,6 +186,11 @@
   --ok: #86efac;
   --ok-soft: #14532d;
   --ok-line: #22c55e;
+
+  /* Darker and wider: on a dark ground a shadow is read by its spread, not by
+     the grey it adds. */
+  --rest: 0 1px 2px rgb(0 0 0 / 0.30), 0 8px 20px -6px rgb(0 0 0 / 0.35);
+  --lift: 0 4px 16px rgb(0 0 0 / 0.55);
 }
 
 /* The system's font, and the system's theme: the two things not ours to choose. */
@@ -190,6 +205,31 @@ body {
   color: var(--text);
   line-height: 1.5;
 }
+
+/*
+ * The window is the page.
+ *
+ * The shell used to scroll as one, so a long list carried the header, the tabs
+ * and the toolbar up with it, and the scrollbar belonged to the application
+ * rather than to the thing being read. Now the shell holds still and each
+ * screen scrolls what it must: the library its shelf, a project's tab its own
+ * rows. The padding moved with the scrolling — it belongs to the screen that
+ * scrolls, or the scrollbar ends up inset from the window's edge.
+ */
+main { display: flex; flex-direction: column; overflow: hidden; }
+/* The outlet renders its component as a sibling, and is itself nothing. */
+main > router-outlet { display: none; }
+main > * { flex: 1; min-height: 0; }
+
+/*
+ * An empty bar must not read as a full one.
+ *
+ * daisyUI paints the track with the fill's own colour at 20%: at zero the bar
+ * is a pale blue band the width of the window, and all that tells it from a
+ * finished book is how saturated it is. The track is the page's line instead,
+ * so what is blue is what is done.
+ */
+.progress { background-color: var(--line); }
 
 /*
  * The pointing hand is for links that leave, and nothing here is one: the

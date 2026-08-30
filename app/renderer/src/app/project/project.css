@@ -1,4 +1,9 @@
-.project { padding: 1.5rem; max-width: 62rem; display: grid; gap: 0.75rem; }
+/* The header holds still and the panel takes what is left: the tab decides
+   what scrolls inside it — a list its rows, a long report itself. */
+.project {
+  padding: 1.5rem; max-width: 62rem; height: 100%; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
 
 .project__head { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
 .project__back { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
@@ -23,7 +28,17 @@
 .project__phase-inner { margin-left: 1.2rem; width: calc(100% - 1.2rem); height: 0.4rem; }
 .project__phase-counts { color: var(--text-muted); font-size: 0.85rem; margin-left: 1.2rem; }
 
-.project__panel { padding-top: 0.5rem; }
+.project__panel {
+  padding-top: 0.5rem; flex: 1; min-height: 0;
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+/* A tab is a component of its own, and its host is the link in the chain that
+   carries the panel's height down to the list inside it. Named one by one: the
+   overview and the report are read from the top and sized by what they say, and
+   stretching them spreads their few lines over the whole window. */
+.project__panel > bb-terms,
+.project__panel > bb-exclusions,
+.project__panel > bb-units { flex: 1; min-height: 0; }
 
 .overview { display: grid; gap: 0.6rem; }
 .overview__description { margin: 0; font-size: 0.9rem; }

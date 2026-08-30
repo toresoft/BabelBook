@@ -27,7 +27,19 @@
     "pause": "Pausa",
     "compose": "Ricomponi il libro",
     "resume": "Riprendi",
-    "delete": "Elimina"
+    "delete": "Elimina",
+    "download": "Scarica"
+  },
+  "list": {
+    "search": "Cerca",
+    "close": "Chiudi",
+    "rows": "Righe",
+    "range": "{{from}}–{{to}} di {{total}}",
+    "noResults": "Nessun risultato per i filtri attivi.",
+    "first": "Prima pagina",
+    "previous": "Pagina precedente",
+    "next": "Pagina successiva",
+    "last": "Ultima pagina"
   },
   "project": {
     "tabs": {
@@ -202,6 +214,12 @@
     "title": "Termini",
     "lead": "{{count}} termini da decidere. La traduzione li rispetterà.",
     "empty": "Nessun termine estratto per questo libro.",
+    "allApprovals": "Tutti gli stati",
+    "columns": {
+      "term": "Termine",
+      "rendering": "Resa",
+      "state": "Stato"
+    },
     "occurrences": "{{count}} occorrenze",
     "origin": {
       "glossary": "dal glossario",
@@ -220,8 +238,10 @@
       "must": "Resa obbligatoria"
     },
     "target": "Resa",
+    "context": "Contesto",
     "approve": "Approva",
     "reject": "Rifiuta",
+    "edit": "Modifica",
     "promote": "Promuovi a glossario…",
     "approveAll": "Approva tutti",
     "save": "Salva {{count}} decisioni",
@@ -236,14 +256,22 @@
     "title": "Esclusioni",
     "lead": "{{count}} blocchi non verranno tradotti. Controlla che sia giusto.",
     "empty": "Nessuna esclusione: tutto il libro verrà tradotto.",
-    "inGroup": "{{count}} blocchi",
-    "inDocument": "in {{doc}}",
+    "allKinds": "Tutti i tipi",
+    "columns": {
+      "block": "Blocco",
+      "content": "Contenuto",
+      "kind": "Tipo"
+    },
     "position": "Blocco {{ordinal}}",
     "noReason": "Deciso da te",
-    "free": "È testo, traducilo",
-    "protect": "È codice, lascialo",
+    "why": "Perché",
+    "free": "È testo",
+    "freeHint": "È testo, traducilo",
+    "protect": "È codice",
+    "protectHint": "È codice, lascialo",
     "undo": "Annulla",
-    "clearForced": "Torna alla scelta automatica",
+    "clearForced": "Automatico",
+    "clearForcedHint": "Torna alla scelta automatica",
     "save": "Salva {{count}} modifiche",
     "approveGate": "Salva e prosegui",
     "failed": "Non è stato possibile salvare le modifiche."
@@ -271,6 +299,7 @@
     "count": "{{count}} unità",
     "sourceColumn": "Sorgente",
     "translationColumn": "Traduzione",
+    "stateColumn": "Stato",
     "empty": "Nessuna unità con questi criteri.",
     "forced": "deciso da te",
     "untranslated": "Non ancora tradotta",
@@ -278,9 +307,7 @@
       "translated": "tradotta",
       "identical": "identica al sorgente",
       "fell-back": "ricaduta sul sorgente"
-    },
-    "previous": "Precedenti",
-    "next": "Successive"
+    }
   },
   "report": {
     "title": "Report",
@@ -378,6 +405,7 @@
   },
   "tray": {
     "translating": "{{title}} — {{done}} di {{total}} unità",
+    "waiting": "{{title}} — in attesa di una tua decisione",
     "idle": "babelBook",
     "open": "Apri",
     "pause": "Metti in pausa",

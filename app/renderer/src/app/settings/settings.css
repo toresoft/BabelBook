@@ -1,4 +1,4 @@
-.settings { padding: 1.5rem; max-width: 56rem; display: grid; gap: 0.9rem; }
+.settings { padding: 1.5rem; max-width: 56rem; display: grid; gap: 0.9rem; height: 100%; overflow-y: auto; box-sizing: border-box; align-content: start; }
 .settings__bar { display: flex; gap: 1rem; align-items: baseline; }
 .settings__bar h1 { margin: 0; font-size: 1.25rem; }
 .settings__back { color: var(--accent); text-decoration: none; font-size: 0.9rem; }

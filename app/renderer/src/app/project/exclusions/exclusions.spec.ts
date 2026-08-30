@@ -32,23 +32,53 @@ function bridge(answers: Partial<Record<string, unknown>> = {}) {
   });
 }
 
-function mount(invoke = bridge()) {
+/** The main process's events, as a thing a test can fire. */
+function bus() {
+  const listeners: Record<string, Array<(payload: unknown) => void>> = {};
+  return {
+    on: (channel: string, listener: (payload: unknown) => void) => {
+      (listeners[channel] ??= []).push(listener);
+      return () => { listeners[channel] = (listeners[channel] ?? []).filter((l) => l !== listener); };
+    },
+    emit: (channel: string, payload: unknown) => {
+      for (const listener of listeners[channel] ?? []) listener(payload);
+    },
+  };
+}
+
+function mount(invoke = bridge(), events = bus()) {
   TestBed.configureTestingModule({
     imports: [Exclusions],
     providers: [
       ...provideI18n("it"),
-      { provide: IpcService, useValue: { invoke, on: () => () => {} } },
+      { provide: IpcService, useValue: { invoke, on: events.on } },
     ],
   });
   const fixture = TestBed.createComponent(Exclusions);
   fixture.componentRef.setInput("projectId", "p1");
-  return { fixture, invoke };
+  return { fixture, invoke, events };
 }
 
 const calls = (invoke: ReturnType<typeof bridge>, channel: string) =>
   invoke.mock.calls.filter(([name]) => name === channel);
 
 describe("Exclusions", () => {
+  /*
+   * The code index settles these while the gate may already be on screen: the
+   * blocks the reader is judging must be the ones the index decided, not the
+   * ones the extractor guessed.
+   */
+  it("asks again when the run says this project changed", async () => {
+    const { fixture, invoke, events } = mount();
+    await fixture.whenStable();
+    const before = invoke.mock.calls.filter(([name]) => name === "exclusions.list").length;
+
+    events.emit("project.changed", { id: "p1" });
+    await fixture.whenStable();
+
+    expect(invoke.mock.calls.filter(([name]) => name === "exclusions.list").length).toBe(before + 1);
+  });
+
   it("shows the groups with the block text, so a verdict can be judged", async () => {
     const { fixture } = mount();
     await fixture.whenStable();
@@ -57,6 +87,31 @@ describe("Exclusions", () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain("gem install foo");
     expect(text).toContain("Acme Corp");
+  });
+
+  it("opens a block in full, and decides it from there", async () => {
+    const { fixture, invoke } = mount();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector("[data-testid='unit-c1.xhtml#2']").click();
+    fixture.detectChanges();
+
+    // The table clamps a listing to two lines; the dialog is where the whole
+    // of it is read, and where the verdict can be given knowing it.
+    const detail = fixture.nativeElement.querySelector("[data-testid=detail]");
+    expect(detail.textContent).toContain("The src/ directory holds the sources");
+
+    detail.querySelector("[data-testid='detail-free-c1.xhtml#2']").click();
+    fixture.detectChanges();
+
+    // Deciding closes it: the decision was the reason it was opened.
+    expect(fixture.nativeElement.querySelector("[data-testid=detail]")).toBeNull();
+    expect(fixture.componentInstance.changes()).toBe(1);
+
+    await fixture.componentInstance.save();
+    expect((calls(invoke, "exclusions.force")[0]![1] as { changes: unknown[] }).changes)
+      .toEqual([{ unitId: "c1.xhtml#2", state: "translate" }]);
   });
 
   it("sends every forced state in one call, not one call per block", async () => {
