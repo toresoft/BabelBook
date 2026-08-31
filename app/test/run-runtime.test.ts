@@ -8,7 +8,7 @@ import { createProject } from "../main/projects/create.ts";
 import { configureEngineHost } from "../main/run/engine-host.ts";
 import { makeRunRuntime } from "../main/run/runtime.ts";
 import { statesOf } from "../main/run/states.ts";
-import type { EngineMessage, MessagePortLike } from "../shared/run.ts";
+import type { EngineMessage, MessagePortLike, RunConfig } from "../shared/run.ts";
 
 const composition = vi.hoisted(() => {
   let resolve: (result: unknown) => void = () => {};
@@ -33,8 +33,11 @@ afterEach(() => {
 function fakeEngine() {
   let receive: ((event: { data: unknown }) => void) | undefined;
   let exited: ((code: number) => void) | undefined;
+  const sent: unknown[] = [];
   const port: MessagePortLike = {
-    postMessage: () => {},
+    // `makeEngineHost` sends every command down port1, so this is where the
+    // start command — and the config the runtime built — actually goes.
+    postMessage: (message) => { sent.push(message); },
     on: (_event, listener) => { receive = listener; },
     start: () => {},
     close: () => {},
@@ -53,6 +56,7 @@ function fakeEngine() {
   }));
 
   return {
+    sent,
     emit(message: EngineMessage): void {
       if (receive === undefined) throw new Error("engine is not connected");
       receive({ data: message });
@@ -86,7 +90,9 @@ async function running() {
   const engine = fakeEngine();
   const runtime = makeRunRuntime({
     db,
-    settings: () => ({ autoAcceptTerms: true, autoAcceptExclusions: true, concurrency: 2 }),
+    // The two gates used to be read from here. This object is now the whole of
+    // what the runtime is allowed to ask the application.
+    settings: () => ({ concurrency: 2 }),
     backendSpec: () => ({ kind: "fake" }),
     broadcast: () => {},
   });
@@ -278,5 +284,49 @@ describe("the runtime's state history", () => {
       .toMatchObject({ outcome: "paused", leftAt: expect.any(String) });
     expect(statesOf(db, id).filter((state) => state.kind === "project").at(-1))
       .toMatchObject({ name: "paused" });
+  });
+});
+
+describe("where the runtime reads the two gates", () => {
+  it("takes them off the project's row, and not off the settings", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "babelbook-run-gates-"));
+    const db = openDatabase(":memory:");
+    migrate(db, loadMigrations("app/main/db/migrations"));
+    db.prepare(`
+      INSERT INTO provider (id, name, route, headers, options)
+      VALUES ('pv1', 'Acme', 'openai-compatible', '{}', '{}')
+    `).run();
+    db.prepare(`
+      INSERT INTO provider_model (id, provider_id, model_id, display_name)
+      VALUES ('pm1', 'pv1', 'm1', 'M1')
+    `).run();
+
+    const epubPath = join(dir, "book.epub");
+    await writeFile(epubPath, await buildEpub({
+      title: "The Book", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    }));
+    const created = await createProject(db, dir, {
+      epubPath, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+    });
+
+    // One closed, one open: two booleans read from one place would both be
+    // right by accident if the place were the wrong one.
+    db.prepare(`
+      UPDATE project SET auto_accept_terms = 0, auto_accept_exclusions = 1 WHERE id = ?
+    `).run(created.id);
+
+    const engine = fakeEngine();
+    const runtime = makeRunRuntime({
+      db,
+      settings: () => ({ concurrency: 2 }),
+      backendSpec: () => ({ kind: "fake" }),
+      broadcast: () => {},
+    });
+    await runtime.start(created.id);
+
+    const start = engine.sent.find((message) =>
+      (message as { type?: string }).type === "start") as { config: RunConfig };
+    expect(start.config).toMatchObject({ autoAcceptTerms: false, autoAcceptExclusions: true });
   });
 });

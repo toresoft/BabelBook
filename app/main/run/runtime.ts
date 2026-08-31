@@ -19,7 +19,12 @@ import type { ProjectEvent } from "../../../core/workflow/project.machine.ts";
 
 export interface RunRuntimeDeps {
   db: DatabaseSync;
-  settings(): { autoAcceptTerms: boolean; autoAcceptExclusions: boolean; concurrency: number };
+  /**
+   * What is still an application-wide setting: how many requests go out at
+   * once. The two gates used to be here and are now on the project's own row —
+   * a book that stops to ask is a decision about that book.
+   */
+  settings(): { concurrency: number };
   /** The backend materials for a project, key included: they cross the engine port and no other. */
   backendSpec(projectId: string): BackendSpec;
   broadcast<K extends keyof Events>(channel: K, payload: Events[K]): void;
@@ -33,6 +38,9 @@ interface ProjectRow {
   source_sha256: string;
   /** The key the run wrote its work under. Null until a run has written one. */
   cache_key: string | null;
+  /** 0 or 1: SQLite has no boolean, and the row is read as it was written. */
+  auto_accept_terms: number;
+  auto_accept_exclusions: number;
 }
 
 /** A failure the interface can name, because it was foreseen. */
@@ -85,7 +93,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
   const project = (projectId: string): ProjectRow => {
     const row = db.prepare(`
       SELECT title, workspace_path, source_language, target_language, source_sha256,
-             cache_key
+             cache_key, auto_accept_terms, auto_accept_exclusions
         FROM project WHERE id = ?
     `).get(projectId) as ProjectRow | undefined;
     if (row === undefined) throw new RunRefusedError("NO_SUCH_PROJECT");
@@ -93,10 +101,10 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
   };
 
   const machineHost = (projectId: string, extra: Record<string, unknown> = {}) => {
-    const settings = deps.settings();
+    const row = project(projectId);
     return makeMachineHost(db, projectId, {
-      autoAcceptTerms: settings.autoAcceptTerms,
-      autoAcceptExclusions: settings.autoAcceptExclusions,
+      autoAcceptTerms: row.auto_accept_terms === 1,
+      autoAcceptExclusions: row.auto_accept_exclusions === 1,
       ...extra,
     });
   };
@@ -387,8 +395,8 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       cacheKey: key,
       sourceLanguage: row.source_language ?? "en",
       targetLanguage: row.target_language,
-      autoAcceptTerms: settings.autoAcceptTerms,
-      autoAcceptExclusions: settings.autoAcceptExclusions,
+      autoAcceptTerms: row.auto_accept_terms === 1,
+      autoAcceptExclusions: row.auto_accept_exclusions === 1,
       concurrency: settings.concurrency,
       contextWindowTokens,
     };
