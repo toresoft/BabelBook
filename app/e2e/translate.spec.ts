@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { _electron as electron, expect, test, type ElectronApplication, type Page } from "@playwright/test";
 import { buildEpub } from "../../core/test/corpus/build.ts";
 import { readEpub } from "../../core/epub/index.ts";
-import { mainWindow } from "./support.ts";
+import { mainWindow, seedProvider } from "./support.ts";
 
 /**
  * The whole application, end to end, with the deterministic backend.
@@ -24,6 +24,7 @@ async function launch(
   userData: string,
   env: Record<string, string> = {},
 ): Promise<{ app: ElectronApplication; window: Page }> {
+  await seedProvider(userData);
   const app = await electron.launch({
     args: ["."],
     cwd: join(import.meta.dirname, ".."),

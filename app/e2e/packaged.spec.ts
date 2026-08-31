@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { buildEpub } from "../../core/test/corpus/build.ts";
-import { mainWindow } from "./support.ts";
+import { mainWindow, seedProvider } from "./support.ts";
 
 /**
  * The package, opened.
@@ -39,6 +39,7 @@ test("the package opens, migrates its database and reads a book", async () => {
     documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p><p>Two</p><p>Three</p>" }],
   }));
 
+  await seedProvider(dir);
   const app = await electron.launch({
     executablePath: executable,
     // An AppImage will not mount without FUSE on a bare runner; extracting is

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { buildEpub } from "../../core/test/corpus/build.ts";
-import { mainWindow } from "./support.ts";
+import { mainWindow, seedProvider } from "./support.ts";
 
 /**
  * The one test that drives the real window.
@@ -14,6 +14,7 @@ import { mainWindow } from "./support.ts";
  * screen.
  */
 async function launch(userData: string, epub: string) {
+  await seedProvider(userData);
   const app = await electron.launch({
     args: ["."],
     cwd: join(import.meta.dirname, ".."),

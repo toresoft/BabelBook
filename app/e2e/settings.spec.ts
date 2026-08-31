@@ -54,12 +54,12 @@ test("the four sections, and a setting that survives", async () => {
   await expect(row).toContainText("fantasy");
   await expect(row).toContainText(label(it, "glossaries.terms").replace("{{count}}", "1"));
 
-  // A gate skipped is a decision, and it has to persist.
+  // A setting changed is a decision, and it has to persist.
   await window.getByTestId("nav-translation").click();
-  await window.getByTestId("auto-terms").check();
+  await window.getByTestId("concurrency").fill("4");
   await expect.poll(async () => window.evaluate(() =>
     (window as unknown as { babelbook: Bridge }).babelbook.invoke("settings.get", undefined)))
-    .toMatchObject({ autoAcceptTerms: true });
+    .toMatchObject({ concurrency: 4 });
 
   // The interface language changes now, not at the next start.
   await window.getByTestId("nav-application").click();

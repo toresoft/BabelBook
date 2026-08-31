@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { _electron as electron, expect, test } from "@playwright/test";
 import { buildEpub } from "../../core/test/corpus/build.ts";
-import { mainWindow } from "./support.ts";
+import { mainWindow, seedProvider } from "./support.ts";
 
 /**
  * A screen that does not have to be poked.
@@ -27,6 +27,7 @@ test("the units tab keeps up with the run, and the tray icon is a real image", a
     documents: [{ path: "OEBPS/c1.xhtml", xhtml: paragraphs }],
   }));
 
+  await seedProvider(dir);
   const app = await electron.launch({
     args: ["."],
     cwd: join(import.meta.dirname, ".."),
@@ -46,13 +47,9 @@ test("the units tab keeps up with the run, and the tray icon is a real image", a
     return { empty: image.isEmpty(), size: image.getSize() };
   }, icon)).toEqual({ empty: false, size: { width: 32, height: 32 } });
 
-  // Both gates accepted without asking: this check is about a list keeping up
-  // with a run, and a gate stops the run and moves the tab away from it.
-  await window.getByTestId("nav-translation").click();
-  await window.getByTestId("auto-terms").click();
-  await window.getByTestId("auto-exclusions").click();
-  await window.getByTestId("nav-all").click();
-
+  // Both gates are accepted without asking — that is now the default a new
+  // project is born with — because this check is about a list keeping up with
+  // a run, and a gate stops the run and moves the tab away from it.
   await window.getByTestId("new-project").click();
   await window.getByTestId("choose-epub").click();
   await window.getByTestId("target-language").selectOption("it");

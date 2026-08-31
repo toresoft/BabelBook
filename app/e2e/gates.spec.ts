@@ -5,7 +5,7 @@ import { _electron as electron, expect, test, type ElectronApplication, type Pag
 import { buildEpub } from "../../core/test/corpus/build.ts";
 // Node runs this file as plain ESM, which requires the attribute.
 import it from "../locales/it.json" with { type: "json" };
-import { mainWindow } from "./support.ts";
+import { mainWindow, seedProvider } from "./support.ts";
 
 const label = (catalogue: unknown, path: string): string =>
   path.split(".").reduce<unknown>((at, key) => (at as Record<string, unknown>)[key], catalogue) as string;
@@ -23,6 +23,7 @@ interface Bridge {
 }
 
 async function launch(userData: string, epub: string): Promise<{ app: ElectronApplication; window: Page }> {
+  await seedProvider(userData);
   const app = await electron.launch({
     args: ["."],
     cwd: join(import.meta.dirname, ".."),
@@ -64,6 +65,10 @@ test("a person walks the book through both gates", async () => {
   await window.getByTestId("new-project").click();
   await window.getByTestId("choose-epub").click();
   await window.getByTestId("target-language").selectOption("it");
+  // The default is now to walk past both gates, so this spec says out loud
+  // what it needs: they are closed here, on this book, and nowhere else.
+  await window.getByTestId("auto-terms").uncheck();
+  await window.getByTestId("auto-exclusions").uncheck();
   await window.getByTestId("create").click();
 
   // Into the book's own screen, from the library.
@@ -76,7 +81,7 @@ test("a person walks the book through both gates", async () => {
   // The button exists because the machine says START is allowed.
   await window.getByTestId("project-start").click();
 
-  // Both gates are on by default, so the run stops and asks. A gate that
+  // Both gates were closed on the form, so the run stops and asks. A gate that
   // shows an empty list has not asked anything, so the candidates are what
   // this assertion is about.
   await until(window, "waiting-terms");
@@ -133,6 +138,11 @@ test("editing a term after the run says what it would undo, before undoing it", 
   await window.getByTestId("new-project").click();
   await window.getByTestId("choose-epub").click();
   await window.getByTestId("target-language").selectOption("it");
+  // Closed here too. "Straight through both gates" means this test walks them
+  // by hand rather than lingering at them — it still needs them to stop, and
+  // a project is born walking past both.
+  await window.getByTestId("auto-terms").uncheck();
+  await window.getByTestId("auto-exclusions").uncheck();
   await window.getByTestId("create").click();
 
   const tile = window.getByTestId("library").locator("li.tile").first();

@@ -1,6 +1,6 @@
 # Stato del lavoro
 
-Aggiornato al 2026-08-29. Serve a riprendere da zero contesto: dove siamo, cosa
+Aggiornato al 2026-08-31. Serve a riprendere da zero contesto: dove siamo, cosa
 viene dopo, e cosa si è già scoperto che i piani non sapevano.
 
 ## Come si lavora qui
@@ -46,12 +46,30 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | Provider inclusi | scritto, non iniziato | `app/main/providers/` |
 | 9. La corsa osservabile e il discovery | **completo**, 11/11 + revisione finale dell'intero ramo | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
 | Difetti trovati sul primo libro vero | **quattro, corretti** | `app/renderer/src/app/project/`, `app/main/providers/`, `app/main/run/`, `core/workflow/` |
+| Provider obbligatorio e auto-accettazione per progetto | **completo**, 10/10 | `app/main/db/migrations/015-*`, `app/main/projects/`, `app/renderer/src/app/project/side/`, `app/renderer/src/app/library/` |
 
-Suite: **876 test verdi** (333 core, 408 app, 135 componenti) piu' **13 prove
+Suite: **972 test verdi** (336 core, 460 app, 176 componenti) piu' **15 prove
 end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
 ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
 la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
 Typecheck e build di produzione sono puliti.
+
+**Cinque prove end-to-end sono rosse, e lo erano gia' prima del piano dei
+provider**: `gates` ×2 e `translate` ×2 con «the project never reached done; it
+is incomplete», e `providers` ×1 con un click che non si stabilizza. Non sono
+mai state verdi su questa macchina; la CI dice il contrario e non l'ho vista
+fallire, il che e' esattamente il motivo per cui il badge non conta. Chi
+riprende deve trovarne cinque, non sei: una sesta e' sua.
+
+**Il default dei due gate e' ribaltato, ed e' per progetto.** Un libro nasce
+accettando termini ed esclusioni senza chiedere; chi vuole fermarsi lo dice
+alla creazione o dalla schermata di modifica del progetto. Le due caselle non
+esistono piu' in *Impostazioni → Traduzione*, che ora tiene solo la
+concorrenza. Un progetto senza provider non si puo' piu' creare: la libreria
+spegne il bottone e `app/main/projects/provider.ts` rifiuta al confine.
+`project.provider_id` resta pero' nullable — i database gia' in giro possono
+avere libri orfani, e nessuna migrazione sceglie un modello al posto di
+qualcuno.
 
 I test dei componenti girano col builder `@angular/build:unit-test`
 (`npm run test:ui -w app`), agganciato a `npm test`.
