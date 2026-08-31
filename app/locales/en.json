@@ -58,6 +58,9 @@
     "provider": "Provider",
     "description": "Description",
     "readDescription": "Read",
+    "edit": "Edit",
+    "editTitle": "Project settings",
+    "editSave": "Save",
     "noDescriptionShort": "none",
     "descriptionTitle": "The book's description",
     "noProvider": "none",
@@ -483,6 +486,9 @@
     },
     "reasoningChange": {
       "message": "Change reasoning for “{{model}}” on “{{name}}”? Translations already made with this model were cached under the previous setting and will be done again."
+    },
+    "contractChange": {
+      "message": "Change the model or a language of “{{title}}”? The {{done}} units already translated were tied to the previous configuration: they stay on disk, but they will stop counting."
     },
     "deleteGlossary": {
       "message": "Delete the glossary “{{name}}”? {{count}} projects will lose its terminology.",

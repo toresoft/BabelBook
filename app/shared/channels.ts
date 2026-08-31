@@ -40,6 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
 /** The destructive acts that are asked about before they happen. */
 export const CONFIRM_KINDS = [
   "deleteProject", "deleteProvider", "deleteGlossary", "abandonProject", "reasoningChange",
+  "contractChange",
 ] as const;
 export type ConfirmKind = (typeof CONFIRM_KINDS)[number];
 

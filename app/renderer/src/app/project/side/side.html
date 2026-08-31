@@ -56,6 +56,13 @@
       </div>
     </dl>
 
+    <div class="side__edit">
+      <button type="button" class="btn btn-xs" data-testid="side-edit"
+              [disabled]="!canEdit()" (click)="editOpen.set(true)">
+        {{ t('project.edit') }}
+      </button>
+    </div>
+
     @if (alerts().length > 0) {
       <div class="side__alerts">
         @for (card of alerts(); track card.testid) {
@@ -220,6 +227,10 @@
       <bb-detail [title]="t('project.descriptionTitle')" (closed)="descriptionOpen.set(false)">
         <p class="detail__text">{{ found.description }}</p>
       </bb-detail>
+    }
+
+    @if (editOpen()) {
+      <bb-project-settings [project]="found" (closed)="editOpen.set(false)" />
     }
   }
 </aside>

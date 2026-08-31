@@ -58,6 +58,9 @@
     "provider": "Provider",
     "description": "Descrizione",
     "readDescription": "Leggi",
+    "edit": "Modifica",
+    "editTitle": "Impostazioni del progetto",
+    "editSave": "Salva",
     "noDescriptionShort": "assente",
     "descriptionTitle": "Descrizione del libro",
     "noProvider": "nessuno",
@@ -483,6 +486,9 @@
     },
     "reasoningChange": {
       "message": "Cambiare il ragionamento di «{{model}}» su «{{name}}»? Le traduzioni già fatte con questo modello erano legate all'impostazione precedente e verranno rifatte."
+    },
+    "contractChange": {
+      "message": "Cambiare modello o lingua di «{{title}}»? Le {{done}} unità già tradotte erano legate alla configurazione precedente: restano sul disco, ma smetteranno di contare."
     },
     "deleteGlossary": {
       "message": "Eliminare il glossario «{{name}}»? {{count}} progetti ne perderanno la terminologia.",

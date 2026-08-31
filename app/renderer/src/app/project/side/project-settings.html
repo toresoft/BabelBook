@@ -1,0 +1,73 @@
+<bb-detail [title]="t('project.editTitle')" (closed)="closed.emit()" *transloco="let t">
+  <div class="detail__form">
+    <label>
+      {{ t('newProject.provider') }}
+      <select class="select" data-testid="edit-provider" [ngModel]="providerId()"
+              (ngModelChange)="pickProvider($event)">
+        @for (provider of usable(); track provider.id) {
+          <option [value]="provider.id">{{ provider.name }}</option>
+        }
+      </select>
+    </label>
+
+    @if (chosenProvider(); as provider) {
+      <label>
+        {{ t('newProject.model') }}
+        <select class="select" data-testid="edit-model" [ngModel]="modelId()"
+                (ngModelChange)="pickModel($event)">
+          @for (model of provider.models; track model.id) {
+            <option [value]="model.id">{{ model.displayName }}</option>
+          }
+        </select>
+      </label>
+    }
+
+    <label>
+      {{ t('newProject.targetLanguage') }}
+      <select class="select" data-testid="edit-target-language" [ngModel]="targetLanguage()"
+              (ngModelChange)="targetLanguage.set($event)">
+        @for (language of languages; track language) {
+          <option [value]="language">{{ language }}</option>
+        }
+      </select>
+    </label>
+
+    <label>
+      {{ t('newProject.sourceLanguage') }}
+      <input class="input" data-testid="edit-source-language" [ngModel]="sourceLanguage()"
+             (ngModelChange)="sourceLanguage.set($event)" />
+    </label>
+
+    <label>
+      {{ t('newProject.description') }}
+      <textarea class="textarea" data-testid="edit-description" rows="3" [ngModel]="description()"
+                (ngModelChange)="description.set($event)"></textarea>
+      <small>{{ t('newProject.descriptionHint') }}</small>
+    </label>
+
+    <label class="prefs__check">
+      <input type="checkbox" class="checkbox" data-testid="edit-auto-terms"
+             [ngModel]="autoAcceptTerms()" (ngModelChange)="autoAcceptTerms.set($event)" />
+      <span>
+        {{ t('newProject.autoAcceptTerms') }}
+        <small>{{ t('newProject.autoAcceptTermsHint') }}</small>
+      </span>
+    </label>
+
+    <label class="prefs__check">
+      <input type="checkbox" class="checkbox" data-testid="edit-auto-exclusions"
+             [ngModel]="autoAcceptExclusions()" (ngModelChange)="autoAcceptExclusions.set($event)" />
+      <span>
+        {{ t('newProject.autoAcceptExclusions') }}
+        <small>{{ t('newProject.autoAcceptExclusionsHint') }}</small>
+      </span>
+    </label>
+  </div>
+
+  <ng-container detail-actions>
+    <button type="button" class="btn btn-primary" data-testid="edit-save"
+            [disabled]="!canSave() || saving()" (click)="save()">
+      {{ t('project.editSave') }}
+    </button>
+  </ng-container>
+</bb-detail>

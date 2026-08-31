@@ -93,6 +93,11 @@
 
 .side__facts { margin: 0 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
 
+/* The quiet edit of everything the facts above just said: pulled up into the
+   facts' own bottom margin so the rhythm stays one, and small, because the
+   column's loud acts are about the run, not the configuration. */
+.side__edit { margin: -0.75rem 1.5rem 1.5rem; }
+
 /* Each pair reads on one line — label left, value right — the way the design
    sets them; only a value too long to fit wraps onto its own line under the
    label. These belong here rather than borrowing the dialog's `.detail__*`

@@ -267,4 +267,21 @@ describe("Side", () => {
 
     expect(fixture.nativeElement.querySelectorAll("[data-testid^=alert-]")).toHaveLength(0);
   });
+
+  it("offers the edit, and refuses it only while the engine is alive", async () => {
+    // Paused is exactly when someone changes their mind about the model, so
+    // the button stays on. What protects the work is the confirmation inside
+    // the dialog, not a button that is off.
+    const paused = mount({ ...detail, state: "paused" });
+    await paused.fixture.whenStable();
+    paused.fixture.detectChanges();
+    expect(paused.fixture.nativeElement.querySelector("[data-testid=side-edit]")
+      .hasAttribute("disabled")).toBe(false);
+
+    const running = mount({ ...detail, state: "running" });
+    await running.fixture.whenStable();
+    running.fixture.detectChanges();
+    expect(running.fixture.nativeElement.querySelector("[data-testid=side-edit]")
+      .hasAttribute("disabled")).toBe(true);
+  });
 });

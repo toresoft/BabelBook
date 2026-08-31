@@ -8,6 +8,7 @@ import { between, spell } from "../../core/durations";
 import { tone as toneOf, type Tone } from "../../core/tones";
 import { Detail } from "../detail";
 import { ProgressPanel } from "./progress-panel";
+import { ProjectSettings } from "./project-settings";
 
 /** The event names `primary()` can hand back, and the testid each one carries. */
 const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE: "project-compose" } as const;
@@ -40,7 +41,7 @@ const ALERT_TITLES: Record<AlertCard["kind"], string> = {
 @Component({
   selector: "bb-side",
   standalone: true,
-  imports: [Detail, ProgressPanel, TranslocoDirective],
+  imports: [Detail, ProgressPanel, ProjectSettings, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./side.html",
   styleUrls: ["../list.css", "./side.css"],
@@ -56,6 +57,9 @@ export class Side implements OnDestroy {
 
   /** Whether the description dialog is open; the description itself stays on `project()`. */
   readonly descriptionOpen = signal(false);
+
+  /** Whether the edit dialog is open. */
+  readonly editOpen = signal(false);
 
   /** Which of the panel's two cards is showing; the reader's choice, kept where it was made. */
   readonly panel = signal<"progress" | "log">("progress");
@@ -89,6 +93,19 @@ export class Side implements OnDestroy {
   /** True when the machine would accept this event right now. */
   can(action: string): boolean {
     return this.project().actions.includes(action);
+  }
+
+  /**
+   * Editing is refused only while the engine is actually alive.
+   *
+   * A suspended run — paused, or stopped at a gate — is exactly when someone
+   * changes their mind about the model, so the button stays on there. What
+   * protects the work already done is the confirmation inside the dialog, not
+   * a button that is off.
+   */
+  canEdit(): boolean {
+    const state = this.project().state;
+    return state !== "running" && state !== "composing";
   }
 
   /**

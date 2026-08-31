@@ -1,0 +1,15 @@
+/* The dialog's own styles, not `side.css`: this template belongs to this
+   component's view, and a sibling's scoped rules would never reach it. The
+   rhythm is the one the other forms keep — labels stacked over their fields,
+   the checkbox rows beside their words — with no colour of its own. */
+.detail__form { display: grid; gap: 0.75rem; }
+.detail__form label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
+.detail__form small { color: var(--text-muted); font-size: 0.8rem; }
+.detail__form .input, .detail__form .select, .detail__form .textarea { width: 100%; }
+
+/* The checkbox rows are labels too, and `.detail__form label` above is the
+   more specific selector: named as a bare class this rule loses, and the box
+   stacks on top of its own words. */
+.detail__form label.prefs__check { display: flex; gap: 0.5rem; align-items: flex-start; }
+.prefs__check input { margin-top: 0.2rem; }
+.prefs__check span { display: grid; gap: 0.1rem; }
