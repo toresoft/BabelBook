@@ -24,6 +24,14 @@ function bridge(answers: Record<string, unknown> = {}) {
       return typeof answer === "function" ? answer(payload) : answer;
     }
     if (channel === "projects.list") return [summary] as ProjectSummary[];
+    if (channel === "providers.list") {
+      return [{
+        id: "pv1", name: "Acme", route: "acme", baseUrl: null, headers: {}, options: {},
+        catalogId: null, catalogAt: null, hasKey: true,
+        models: [{ id: "m1", displayName: "M1", contextWindow: null, priceIn: null,
+                   priceOut: null, capabilities: null, reasoningLevel: null }],
+      }];
+    }
     return undefined;
   });
 }
@@ -191,5 +199,32 @@ describe("Library", () => {
 
     // A refusal is an answer, and an answer that destroys nothing.
     expect(calls(invoke, "project.delete")).toHaveLength(0);
+  });
+
+  it("will not send anyone to a form they cannot finish", async () => {
+    const { fixture } = mount({ "providers.list": [] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector("[data-testid=new-project]");
+    expect(button.hasAttribute("disabled")).toBe(true);
+    // Spelled out, and with the way to fix it: a dead button that explains
+    // nothing is a bug report waiting to be filed.
+    expect(fixture.nativeElement.querySelector("[data-testid=needs-provider]")).not.toBeNull();
+  });
+
+  it("does not count a provider that serves no model", async () => {
+    const noModels = [{
+      id: "pv1", name: "Acme", route: "acme", baseUrl: null, headers: {}, options: {},
+      catalogId: null, catalogAt: null, hasKey: true, models: [],
+    }];
+    const { fixture } = mount({ "providers.list": noModels });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // The form asks for a model too. A provider with none makes it just as
+    // impossible to finish as no provider at all.
+    expect(fixture.nativeElement.querySelector("[data-testid=new-project]").hasAttribute("disabled"))
+      .toBe(true);
   });
 });

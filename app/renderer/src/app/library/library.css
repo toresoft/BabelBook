@@ -3,6 +3,7 @@
 .library__bar h1 { margin: 0; font-size: 1.25rem; font-weight: 600; }
 .library__search { flex: 1; max-width: 22rem; }
 .library__empty { color: var(--text-muted); }
+.library__needsProvider { color: var(--text-muted); }
 
 /* The shelf starts where the bar above it starts.
    It used to be centred, which read well with two books and aligned with

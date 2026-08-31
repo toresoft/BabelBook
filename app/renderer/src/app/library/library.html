@@ -8,8 +8,21 @@
       [placeholder]="t('library.search')"
       [ngModel]="filter()"
       (ngModelChange)="onFilter($event)" />
-    <a class="btn btn-primary" data-testid="new-project" routerLink="/new">{{ t('library.newProject') }}</a>
+    @if (canCreate()) {
+      <a class="btn btn-primary" data-testid="new-project" routerLink="/new">{{ t('library.newProject') }}</a>
+    } @else {
+      <button type="button" class="btn btn-primary" data-testid="new-project" disabled>
+        {{ t('library.newProject') }}
+      </button>
+    }
   </header>
+
+  @if (!canCreate()) {
+    <p class="library__needsProvider" data-testid="needs-provider">
+      {{ t('library.needsProvider') }}
+      <a routerLink="/settings/providers">{{ t('library.toProviders') }}</a>
+    </p>
+  }
 
   @if (projects().length === 0 && !loading()) {
     <!-- The whole library empty and one group empty are two different silences:

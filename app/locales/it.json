@@ -20,6 +20,8 @@
     "empty": "Nessun progetto. Comincia da un EPUB.",
     "emptyBucket": "Nessun libro in questo gruppo.",
     "newProject": "Nuovo progetto",
+    "needsProvider": "Per tradurre un libro serve un provider. Non ne hai ancora configurato uno.",
+    "toProviders": "Vai ai provider",
     "search": "Cerca per titolo",
     "noCover": "Senza copertina",
     "progress": "{{done}} di {{total}} unità",

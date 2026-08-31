@@ -1,11 +1,11 @@
 import {
-  ChangeDetectionStrategy, Component, effect, inject, input, OnDestroy, signal,
+  ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, signal,
 } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { RouterLink } from "@angular/router";
 import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import { isBucket } from "../../../../shared/buckets.js";
-import type { ProjectSummary } from "../../../../shared/dto.js";
+import type { ProjectSummary, Provider } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
 import { tone as toneOf, type Tone } from "../core/tones";
 
@@ -23,6 +23,17 @@ export class Library implements OnDestroy {
   readonly loading = signal(true);
   readonly bucket = input<string>("all");
 
+  readonly providers = signal<Provider[]>([]);
+
+  /**
+   * Whether anything here could translate a book.
+   *
+   * A provider with no models does not count: the new-project form asks for a
+   * model as well, so an enabled button would open a form nobody can finish.
+   */
+  readonly canCreate = computed(() =>
+    this.providers().some((provider) => provider.models.length > 0));
+
   #ipc = inject(IpcService);
   #transloco = inject(TranslocoService);
   #unsubscribe: Array<() => void> = [];
@@ -39,6 +50,10 @@ export class Library implements OnDestroy {
     // finished, a project was deleted from another window. Polling would show
     // a stale library between ticks.
     this.#unsubscribe.push(this.#ipc.on("project.changed", () => void this.reload()));
+    void this.#loadProviders();
+    // A provider connected in the settings must light this button back up
+    // without a restart.
+    this.#unsubscribe.push(this.#ipc.on("providers.changed", () => void this.#loadProviders()));
     this.#unsubscribe.push(this.#ipc.on("run.progress", (progress) => {
       this.projects.update((projects) => projects.map((project) =>
         project.id === progress.projectId
@@ -62,6 +77,10 @@ export class Library implements OnDestroy {
   onFilter(value: string): void {
     this.filter.set(value);
     void this.reload();
+  }
+
+  async #loadProviders(): Promise<void> {
+    this.providers.set(await this.#ipc.invoke("providers.list", undefined));
   }
 
   percent(project: ProjectSummary): number {
