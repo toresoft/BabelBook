@@ -23,6 +23,8 @@ const detail: ProjectDetail = {
   modelId: null,
   providerName: null,
   modelName: null,
+  autoAcceptTerms: true,
+  autoAcceptExclusions: true,
   actions: ["START"],
   tokens: { in: 0, out: 0, reasoning: 0 },
   cost: null,

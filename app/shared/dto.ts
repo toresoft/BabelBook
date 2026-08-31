@@ -128,6 +128,12 @@ export interface ProjectDetail extends ProjectSummary {
   /** The provider's and the model's names, as a reader knows them. */
   providerName: string | null;
   modelName: string | null;
+  /**
+   * The two gates this book walks past without asking. A property of the
+   * project since 015: the application no longer has an opinion about it.
+   */
+  autoAcceptTerms: boolean;
+  autoAcceptExclusions: boolean;
   actions: string[];
   tokens: { in: number; out: number; reasoning: number };
   /**

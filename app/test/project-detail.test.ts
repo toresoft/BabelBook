@@ -177,6 +177,18 @@ describe("projectDetail", () => {
     expect(found.phases[3]).toMatchObject({ phase: "translate", state: "done", done: 1, total: 2 });
     expect(found.finishedAt).toBe("2026-08-30T10:00:00.000Z");
   });
+
+  it("says what this book walks past without asking", () => {
+    const db = seeded();
+    db.prepare("UPDATE project SET auto_accept_exclusions = 0 WHERE id = 'p1'").run();
+
+    // Not a setting of the application any more: the screen that edits it
+    // needs to know what this book decided.
+    expect(projectDetail(db, "p1")).toMatchObject({
+      autoAcceptTerms: true,
+      autoAcceptExclusions: false,
+    });
+  });
 });
 
 describe("listUnits", () => {

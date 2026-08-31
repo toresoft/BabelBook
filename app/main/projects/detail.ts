@@ -22,6 +22,8 @@ interface DetailRow {
   model_id: string | null;
   provider_name: string | null;
   model_name: string | null;
+  auto_accept_terms: number;
+  auto_accept_exclusions: number;
   created_at: string;
   total: number;
   done: number;
@@ -47,7 +49,8 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
   const row = db.prepare(`
     SELECT p.id, p.title, p.author, p.cover_file, p.description,
            p.source_language, p.target_language, p.state, p.layout, p.has_overlays,
-           p.provider_id, p.model_id, p.created_at,
+           p.provider_id, p.model_id, p.auto_accept_terms, p.auto_accept_exclusions,
+           p.created_at,
            (SELECT count(*) FROM unit u
              WHERE u.project_id = p.id
                AND coalesce(u.forced_state, u.state) IN ('translate', 'maybe-code')) AS total,
@@ -116,6 +119,8 @@ export function projectDetail(db: DatabaseSync, projectId: string): ProjectDetai
     modelId: row.model_id,
     providerName: row.provider_name,
     modelName: row.model_name,
+    autoAcceptTerms: row.auto_accept_terms === 1,
+    autoAcceptExclusions: row.auto_accept_exclusions === 1,
     createdAt: row.created_at,
     // Asked of the machine, never derived from the state name.
     actions: makeMachineHost(db, projectId, {
