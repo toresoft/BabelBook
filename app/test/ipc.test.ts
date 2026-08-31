@@ -141,7 +141,7 @@ describe("settings", () => {
     const { deps: d } = await deps();
 
     expect(await buildHandlers(d)["settings.get"](undefined)).toMatchObject({
-      autoAcceptTerms: false, autoAcceptExclusions: false, concurrency: 2,
+      uiLanguage: "it", concurrency: 2, epubcheckJar: null,
     });
   });
 
@@ -149,10 +149,9 @@ describe("settings", () => {
     const { deps: d } = await deps();
     const handlers = buildHandlers(d);
 
-    const after = await handlers["settings.set"]({ autoAcceptTerms: true });
+    const after = await handlers["settings.set"]({ concurrency: 4 });
 
-    expect(after.autoAcceptTerms).toBe(true);
-    expect(after.concurrency).toBe(2);
+    expect(after.concurrency).toBe(4);
     expect(await handlers["settings.get"](undefined)).toEqual(after);
   });
 

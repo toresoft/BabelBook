@@ -9,8 +9,6 @@ import { Preferences } from "./preferences";
 
 const stored: Settings = {
   uiLanguage: "it",
-  autoAcceptTerms: false,
-  autoAcceptExclusions: false,
   concurrency: 2,
   epubcheckJar: null,
 };
@@ -49,28 +47,19 @@ describe("Preferences", () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain(catalogue.prefs["autoAcceptTerms"]);
+    expect(text).toContain(catalogue.prefs["concurrency"]);
     expect(text).not.toContain(catalogue.prefs["uiLanguage"]);
   });
 
-  it("sends only what changed, so one toggle does not rewrite the rest", async () => {
-    const { fixture, invoke } = mount("translation");
+  it("no longer decides for every book what a run walks past", async () => {
+    const { fixture } = mount("translation");
     await fixture.whenStable();
+    fixture.detectChanges();
 
-    await fixture.componentInstance.patch({ autoAcceptTerms: true });
-
-    expect(calls(invoke, "settings.set")[0]![1]).toEqual({ autoAcceptTerms: true });
-  });
-
-  it("keeps the two gates independent", async () => {
-    const { fixture, invoke } = mount("translation");
-    await fixture.whenStable();
-
-    await fixture.componentInstance.patch({ autoAcceptExclusions: true });
-
-    // Skipping the terms gate and skipping the exclusions gate are separate
-    // decisions; one must never imply the other.
-    expect(calls(invoke, "settings.set")[0]![1]).toEqual({ autoAcceptExclusions: true });
+    // The choice moved onto the project. Leaving a global switch here would
+    // mean two places claiming to own one fact.
+    expect(fixture.nativeElement.querySelector("[data-testid=auto-terms]")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=auto-exclusions]")).toBeNull();
   });
 
   it("changes the interface language at once, not at the next start", async () => {

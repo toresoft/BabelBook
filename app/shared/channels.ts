@@ -19,10 +19,11 @@ export type {
 
 export const DEFAULT_SETTINGS: Settings = {
   uiLanguage: "it",
-  // Both gates stop by default. Skipping them is a choice the user makes
-  // knowingly; making it for them would spend money on terminology nobody saw.
-  autoAcceptTerms: false,
-  autoAcceptExclusions: false,
+  // The two gates used to live here, closed by default, so that nobody spent
+  // money on terminology they had never seen. They now live on the project,
+  // open by default — and the reason is the same one: the choice is offered
+  // where the book is created, in plain sight, instead of being made for
+  // everybody in a screen nobody opens.
   concurrency: 2,
   epubcheckJar: null,
 };

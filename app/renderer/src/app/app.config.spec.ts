@@ -8,8 +8,6 @@ import { IpcService } from "./core/ipc.service";
 
 const stored: Settings = {
   uiLanguage: "en",
-  autoAcceptTerms: false,
-  autoAcceptExclusions: false,
   concurrency: 2,
   epubcheckJar: null,
 };

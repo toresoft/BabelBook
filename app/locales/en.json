@@ -236,10 +236,6 @@
   "prefs": {
     "translation": "Translation",
     "application": "Application",
-    "autoAcceptTerms": "Accept terms without asking",
-    "autoAcceptTermsHint": "The translation will not stop for you to approve the extracted terms.",
-    "autoAcceptExclusions": "Accept exclusions without asking",
-    "autoAcceptExclusionsHint": "You will not be asked to check what is being left untranslated.",
     "concurrency": "Chunks in parallel",
     "concurrencyHint": "How many requests to the model at once. Higher is faster and costs the same, but some providers rate-limit.",
     "uiLanguage": "Interface language",

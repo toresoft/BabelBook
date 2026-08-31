@@ -94,8 +94,6 @@ export function readSettings(db: DatabaseSync): Settings {
 
   return {
     uiLanguage: stored.get("uiLanguage") ?? DEFAULT_SETTINGS.uiLanguage,
-    autoAcceptTerms: (stored.get("autoAcceptTerms") ?? "") === "true",
-    autoAcceptExclusions: (stored.get("autoAcceptExclusions") ?? "") === "true",
     concurrency: Number(stored.get("concurrency") ?? DEFAULT_SETTINGS.concurrency),
     epubcheckJar: stored.get("epubcheckJar") ?? null,
   };

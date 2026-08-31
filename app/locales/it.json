@@ -236,10 +236,6 @@
   "prefs": {
     "translation": "Traduzione",
     "application": "Applicazione",
-    "autoAcceptTerms": "Accetta i termini senza chiedere",
-    "autoAcceptTermsHint": "La traduzione non si ferma per farti approvare i termini estratti.",
-    "autoAcceptExclusions": "Accetta le esclusioni senza chiedere",
-    "autoAcceptExclusionsHint": "Non ti verrà chiesto di controllare cosa non verrà tradotto.",
     "concurrency": "Gruppi in parallelo",
     "concurrencyHint": "Quante richieste al modello contemporaneamente. Alzarlo va più veloce e costa uguale, ma alcuni provider limitano il ritmo.",
     "uiLanguage": "Lingua dell'interfaccia",

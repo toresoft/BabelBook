@@ -12,7 +12,7 @@ function bridge() {
     if (channel === "glossaries.list") return [];
     if (channel === "settings.get") {
       return {
-        uiLanguage: "it", autoAcceptTerms: false, autoAcceptExclusions: false,
+        uiLanguage: "it",
         concurrency: 2, epubcheckJar: null,
       };
     }

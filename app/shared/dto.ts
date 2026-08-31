@@ -175,8 +175,6 @@ export interface UnitQuery {
 
 export interface Settings {
   uiLanguage: string;
-  autoAcceptTerms: boolean;
-  autoAcceptExclusions: boolean;
   concurrency: number;
   epubcheckJar: string | null;
 }
