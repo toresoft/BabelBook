@@ -53,8 +53,9 @@ export interface CreateProjectRequest {
   targetLanguage: string;
   sourceLanguage?: string;
   description?: string;
-  providerId?: string;
-  modelId?: string;
+  /** Not optional any more: a project without a provider cannot be translated. */
+  providerId: string;
+  modelId: string;
 }
 
 export type LayoutKind = "reflowable" | "pre-paginated" | "mixed";

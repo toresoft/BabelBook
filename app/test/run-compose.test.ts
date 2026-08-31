@@ -22,6 +22,14 @@ async function composing() {
   const dir = await mkdtemp(join(tmpdir(), "babelbook-run-compose-"));
   const db = openDatabase(":memory:");
   migrate(db, loadMigrations("app/main/db/migrations"));
+  db.prepare(`
+    INSERT INTO provider (id, name, route, headers, options)
+    VALUES ('pv1', 'Acme', 'openai-compatible', '{}', '{}')
+  `).run();
+  db.prepare(`
+    INSERT INTO provider_model (id, provider_id, model_id, display_name)
+    VALUES ('pm1', 'pv1', 'm1', 'M1')
+  `).run();
 
   const epubPath = join(dir, "book.epub");
   await writeFile(epubPath, await buildEpub({
@@ -29,7 +37,9 @@ async function composing() {
     language: "en",
     documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p><p>Two</p>" }],
   }));
-  const created = await createProject(db, dir, { epubPath, targetLanguage: "it" });
+  const created = await createProject(db, dir, {
+    epubPath, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+  });
 
   // What a run does at its start, and what the composer has to agree with.
   db.prepare("UPDATE project SET cache_key = ?, source_language = 'en' WHERE id = ?")

@@ -12,8 +12,19 @@ async function setup() {
   const dir = await mkdtemp(join(tmpdir(), "babelbook-create-"));
   const db = openDatabase(":memory:");
   migrate(db, loadMigrations("app/main/db/migrations"));
+  db.prepare(`
+    INSERT INTO provider (id, name, route, headers, options)
+    VALUES ('pv1', 'Acme', 'openai-compatible', '{}', '{}')
+  `).run();
+  db.prepare(`
+    INSERT INTO provider_model (id, provider_id, model_id, display_name)
+    VALUES ('pm1', 'pv1', 'm1', 'M1')
+  `).run();
   return { dir, db };
 }
+
+/** A provider and a model that exist, because from now on a project needs both. */
+const CHOICE = { providerId: "pv1", modelId: "m1" } as const;
 
 async function epubAt(dir: string, name: string, spec: Parameters<typeof buildEpub>[0]) {
   const path = join(dir, name);
@@ -35,7 +46,7 @@ describe("createProject", () => {
       ],
     });
 
-    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
 
     expect(created.title).toBe("The Book");
     expect(created.declaredLanguage).toBe("en");
@@ -54,7 +65,7 @@ describe("createProject", () => {
       ],
     });
 
-    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
 
     const phases = statesOf(db, created.id).filter((state) => state.kind === "phase");
     expect(phases).toHaveLength(1);
@@ -73,7 +84,7 @@ describe("createProject", () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2026-08-30T09:00:00.000Z"));
-      const creating = createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+      const creating = createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
       vi.setSystemTime(new Date("2026-08-30T09:02:00.000Z"));
 
       const created = await creating;
@@ -93,7 +104,7 @@ describe("createProject", () => {
       documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>a &#38; b</p>" }],
     });
 
-    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
     const row = db.prepare(
       "SELECT source_text, raw_text FROM unit WHERE project_id = ? AND source_text LIKE '%&%'",
     ).get(created.id) as { source_text: string; raw_text: string };
@@ -106,7 +117,7 @@ describe("createProject", () => {
     const notEpub = join(dir, "book.mobi");
     await writeFile(notEpub, "BOOKMOBI and then some rubbish");
 
-    await expect(createProject(db, dir, { epubPath: notEpub, targetLanguage: "it" }))
+    await expect(createProject(db, dir, { epubPath: notEpub, targetLanguage: "it", ...CHOICE }))
       .rejects.toMatchObject({ code: "UNSUPPORTED_FORMAT", format: "MOBI" });
   });
 
@@ -115,7 +126,7 @@ describe("createProject", () => {
     const zip = join(dir, "notes.zip");
     await writeFile(zip, Buffer.from("504b0304000000000000", "hex"));
 
-    await expect(createProject(db, dir, { epubPath: zip, targetLanguage: "it" }))
+    await expect(createProject(db, dir, { epubPath: zip, targetLanguage: "it", ...CHOICE }))
       .rejects.toMatchObject({ code: "UNSUPPORTED_FORMAT" });
   });
 
@@ -125,7 +136,7 @@ describe("createProject", () => {
       documents: [{ path: "OEBPS/p1.xhtml", xhtml: "<p>Plate</p>", layout: "pre-paginated" }],
     });
 
-    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
 
     expect(created.layout.prePaginated).toBeGreaterThan(0);
     const row = db.prepare("SELECT layout FROM project WHERE id = ?").get(created.id) as { layout: string };
@@ -142,7 +153,7 @@ describe("createProject", () => {
       }],
     });
 
-    expect((await createProject(db, dir, { epubPath: epub, targetLanguage: "it" })).hasOverlays)
+    expect((await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE })).hasOverlays)
       .toBe(true);
   });
 
@@ -154,7 +165,7 @@ describe("createProject", () => {
       Buffer.from("then nothing that is a zip"),
     ]));
 
-    await expect(createProject(db, dir, { epubPath: broken, targetLanguage: "it" })).rejects.toThrow();
+    await expect(createProject(db, dir, { epubPath: broken, targetLanguage: "it", ...CHOICE })).rejects.toThrow();
 
     expect(count(db, "project")).toBe(0);
     expect(count(db, "unit")).toBe(0);
@@ -164,13 +175,13 @@ describe("createProject", () => {
     expect(await readdir(join(dir, "projects")).catch(() => [])).toEqual([]);
   });
 
-  it("does not call any model: a project can be created with no provider", async () => {
+  it("does not call any model to create a project", async () => {
     const { dir, db } = await setup();
     const epub = await epubAt(dir, "book.epub", {
       documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
     });
 
-    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
     expect(created.id).toBeTruthy();
   });
 
@@ -180,7 +191,7 @@ describe("createProject", () => {
       documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>one two three</p><pre>x = 1</pre>" }],
     });
 
-    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
     expect(created.words).toBeGreaterThanOrEqual(3);
   });
 
@@ -190,7 +201,7 @@ describe("createProject", () => {
       language: "und", documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
     });
 
-    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
     const row = db.prepare("SELECT state FROM project WHERE id = ?").get(created.id) as { state: string };
 
     expect(created.declaredLanguage).toBeNull();
@@ -205,10 +216,59 @@ describe("createProject", () => {
       manifestExtra: `<item id="cover-image" href="cover.png" media-type="image/png" properties="cover-image"/>`,
     });
 
-    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it" });
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
 
     expect(created.coverPath).not.toBeNull();
     expect(existsSync(created.coverPath!)).toBe(true);
     expect(existsSync(join(dir, "projects", created.id, "source.epub"))).toBe(true);
+  });
+
+  it("refuses a project with no provider, and leaves nothing behind on the disk", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "book.epub", {
+      title: "The Book", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    });
+
+    await expect(createProject(db, dir, {
+      epubPath: epub, targetLanguage: "it", providerId: "", modelId: "",
+    })).rejects.toMatchObject({ code: "PROVIDER_REQUIRED" });
+
+    expect(count(db, "project")).toBe(0);
+    // The refusal has to come before the workspace: an EPUB copied for a
+    // project that was then refused is the half-ingestion this file exists
+    // not to leave behind.
+    expect(existsSync(join(dir, "projects"))).toBe(false);
+  });
+
+  it("refuses a provider that does not exist, and a model that is not its", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "book.epub", {
+      title: "The Book", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    });
+
+    await expect(createProject(db, dir, {
+      epubPath: epub, targetLanguage: "it", providerId: "nope", modelId: "m1",
+    })).rejects.toMatchObject({ code: "UNKNOWN_PROVIDER" });
+
+    await expect(createProject(db, dir, {
+      epubPath: epub, targetLanguage: "it", providerId: "pv1", modelId: "nope",
+    })).rejects.toMatchObject({ code: "UNKNOWN_MODEL" });
+  });
+
+  it("writes the chosen provider and model onto the row", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "book.epub", {
+      title: "The Book", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    });
+
+    const created = await createProject(db, dir, {
+      epubPath: epub, targetLanguage: "it", ...CHOICE,
+    });
+
+    expect(db.prepare("SELECT provider_id AS p, model_id AS m FROM project WHERE id = ?")
+      .get(created.id)).toEqual({ p: "pv1", m: "m1" });
   });
 });

@@ -38,6 +38,14 @@ async function scene(answer: boolean, overrides: Partial<IpcDeps> = {}): Promise
   const dir = await mkdtemp(join(tmpdir(), "babelbook-confirm-"));
   const db = openDatabase(":memory:");
   migrate(db, loadMigrations("app/main/db/migrations"));
+  db.prepare(`
+    INSERT INTO provider (id, name, route, headers, options)
+    VALUES ('pv1', 'Acme', 'openai-compatible', '{}', '{}')
+  `).run();
+  db.prepare(`
+    INSERT INTO provider_model (id, provider_id, model_id, display_name)
+    VALUES ('pm1', 'pv1', 'm1', 'M1')
+  `).run();
   const t = await loadCatalogue("it", "app/locales");
   const questions: ConfirmQuestion[] = [];
 
@@ -62,7 +70,9 @@ async function scene(answer: boolean, overrides: Partial<IpcDeps> = {}): Promise
 async function aProject(deps: IpcDeps, dir: string, title: string): Promise<string> {
   const epub = join(dir, `${title}.epub`);
   await writeFile(epub, await buildEpub({ title, documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }] }));
-  const created = await buildHandlers(deps)["project.create"]({ epubPath: epub, targetLanguage: "it" });
+  const created = await buildHandlers(deps)["project.create"]({
+    epubPath: epub, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+  });
   return created.id;
 }
 

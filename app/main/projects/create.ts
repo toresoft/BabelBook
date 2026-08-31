@@ -8,6 +8,7 @@ import {
 } from "../../../core/epub/index.ts";
 import type { CreatedProject, CreateProjectRequest as CreateInput } from "../../shared/dto.ts";
 import { enterState, leaveState } from "../run/states.ts";
+import { assertProviderChosen } from "./provider.ts";
 import { createWorkspace, copySource, deleteWorkspace, extractCover, type Workspace } from "../workspace.ts";
 
 export type { CreatedProject, CreateProjectRequest as CreateInput } from "../../shared/dto.ts";
@@ -70,9 +71,10 @@ function usableLanguage(tag: string): string | null {
  *
  * Every step here is deterministic: the archive, the package, the layout, the
  * units and their states all come from the file itself. That is deliberate.
- * A project can be created before any provider is configured, and the counts
- * it produces are what the interface shows the user *before* asking them to
- * pay for a translation.
+ * The counts it produces are what the interface shows the user *before* asking
+ * them to pay for a translation — nothing here calls a model. What it does
+ * require is that a model has been *chosen*: a project with no provider is a
+ * book nobody can translate, and the library refuses to offer one.
  *
  * Either all of it lands or none of it does. A half-ingested project is worse
  * than no project: the library shows it, and it does not work.
@@ -82,6 +84,10 @@ export async function createProject(
   base: string,
   input: CreateInput,
 ): Promise<CreatedProject> {
+  // Before the file is read and long before the workspace exists: a refusal
+  // that had already copied an EPUB would leave a directory nobody owns.
+  assertProviderChosen(db, input.providerId, input.modelId);
+
   const analysisStartedAt = new Date().toISOString();
   const head = Buffer.alloc(1024);
   const whole = await readFile(input.epubPath);
@@ -156,7 +162,7 @@ export async function createProject(
       `).run(
         projectId, input.epubPath.split("/").pop() ?? "book.epub", pkg.title, pkg.author ?? null,
         workspace.root, sha256, new Date().toISOString(), input.description ?? null,
-        sourceLanguage, input.targetLanguage, input.providerId ?? null, input.modelId ?? null,
+        sourceLanguage, input.targetLanguage, input.providerId, input.modelId,
         sourceLanguage === null ? "needs-language" : "ready", layout.book, overlays ? 1 : 0,
         coverPath === null ? null : coverPath.split("/").pop()!,
       );

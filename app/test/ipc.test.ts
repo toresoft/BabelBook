@@ -28,6 +28,14 @@ async function deps(overrides: Partial<IpcDeps> = {}) {
   const dir = await mkdtemp(join(tmpdir(), "babelbook-ipc-"));
   const db = openDatabase(":memory:");
   migrate(db, loadMigrations("app/main/db/migrations"));
+  db.prepare(`
+    INSERT INTO provider (id, name, route, headers, options)
+    VALUES ('pv1', 'Acme', 'openai-compatible', '{}', '{}')
+  `).run();
+  db.prepare(`
+    INSERT INTO provider_model (id, provider_id, model_id, display_name)
+    VALUES ('pm1', 'pv1', 'm1', 'M1')
+  `).run();
   return {
     dir,
     db,
@@ -97,7 +105,9 @@ describe("project.create and project.delete", () => {
       title: "Through IPC", documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
     }));
 
-    const created = await buildHandlers(d)["project.create"]({ epubPath: epub, targetLanguage: "it" });
+    const created = await buildHandlers(d)["project.create"]({
+      epubPath: epub, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+    });
 
     expect(created.title).toBe("Through IPC");
     expect(broadcast).toHaveBeenCalledWith("project.changed", { id: created.id });
@@ -110,7 +120,9 @@ describe("project.create and project.delete", () => {
     await writeFile(epub, await buildEpub({ documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }] }));
 
     const handlers = buildHandlers(d);
-    const created = await handlers["project.create"]({ epubPath: epub, targetLanguage: "it" });
+    const created = await handlers["project.create"]({
+      epubPath: epub, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+    });
     await handlers["project.delete"]({ id: created.id });
 
     expect((db.prepare("SELECT count(*) AS n FROM project").get() as { n: number }).n).toBe(0);
@@ -174,7 +186,12 @@ describe("project.update", () => {
       language: "und", documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
     }));
     const handlers = buildHandlers(d);
-    return { db, handlers, project: await handlers["project.create"]({ epubPath: epub, targetLanguage: "it" }) };
+    return {
+      db, handlers,
+      project: await handlers["project.create"]({
+        epubPath: epub, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+      }),
+    };
   };
 
   it("confirms the language and moves the project out of needs-language", async () => {
@@ -312,8 +329,10 @@ describe("the provider channels", () => {
       providerId: created.id, modelId: "m1", level: "high",
     });
 
-    expect((await handlers["providers.list"](undefined))[0]!.models[0]!.reasoningLevel)
-      .toBe("high");
+    // The provider the reasoning was set on, found by id: the fixture seeds
+    // another one, and `[0]` would read its model instead.
+    expect((await handlers["providers.list"](undefined)).find((provider) => provider.id === created.id)!
+      .models[0]!.reasoningLevel).toBe("high");
     expect(broadcast).toHaveBeenCalledWith("providers.changed", {});
   });
 
@@ -326,7 +345,10 @@ describe("the provider channels", () => {
     const { handlers, created } = await withProvider();
 
     await handlers["provider.delete"]({ id: created.id });
-    expect(await handlers["providers.list"](undefined)).toEqual([]);
+    // What remains is the fixture's own provider, and nothing else: the one
+    // that was deleted is gone from the list.
+    expect((await handlers["providers.list"](undefined)).map((provider) => provider.id))
+      .toEqual(["pv1"]);
     await expect(handlers["provider.delete"]({ id: "ghost" })).rejects.toThrow();
   });
 
@@ -453,7 +475,11 @@ describe("the environment offer", () => {
     await expect(buildHandlers(d)["provider.create"]({
       ...input, catalogId: "ghost", apiKeyFromEnv: "ACME_API_KEY",
     })).rejects.toThrow(/ENV_NOT_DECLARED/);
-    expect((db.prepare("SELECT count(*) AS n FROM provider").get() as { n: number }).n).toBe(0);
+    // No Acme was saved: the only provider rows are the fixture's own, which
+    // never had a base URL.
+    expect((db.prepare(
+      "SELECT count(*) AS n FROM provider WHERE base_url = 'https://api.acme.test/v1'",
+    ).get() as { n: number }).n).toBe(0);
   });
 
   it("refuses a variable named to the discover channel, which has no entry to declare one", async () => {

@@ -67,12 +67,22 @@ async function running() {
   const dir = await mkdtemp(join(tmpdir(), "babelbook-run-state-"));
   const db = openDatabase(":memory:");
   migrate(db, loadMigrations("app/main/db/migrations"));
+  db.prepare(`
+    INSERT INTO provider (id, name, route, headers, options)
+    VALUES ('pv1', 'Acme', 'openai-compatible', '{}', '{}')
+  `).run();
+  db.prepare(`
+    INSERT INTO provider_model (id, provider_id, model_id, display_name)
+    VALUES ('pm1', 'pv1', 'm1', 'M1')
+  `).run();
   const epubPath = join(dir, "book.epub");
   await writeFile(epubPath, await buildEpub({
     title: "The Book", language: "en",
     documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
   }));
-  const created = await createProject(db, dir, { epubPath, targetLanguage: "it" });
+  const created = await createProject(db, dir, {
+    epubPath, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+  });
   const engine = fakeEngine();
   const runtime = makeRunRuntime({
     db,
