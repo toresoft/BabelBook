@@ -113,8 +113,23 @@ const READABLE = (): string[] => {
     if (ratio(parse(style.color), parse(back)) <= 2) {
       problems.push(`${el.tagName}.${el.className}: text ${style.color} on ${back}`);
     }
-    if (el.scrollWidth > el.clientWidth + 1) {
+    // An element that declares `text-overflow: ellipsis` is wider than its box
+    // by design and shows a … where it was cut — a document path in a narrow
+    // column is meant to do that. What this looks for is text that overruns
+    // with nothing to say so.
+    const truncates = style.textOverflow === "ellipsis";
+    if (!truncates && el.scrollWidth > el.clientWidth + 1) {
       problems.push(`${el.tagName}.${el.className}: text wider than its box`);
+    }
+    // The same question on the other axis, which this audit did not ask and
+    // so did not catch: a pill with a fixed height and a label too long for
+    // its column wraps the text and keeps the border where it was. The words
+    // come out through the top and the bottom, and the border reads as a line
+    // struck through them. A scroller is exempt — content taller than the box
+    // is what a scroller is.
+    const scrolls = /auto|scroll/.test(style.overflowY);
+    if (!scrolls && el.scrollHeight > el.clientHeight + 1) {
+      problems.push(`${el.tagName}.${el.className}: text taller than its box`);
     }
   }
   return problems;
@@ -194,7 +209,13 @@ test("every screen, in both themes, saying what it must", async () => {
     title: "Screen Walk", language: "en",
     documents: [
       { path: "OEBPS/c1.xhtml", xhtml: "<p>The road to Rivendell.</p><p>And back again.</p>" },
-      { path: "OEBPS/c2.xhtml", xhtml: "<p>gem install rails</p>" },
+      // Two exclusions, not one, and deliberately of different kinds: the one
+      // the author marked wears the longest label any state has, which is the
+      // only way the exclusions screen is photographed at its widest.
+      {
+        path: "OEBPS/c2.xhtml",
+        xhtml: "<p>gem install rails</p><p translate=\"no\">Ainulindalë</p>",
+      },
     ],
   }));
 

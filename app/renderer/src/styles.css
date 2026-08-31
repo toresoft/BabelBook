@@ -250,3 +250,29 @@ main > * { flex: 1; min-height: 0; }
  */
 button.btn, .tab, .checkbox { cursor: default; }
 .input:disabled, .select:disabled, .textarea:disabled { cursor: default; }
+
+/*
+ * A badge is a pill around its label, whatever the label says.
+ *
+ * daisyUI gives .badge a fixed `height`. A label too long for the column it
+ * sits in still wraps — the box is `fit-content` wide, and the column caps
+ * it — but the box stays one line tall, and `align-items: center` then pushes
+ * the two lines out through the top and the bottom. The border keeps its own
+ * place and draws straight across the words: on the exclusions screen
+ * «L'autore ha detto di no» read as struck through, which is the opposite of
+ * what that state means.
+ *
+ * `min-height` leaves every badge that already fitted exactly as it was — one
+ * line has never been taller than the size — and `height: auto` lets the one
+ * that cannot fit grow instead of spilling out of itself. The vertical
+ * padding is what the fixed height used to supply, small enough to stay
+ * inside the min-height on a single line. The centring is the other half of
+ * wrapping: two ragged lines inside a centred pill are the same defect,
+ * seen after it stopped overflowing.
+ */
+.badge {
+  height: auto;
+  min-height: var(--size);
+  padding-block: 0.125rem;
+  text-align: center;
+}
