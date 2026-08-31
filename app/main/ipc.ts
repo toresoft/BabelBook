@@ -9,6 +9,7 @@ import {
 import { packFailure } from "../shared/dto.ts";
 import { type Translate } from "./catalogue.ts";
 import { createProject } from "./projects/create.ts";
+import { assertProviderChosen } from "./projects/provider.ts";
 import {
   createProvider, deleteProvider, listProviders, PRESETS, ProviderStoreError, setReasoning,
   updateProvider,
@@ -265,13 +266,23 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       return created;
     },
 
-    "project.update": async ({ id, targetLanguage, sourceLanguage, description, providerId, modelId }) => {
+    "project.update": async ({
+      id, targetLanguage, sourceLanguage, description, providerId, modelId,
+      autoAcceptTerms, autoAcceptExclusions,
+    }) => {
       // The language decides the cache key, so it is not a label: changing it
       // makes every stored translation belong to another contract. Confirming
       // it before any run starts is the cheap moment to get it right.
       const before = deps.db.prepare("SELECT state FROM project WHERE id = ?").get(id) as
         { state: string } | undefined;
       if (before === undefined) throw new Error(`no such project: ${id}`);
+
+      // Only when the patch speaks about them. Silence means "leave it", and
+      // a project that already has a provider must not be able to lose it:
+      // `coalesce` below would happily write an empty string.
+      if (providerId !== undefined || modelId !== undefined) {
+        assertProviderChosen(deps.db, providerId, modelId);
+      }
 
       deps.db.exec("SAVEPOINT babelbook_project_update");
       try {
@@ -282,12 +293,17 @@ export function buildHandlers(deps: IpcDeps): Handlers {
                  description     = coalesce(?, description),
                  provider_id     = coalesce(?, provider_id),
                  model_id        = coalesce(?, model_id),
+                 auto_accept_terms      = coalesce(?, auto_accept_terms),
+                 auto_accept_exclusions = coalesce(?, auto_accept_exclusions),
                  state = CASE
                    WHEN state = 'needs-language' AND coalesce(?, source_language) IS NOT NULL
                      THEN 'ready' ELSE state END
            WHERE id = ?
         `).run(targetLanguage ?? null, sourceLanguage ?? null, description ?? null,
-          providerId ?? null, modelId ?? null, sourceLanguage ?? null, id);
+          providerId ?? null, modelId ?? null,
+          autoAcceptTerms === undefined ? null : (autoAcceptTerms ? 1 : 0),
+          autoAcceptExclusions === undefined ? null : (autoAcceptExclusions ? 1 : 0),
+          sourceLanguage ?? null, id);
 
         const after = deps.db.prepare("SELECT state FROM project WHERE id = ?").get(id) as { state: string };
         if (after.state !== before.state) {

@@ -236,6 +236,58 @@ describe("project.update", () => {
   });
 });
 
+describe("project.update and the provider", () => {
+  it("refuses an empty provider, and leaves the row as it was", async () => {
+    const { deps: d, db } = await deps();
+    const handlers = buildHandlers(d);
+    const dir = await mkdtemp(join(tmpdir(), "babelbook-update-"));
+    const epub = join(dir, "book.epub");
+    await writeFile(epub, await buildEpub({
+      title: "A Book", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    }));
+    const created = await handlers["project.create"]({
+      epubPath: epub, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+    });
+
+    // An empty string is not "leave it alone" — `coalesce` would have written
+    // it, and the row would name a provider that cannot exist.
+    await expect(handlers["project.update"]({ id: created.id, providerId: "", modelId: "" }))
+      .rejects.toMatchObject({ code: "PROVIDER_REQUIRED" });
+
+    expect(db.prepare("SELECT provider_id AS p FROM project WHERE id = ?").get(created.id))
+      .toEqual({ p: "pv1" });
+  });
+
+  it("writes the two auto-acceptances, and leaves them alone when they are not sent", async () => {
+    const { deps: d, db } = await deps();
+    const handlers = buildHandlers(d);
+    const dir = await mkdtemp(join(tmpdir(), "babelbook-update-"));
+    const epub = join(dir, "book.epub");
+    await writeFile(epub, await buildEpub({
+      title: "A Book", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    }));
+    const created = await handlers["project.create"]({
+      epubPath: epub, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+    });
+
+    const read = () => db.prepare(`
+      SELECT auto_accept_terms AS terms, auto_accept_exclusions AS exclusions
+        FROM project WHERE id = ?
+    `).get(created.id);
+
+    expect(read()).toEqual({ terms: 1, exclusions: 1 });
+
+    await handlers["project.update"]({ id: created.id, autoAcceptTerms: false });
+    expect(read()).toEqual({ terms: 0, exclusions: 1 });
+
+    // A patch says what it says. A description does not reopen a gate.
+    await handlers["project.update"]({ id: created.id, description: "A note" });
+    expect(read()).toEqual({ terms: 0, exclusions: 1 });
+  });
+});
+
 /**
  * The provider channels, and the one property that matters more than the rest.
  *

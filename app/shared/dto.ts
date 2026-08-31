@@ -84,9 +84,16 @@ export interface UpdateProjectRequest {
   targetLanguage?: string;
   sourceLanguage?: string | null;
   description?: string;
-  /** The provider and model this book will be translated with. */
+  /**
+   * The provider and model this book will be translated with. Optional
+   * because this is a patch — but not nullable, and never empty: a project
+   * that has one may not be left without.
+   */
   providerId?: string;
   modelId?: string;
+  /** What this book walks past without asking. Absent means "leave it". */
+  autoAcceptTerms?: boolean;
+  autoAcceptExclusions?: boolean;
 }
 
 export interface ProjectSummary {
