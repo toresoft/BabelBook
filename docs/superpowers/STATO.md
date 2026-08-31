@@ -48,18 +48,36 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | Difetti trovati sul primo libro vero | **quattro, corretti** | `app/renderer/src/app/project/`, `app/main/providers/`, `app/main/run/`, `core/workflow/` |
 | Provider obbligatorio e auto-accettazione per progetto | **completo**, 10/10 | `app/main/db/migrations/015-*`, `app/main/projects/`, `app/renderer/src/app/project/side/`, `app/renderer/src/app/library/` |
 
-Suite: **972 test verdi** (336 core, 460 app, 176 componenti) piu' **15 prove
-end-to-end**, fra cui un libro intero dal file all'EPUB tradotto, una pausa con
-ripresa che non ritraduce nulla, una persona che attraversa a mano i due gate, e
-la modifica di un termine che dichiara cosa disferebbe prima di disfarlo.
-Typecheck e build di produzione sono puliti.
+Suite: **975 test verdi** (336 core, 463 app, 176 componenti) piu' **14 prove
+end-to-end verdi** e una saltata — `packaged`, che gira solo contro un pacchetto
+gia' costruito. Fra le altre: un libro intero dal file all'EPUB tradotto, una
+pausa con ripresa che non ritraduce nulla, una persona che attraversa a mano i
+due gate, e la modifica di un termine che dichiara cosa disferebbe prima di
+disfarlo. Typecheck e build di produzione sono puliti.
 
-**Cinque prove end-to-end sono rosse, e lo erano gia' prima del piano dei
-provider**: `gates` ×2 e `translate` ×2 con «the project never reached done; it
-is incomplete», e `providers` ×1 con un click che non si stabilizza. Non sono
-mai state verdi su questa macchina; la CI dice il contrario e non l'ho vista
-fallire, il che e' esattamente il motivo per cui il badge non conta. Chi
-riprende deve trovarne cinque, non sei: una sesta e' sua.
+**Le cinque prove e2e che erano rosse da giorni sono state corrette**, e nessuna
+delle cinque era un difetto del prodotto: erano tre doppi e asserzioni rimasti
+indietro rispetto al codice che imitano.
+
+- **Quattro** (`gates` ×2, `translate` ×2) morivano su «the project never
+  reached done; it is incomplete». Il backend deterministico di
+  `app/engine/fake.ts` rispondeva ancora al formato `VERDICTS` che `5c0ac87`
+  aveva sostituito con `#CODEINDEX`/`#CODEVERDICT`: la domanda non matchava
+  nessun ramo, cadeva sulla frase di campionamento, ogni batch si asteneva, e
+  un'astensione e' una degradazione che manda il libro in `incomplete`. Il
+  fake non aveva **un solo test**: e' il buco da cui e' passato, e ora c'e'
+  `app/test/fake.test.ts`, che gli fa le tre domande vere attraverso le
+  funzioni vere. Il prossimo formato che cambia si rompe li' in due secondi,
+  non nella suite in tre minuti.
+- **Una** (`gates` ×1, la seconda meta') cercava `li.term` e
+  `strong.term__source`: markup che `63b86aa` ha riscritto in `.table__row`,
+  spostando il selettore della regola dentro il dialogo del termine.
+- **Una** (`providers`) pretendeva un solo campo nel form di connessione.
+  `55e760e` — «un nome che lo distingue» — ne ha aggiunto uno apposta, con il
+  suo unit test, e l'e2e non l'ha seguito.
+
+La lezione generale: **un doppio senza test deriva in silenzio**, e la deriva
+si presenta come un difetto del prodotto in una prova lunga.
 
 **Il default dei due gate e' ribaltato, ed e' per progetto.** Un libro nasce
 accettando termini ed esclusioni senza chiedere; chi vuole fermarsi lo dice

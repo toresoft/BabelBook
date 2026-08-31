@@ -96,14 +96,17 @@ test("connect, close, and only then choose: the walk does both acts", async () =
   await expect(entry).toContainText("ACME_API_KEY");
   await entry.click();
 
-  // The choice closed the list; what follows belongs to the form. One field,
-  // the key. No name to invent, no route to know — and no model chooser: the
-  // models are fetched when the form is saved, not picked inside it.
+  // The choice closed the list; what follows belongs to the form. Two fields:
+  // the key, and a name that arrives already filled from the catalogue and
+  // stays editable, so two keys on the same endpoint can be told apart. No
+  // route to know, and no model chooser — the models are fetched when the form
+  // is saved, not picked inside it.
   const form = window.getByTestId("provider-form");
   await expect(form).toBeVisible();
   await expect(window.getByTestId("connect-modal")).toBeHidden();
-  await expect(form.locator("input")).toHaveCount(1); // the key, and nothing else
-  await expect(form.locator("select")).toHaveCount(0); // and no list to choose from
+  await expect(window.getByTestId("provider-name")).toHaveValue("Acme");
+  await expect(window.getByTestId("provider-base-url")).toHaveCount(0);
+  await expect(form.locator("select")).toHaveCount(0);
 
   await window.getByTestId("provider-api-key").fill("sk-typed-by-the-user");
   await window.getByTestId("save-provider").click();

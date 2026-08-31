@@ -64,17 +64,30 @@ function translationAnswer(lines: string[], headerAt: number): Response {
   return { text: [`UNITS ${declared}`, ...out, "END"].join("\n"), ids, kind: "units" };
 }
 
-function verdictAnswer(lines: string[], headerAt: number): Response {
-  const ids: string[] = [];
-  for (const line of lines.slice(headerAt + 1)) {
-    if (line.trim() === "END") break;
-    const verdict = /^\[v:([^\]]+)\]\s*$/.exec(line.trim());
-    if (verdict !== null) ids.push(verdict[1]!);
-  }
-  // Everything is prose: the run has nothing to exclude and no degradation to
-  // declare, which is what keeps the expected end state assertable.
+/** The code-index question, which carries the batch its answer must name back. */
+const CODE_INDEX = /^#CODEINDEX\s+v1\s+batch=(\d+)\/(\d+)\s+count=(\d+)\s*$/;
+
+/**
+ * Every line is prose.
+ *
+ * The run has nothing to exclude and no degradation to declare, which is what
+ * keeps the expected end state assertable: a fake that guessed at code would
+ * make the exclusions gate of the end-to-end tests depend on its taste rather
+ * than on the book in front of it.
+ *
+ * The verdicts are numbered by position — `[1]`, `[2]` — and the batch and
+ * count are echoed from the question, because `parseCodeVerdict` checks all
+ * three and reads an answer that disagrees as no answer at all.
+ */
+function verdictAnswer(header: RegExpExecArray): Response {
+  const count = Number(header[3]);
+  const ids = Array.from({ length: count }, (_, at) => String(at + 1));
   return {
-    text: [`VERDICTS ${ids.length}`, ...ids.map((id) => `[v:${id}] prose`), "END"].join("\n"),
+    text: [
+      `#CODEVERDICT v1 batch=${header[1]}/${header[2]} count=${count}`,
+      ...ids.map((id) => `[${id}] translate`),
+      "@end",
+    ].join("\n"),
     ids,
     kind: "verdicts",
   };
@@ -109,8 +122,13 @@ function termAnswer(prompt: string): Response {
 function respond(prompt: string): Response {
   const lines = prompt.split(/\r?\n/);
 
-  const verdictsAt = lines.findIndex((line) => /^VERDICTS\s+\d+$/.test(line.trim()));
-  if (verdictsAt !== -1) return verdictAnswer(lines, verdictsAt);
+  // Matched on the question's own header and never on `#CODEVERDICT`: the
+  // prompt spells the answer's format out verbatim, so looking for the reply
+  // would find the instructions describing it.
+  for (const line of lines) {
+    const asked = CODE_INDEX.exec(line.trim());
+    if (asked !== null) return verdictAnswer(asked);
+  }
 
   // Term extraction: the instruction block names the format verbatim.
   if (prompt.includes("TERMS <count>")) return termAnswer(prompt);

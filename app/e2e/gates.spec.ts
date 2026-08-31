@@ -166,12 +166,17 @@ test("editing a term after the run says what it would undo, before undoing it", 
   // Named, not taken by position: the term that appears in both paragraphs is
   // the one whose count this test is about, and which row it lands in is an
   // ordering detail that would make the assertion lie if it changed.
-  const rivendell = window.getByTestId("terms").locator("li.term")
-    .filter({ has: window.locator("strong.term__source", { hasText: /^Rivendell$/ }) })
+  const rivendell = window.getByTestId("terms").locator(".table__row")
+    .filter({ has: window.locator("p.table__strong", { hasText: /^Rivendell$/ }) })
     .first();
   await expect(rivendell).toBeVisible();
   await expect(rivendell).toContainText(label(it, "terms.occurrences").replace("{{count}}", "2"));
-  await rivendell.locator("select").first().selectOption("must");
+
+  // The rendering is changed where it is edited. The row used to carry the
+  // rule itself; since the tabs moved onto daisyUI's controls it opens the
+  // term's own dialog, and the rule lives in there.
+  await rivendell.click();
+  await window.locator("select[data-testid^=rule-]").selectOption("must");
 
   const warning = window.getByTestId("invalidation");
   await expect(warning).toBeVisible();
