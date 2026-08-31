@@ -128,8 +128,13 @@
     "estimateWithCost": "Stima: {{tokens}} token, circa {{cost}} USD",
     "noPrices": "Nessun modello scelto, o il modello non dichiara prezzi: mostriamo solo i token.",
     "provider": "Provider",
-    "noProvider": "Nessuno (si può scegliere dopo)",
-    "model": "Modello"
+    "model": "Modello",
+    "needsProvider": "Serve un provider per tradurre un libro. Non ne hai ancora configurato uno.",
+    "toProviders": "Vai ai provider",
+    "autoAcceptTerms": "Accetta i termini senza chiedere",
+    "autoAcceptTermsHint": "La traduzione non si ferma per farti approvare i termini estratti.",
+    "autoAcceptExclusions": "Accetta le esclusioni senza chiedere",
+    "autoAcceptExclusionsHint": "Non ti verrà chiesto di controllare cosa non verrà tradotto."
   },
   "providers": {
     "title": "Provider",

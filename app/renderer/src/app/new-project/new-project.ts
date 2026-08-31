@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 import { TranslocoDirective } from "@jsverse/transloco";
 import type { CreatedProject, Provider } from "../../../../shared/dto.js";
 import { IpcService } from "../core/ipc.service";
@@ -11,7 +11,7 @@ const TARGET_LANGUAGES = ["it", "en", "fr", "de", "es", "pt"] as const;
 @Component({
   selector: "bb-new-project",
   standalone: true,
-  imports: [FormsModule, TranslocoDirective],
+  imports: [FormsModule, RouterLink, TranslocoDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: "./new-project.html",
   styleUrl: "./new-project.css",
@@ -28,6 +28,9 @@ export class NewProject {
   readonly sourceLanguage = signal("");
   readonly description = signal("");
 
+  readonly autoAcceptTerms = signal(true);
+  readonly autoAcceptExclusions = signal(true);
+
   /** The configured providers, with the models their endpoints declared. */
   readonly providers = signal<Provider[]>([]);
   readonly providerId = signal<string | null>(null);
@@ -35,6 +38,11 @@ export class NewProject {
 
   readonly chosenProvider = computed(() =>
     this.providers().find((provider) => provider.id === this.providerId()) ?? null);
+
+  /** A provider with no models cannot be chosen from, so it does not count. */
+  readonly usable = computed(() => this.providers().filter((provider) => provider.models.length > 0));
+
+  readonly canCreate = computed(() => this.providerId() !== null && this.modelId() !== null);
 
   /**
    * The estimate is built on the units the analysis actually found, which is
@@ -65,6 +73,13 @@ export class NewProject {
 
   async loadProviders(): Promise<void> {
     this.providers.set(await this.#ipc.invoke("providers.list", undefined));
+
+    // Preselected, and not out of impatience: `project.create` now carries the
+    // choice, and it is called the moment the file is chosen — before this
+    // form is on screen at all. Without a preselection the first project of
+    // every session would be refused by the main process.
+    const first = this.usable()[0];
+    if (first !== undefined) this.pickProvider(first.id);
   }
 
   /** Choosing a provider takes its first model along, as the form's best guess. */
@@ -80,6 +95,10 @@ export class NewProject {
 
   async choose(): Promise<void> {
     this.failure.set(null);
+    const providerId = this.providerId();
+    const modelId = this.modelId();
+    if (providerId === null || modelId === null) return;
+
     const chosen = await this.#ipc.invoke("project.chooseEpub", undefined);
     if (chosen === null) return;
 
@@ -89,6 +108,8 @@ export class NewProject {
       const created = await this.#ipc.invoke("project.create", {
         epubPath: chosen.path,
         targetLanguage: this.targetLanguage(),
+        providerId,
+        modelId,
       });
       this.project.set(created);
       this.sourceLanguage.set(created.declaredLanguage ?? "");
@@ -113,6 +134,8 @@ export class NewProject {
       description: this.description(),
       providerId: this.providerId() ?? undefined,
       modelId: this.modelId() ?? undefined,
+      autoAcceptTerms: this.autoAcceptTerms(),
+      autoAcceptExclusions: this.autoAcceptExclusions(),
     });
     await this.#router.navigateByUrl("/");
   }

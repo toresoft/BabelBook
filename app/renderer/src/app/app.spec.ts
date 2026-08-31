@@ -25,6 +25,8 @@ function bridge(answers: Record<string, unknown> = {}) {
     // asks beyond these must survive an `undefined`.
     if (channel === "projects.list") return [];
     if (channel === "projects.counts") return worldCounts;
+    // `/new` reads this to decide whether a book can be translated at all.
+    if (channel === "providers.list") return [];
     return undefined;
   });
 }

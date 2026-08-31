@@ -128,8 +128,13 @@
     "estimateWithCost": "Estimate: {{tokens}} tokens, about {{cost}} USD",
     "noPrices": "No model chosen, or the model declares no prices: tokens only.",
     "provider": "Provider",
-    "noProvider": "None (can be chosen later)",
-    "model": "Model"
+    "model": "Model",
+    "needsProvider": "Translating a book takes a provider. You have not configured one yet.",
+    "toProviders": "Go to providers",
+    "autoAcceptTerms": "Accept the terms without asking",
+    "autoAcceptTermsHint": "The translation will not stop for you to approve the extracted terms.",
+    "autoAcceptExclusions": "Accept the exclusions without asking",
+    "autoAcceptExclusionsHint": "You will not be asked to review what is left untranslated."
   },
   "providers": {
     "title": "Providers",

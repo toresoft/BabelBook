@@ -15,3 +15,9 @@
    than as the button that opens the book. */
 .new__choose { justify-self: start; }
 .new__actions { display: flex; gap: 0.75rem; }
+/* The checkbox rows are labels too, and `.new label` above is the more
+   specific selector: named as a bare class this rule loses, and the box
+   stacks on top of its own words. */
+.new label.new__check { display: flex; gap: 0.5rem; align-items: flex-start; }
+.new__check input { margin-top: 0.2rem; }
+.new__check span { display: grid; gap: 0.1rem; }

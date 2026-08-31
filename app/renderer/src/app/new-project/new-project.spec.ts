@@ -32,16 +32,18 @@ const analysed: CreatedProject = {
 
 function bridge(answers: Record<string, unknown> = {}) {
   return vi.fn(async (channel: string, payload?: unknown) => {
-    if (channel === "providers.list") return [priced];
-    if (channel === "project.chooseEpub") return { path: "/books/a.epub", name: "a.epub" };
-    if (channel === "project.create") return analysed;
-    if (channel === "project.update") return undefined;
-    if (channel === "project.delete") return undefined;
+    // The answers first: a case that overrides a defaulted channel is saying
+    // the default is exactly what it wants to differ from.
     if (channel in answers) {
       const answer = answers[channel];
       if (answer instanceof Error) throw answer;
       return typeof answer === "function" ? answer(payload) : answer;
     }
+    if (channel === "providers.list") return [priced];
+    if (channel === "project.chooseEpub") return { path: "/books/a.epub", name: "a.epub" };
+    if (channel === "project.create") return analysed;
+    if (channel === "project.update") return undefined;
+    if (channel === "project.delete") return undefined;
     return undefined;
   });
 }
@@ -63,6 +65,9 @@ const calls = (invoke: ReturnType<typeof bridge>, channel: string) =>
 const phrases = it_IT as unknown as { newProject: Record<string, string> };
 
 async function chosen(fixture: Awaited<ReturnType<typeof mount>["fixture"]>) {
+  // The screen loads its providers — and preselects one — before the file can
+  // be chosen; a choose() that ran first would be refused for having no model.
+  await fixture.whenStable();
   await fixture.componentInstance.choose();
   await fixture.whenStable();
 }
@@ -169,5 +174,52 @@ describe("NewProject", () => {
     // read after the book — not a footnote below the whole form.
     expect(at("[data-testid=preview-title]")).toBeLessThan(at("[data-testid=estimate]"));
     expect(at("[data-testid=estimate]")).toBeLessThan(at("[data-testid=target-language]"));
+  });
+
+  it("chooses a provider for the form, because the project is written with one", async () => {
+    const { fixture, invoke } = mount();
+    await fixture.whenStable();
+
+    // Preselected before the file is even opened: `project.create` carries the
+    // choice, and it is called the moment the EPUB is chosen.
+    expect(fixture.componentInstance.providerId()).toBe("pv1");
+    expect(fixture.componentInstance.modelId()).toBe("m1");
+
+    await chosen(fixture);
+    expect(calls(invoke, "project.create")[0]![1])
+      .toMatchObject({ providerId: "pv1", modelId: "m1" });
+  });
+
+  it("does not offer 'no provider' any more", async () => {
+    const { fixture } = mount();
+    await chosen(fixture);
+    fixture.detectChanges();
+
+    const options = [...fixture.nativeElement
+      .querySelectorAll("[data-testid=provider] option")] as HTMLOptionElement[];
+    expect(options.map((option) => option.value)).toEqual(["pv1"]);
+  });
+
+  it("sends both auto-acceptances, on by default", async () => {
+    const { fixture, invoke } = mount();
+    await chosen(fixture);
+    fixture.detectChanges();
+
+    await fixture.componentInstance.create();
+
+    expect(calls(invoke, "project.update")[0]![1])
+      .toMatchObject({ autoAcceptTerms: true, autoAcceptExclusions: true });
+  });
+
+  it("refuses to create while nothing can translate the book", async () => {
+    const { fixture } = mount(bridge({ "providers.list": [] }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Whoever reached this screen with no provider — a typed URL, a provider
+    // disconnected in another window — is told what is missing, not left with
+    // a button that opens a form they cannot finish.
+    expect(fixture.nativeElement.querySelector("[data-testid=choose-epub]")).toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=needs-provider]")).not.toBeNull();
   });
 });

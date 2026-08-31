@@ -1,9 +1,16 @@
 <section class="new" data-testid="new-project-screen" *transloco="let t">
   <h1>{{ t('newProject.title') }}</h1>
 
-  <button type="button" class="btn new__choose" data-testid="choose-epub" (click)="choose()">
-    {{ t('newProject.chooseEpub') }}
-  </button>
+  @if (usable().length === 0) {
+    <p class="new__needsProvider" data-testid="needs-provider">
+      {{ t('newProject.needsProvider') }}
+      <a routerLink="/settings/providers">{{ t('newProject.toProviders') }}</a>
+    </p>
+  } @else {
+    <button type="button" class="btn new__choose" data-testid="choose-epub" (click)="choose()">
+      {{ t('newProject.chooseEpub') }}
+    </button>
+  }
   @if (chosenName()) {
     <p class="new__file">{{ t('newProject.chosen', { name: chosenName() }) }}</p>
   }
@@ -71,8 +78,7 @@
       {{ t('newProject.provider') }}
       <select class="select" data-testid="provider" [ngModel]="providerId()"
               (ngModelChange)="pickProvider($event)">
-        <option [value]="null">{{ t('newProject.noProvider') }}</option>
-        @for (provider of providers(); track provider.id) {
+        @for (provider of usable(); track provider.id) {
           <option [value]="provider.id">{{ provider.name }}</option>
         }
       </select>
@@ -103,8 +109,27 @@
       <small>{{ t('newProject.descriptionHint') }}</small>
     </label>
 
+    <label class="new__check">
+      <input type="checkbox" class="checkbox" data-testid="auto-terms"
+             [ngModel]="autoAcceptTerms()" (ngModelChange)="autoAcceptTerms.set($event)" />
+      <span>
+        {{ t('newProject.autoAcceptTerms') }}
+        <small>{{ t('newProject.autoAcceptTermsHint') }}</small>
+      </span>
+    </label>
+
+    <label class="new__check">
+      <input type="checkbox" class="checkbox" data-testid="auto-exclusions"
+             [ngModel]="autoAcceptExclusions()" (ngModelChange)="autoAcceptExclusions.set($event)" />
+      <span>
+        {{ t('newProject.autoAcceptExclusions') }}
+        <small>{{ t('newProject.autoAcceptExclusionsHint') }}</small>
+      </span>
+    </label>
+
     <div class="new__actions">
-      <button type="button" class="btn btn-primary" data-testid="create" (click)="create()">
+      <button type="button" class="btn btn-primary" data-testid="create"
+              [disabled]="!canCreate()" (click)="create()">
         {{ t('newProject.create') }}
       </button>
       <button type="button" class="btn" data-testid="cancel" (click)="cancel()">
