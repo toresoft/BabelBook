@@ -56,7 +56,7 @@ describe("migrate", () => {
     expect(migrate(db, migrations).applied)
       .toEqual([
         "011-model-reasoning", "012-model-reasoning-level", "013-machinery-not-a-unit",
-        "014-project-state",
+        "014-project-state", "015-project-auto-accept",
       ]);
 
     const rows = db.prepare("SELECT id, options FROM provider ORDER BY id").all() as
@@ -101,7 +101,7 @@ describe("migrate", () => {
     unit.run("u5", 5, "c1.xhtml#5", "block", "translate", "One", null, null);
 
     expect(migrate(db, migrations).applied)
-      .toEqual(["013-machinery-not-a-unit", "014-project-state"]);
+      .toEqual(["013-machinery-not-a-unit", "014-project-state", "015-project-auto-accept"]);
 
     const rows = db.prepare("SELECT id FROM unit ORDER BY ordinal").all() as Array<{ id: string }>;
     expect(rows.map((row) => row.id)).toEqual(["u2", "u3", "u4", "u5"]);
@@ -118,7 +118,8 @@ describe("migrate", () => {
               'it', 'paused', 'reflowable')
     `).run();
 
-    expect(migrate(db, migrations).applied).toEqual(["014-project-state"]);
+    expect(migrate(db, migrations).applied)
+      .toEqual(["014-project-state", "015-project-auto-accept"]);
     expect(db.prepare(`
       SELECT project_id, kind, name, entered_at, left_at
         FROM project_state WHERE project_id = 'p1'
@@ -126,5 +127,48 @@ describe("migrate", () => {
       project_id: "p1", kind: "project", name: "paused",
       entered_at: "2026-01-02T03:04:05.000Z", left_at: null,
     }]);
+  });
+
+  it("brings the two auto-acceptances down onto the projects that already exist", () => {
+    const db = openDatabase(":memory:");
+    const migrations = loadMigrations("app/main/db/migrations");
+    migrate(db, migrations.filter((migration) => migration.id < "015-project-auto-accept"));
+
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state)
+      VALUES ('p1', 'a.epub', 'A', '/w/p1', 'sha', '2026-08-31T00:00:00.000Z', 'it', 'ready'),
+             ('p2', 'b.epub', 'B', '/w/p2', 'sha', '2026-08-31T00:00:00.000Z', 'it', 'ready')
+    `).run();
+    db.prepare("INSERT INTO setting (key, value) VALUES ('autoAcceptTerms', 'true')").run();
+
+    expect(migrate(db, migrations).applied).toEqual(["015-project-auto-accept"]);
+
+    // The row said true, so both books keep walking past the terms gate. The
+    // exclusions row was absent, and absent is how readSettings spelled false:
+    // a book that stopped there yesterday stops there today.
+    expect(db.prepare(`
+      SELECT auto_accept_terms AS terms, auto_accept_exclusions AS exclusions
+        FROM project ORDER BY id
+    `).all()).toEqual([{ terms: 1, exclusions: 0 }, { terms: 1, exclusions: 0 }]);
+
+    // And the global setting is gone: two places to read one fact is one too many.
+    expect(db.prepare("SELECT count(*) AS n FROM setting WHERE key LIKE 'autoAccept%'").get())
+      .toEqual({ n: 0 });
+  });
+
+  it("opens both gates on a project created after the migration", () => {
+    const db = openDatabase(":memory:");
+    migrate(db, loadMigrations("app/main/db/migrations"));
+
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state)
+      VALUES ('p1', 'a.epub', 'A', '/w/p1', 'sha', '2026-08-31T00:00:00.000Z', 'it', 'ready')
+    `).run();
+
+    expect(db.prepare(`
+      SELECT auto_accept_terms AS terms, auto_accept_exclusions AS exclusions FROM project
+    `).get()).toEqual({ terms: 1, exclusions: 1 });
   });
 });
