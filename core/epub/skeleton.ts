@@ -1,5 +1,5 @@
 import type { TranslationUnit } from "./blocks.ts";
-import { EpubError } from "./errors.ts";
+import { EpubError } from "../errors.ts";
 
 export class SkeletonError extends EpubError {
   constructor(message: string, code: string = "SKELETON_MISMATCH") {

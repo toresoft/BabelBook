@@ -1,5 +1,5 @@
 import type { Placeholder, TranslationUnit } from "./blocks.ts";
-import { EpubError } from "./errors.ts";
+import { EpubError } from "../errors.ts";
 import { escapeAttr, escapeText } from "./scan.ts";
 
 export class SpliceError extends EpubError {

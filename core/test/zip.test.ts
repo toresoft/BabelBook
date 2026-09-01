@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildEpub } from "./corpus/build.ts";
 import { LIMITS, readEpub, writeEpub } from "../epub/zip.ts";
-import { EpubReadError } from "../epub/errors.ts";
+import { EpubReadError } from "../errors.ts";
 
 describe("readEpub", () => {
   it("reads every entry and keeps the archive order", async () => {

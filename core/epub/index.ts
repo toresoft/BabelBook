@@ -2,7 +2,7 @@
  * The EPUB layer's public surface. Plans 2, 3 and 4 import from here and from
  * nowhere else inside `epub/`.
  */
-export { EpubError, EpubReadError, EpubWriteError, ScanError } from "./errors.ts";
+export { EpubError, EpubReadError, EpubWriteError, ScanError } from "../errors.ts";
 export { LIMITS, readEpub, sha256, writeEpub } from "./zip.ts";
 export type { EpubArchive, ZipEntry } from "./zip.ts";
 export { assertUtf8, assertWellFormed, decodeEntities, escapeAttr, escapeText, scan } from "./scan.ts";

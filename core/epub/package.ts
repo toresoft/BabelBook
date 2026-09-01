@@ -1,4 +1,4 @@
-import { EpubReadError } from "./errors.ts";
+import { EpubReadError } from "../errors.ts";
 import { decodeEntities, escapeText, scan, type ScanEvent } from "./scan.ts";
 import type { ZipEntry } from "./zip.ts";
 

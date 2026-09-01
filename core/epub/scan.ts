@@ -1,6 +1,6 @@
 import { SaxesParser } from "saxes";
 import { XHTML_ENTITIES } from "./entities.ts";
-import { ScanError } from "./errors.ts";
+import { ScanError } from "../errors.ts";
 
 export type ScanKind = "opentag" | "closetag" | "text" | "cdata" | "comment" | "pi" | "doctype";
 

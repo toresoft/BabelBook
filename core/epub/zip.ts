@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fromBuffer, validateFilename } from "yauzl-promise";
 import { ZipFile } from "yazl";
-import { EpubReadError, EpubWriteError } from "./errors.ts";
+import { EpubReadError, EpubWriteError } from "../errors.ts";
 
 export const MIMETYPE_PATH = "mimetype";
 export const MIMETYPE_BYTES = "application/epub+zip";
