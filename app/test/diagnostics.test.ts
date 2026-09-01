@@ -1,3 +1,4 @@
+import { chmodSync } from "node:fs";
 import { mkdtemp, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -76,6 +77,21 @@ describe("the diagnostic file", () => {
     expect((await readDiagnostics(dir, "r1")).lines).toEqual([]);
     expect((await readDiagnostics(dir, "r2")).lines).toEqual([]);
     expect((await readDiagnostics(dir, "r7")).lines).toHaveLength(1);
+  });
+
+  it("prunes best-effort rather than throwing on a directory it cannot write to", async () => {
+    const dir = diagnosticsDir(await workspace());
+    const sink = fileSink({ dir, process: "main", runId: "r1", projectId: "p1" });
+    sink.record({ level: "info", code: "x" });
+    sink.close();
+
+    try {
+      chmodSync(dir, 0o500);
+      // `keep` zero: one run, doomed, so the deletion path is actually taken.
+      await expect(pruneDiagnostics(dir, 0)).resolves.toBeUndefined();
+    } finally {
+      chmodSync(dir, 0o700);
+    }
   });
 
   /**

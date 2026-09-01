@@ -181,8 +181,14 @@ export async function pruneDiagnostics(dir: string, keep = DEFAULT_KEEP): Promis
     .map(([runId]) => runId);
 
   for (const runId of doomed) {
-    for (const process of ["main", "engine"] as const) {
-      await rm(join(dir, `run-${runId}.${process}.ndjson`), { force: true });
+    try {
+      for (const process of ["main", "engine"] as const) {
+        await rm(join(dir, `run-${runId}.${process}.ndjson`), { force: true });
+      }
+    } catch {
+      // Best-effort by design: prune runs at the start of a run, and one that
+      // can fail a run over an old file is worse than an old file left behind.
+      continue;
     }
   }
 }
