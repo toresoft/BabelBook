@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { BabelError } from "../../core/errors.ts";
 import { IpcService } from "../renderer/src/app/core/ipc.service.ts";
 import { packFailure } from "../shared/dto.ts";
 
@@ -38,12 +39,14 @@ describe("IpcService", () => {
 describe("failures crossing the boundary", () => {
   it("hands the caller a code, not a sentence", async () => {
     const packed = new Error(packFailure(
-      Object.assign(new Error("UNSUPPORTED_FORMAT: MOBI"), { code: "UNSUPPORTED_FORMAT", format: "MOBI" }),
+      new BabelError("UNSUPPORTED_FORMAT: MOBI", {
+        code: "UNSUPPORTED_FORMAT", fault: "input", detail: { format: "MOBI" },
+      }),
     ));
     withBridge({ invoke: vi.fn().mockRejectedValue(packed), on: vi.fn() });
 
     await expect(new IpcService().invoke("settings.get", undefined))
-      .rejects.toMatchObject({ code: "UNSUPPORTED_FORMAT", format: "MOBI" });
+      .rejects.toMatchObject({ code: "UNSUPPORTED_FORMAT", format: "MOBI", fault: "input" });
   });
 
   it("says UNKNOWN rather than inventing a code it did not receive", async () => {

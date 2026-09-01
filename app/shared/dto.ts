@@ -1,12 +1,14 @@
 /**
  * The shapes that cross the IPC boundary.
  *
- * Plain data, defined here and depending on nothing: the renderer compiles
- * this file, and a type borrowed from the core would drag the EPUB layer — and
- * its Node-only declarations — into the window's compilation. A serialisation
- * boundary should carry its own vocabulary anyway; what the main process
- * happens to use internally is not the contract.
+ * Plain data, depending on nothing but `core/errors.ts` — a leaf the core
+ * keeps free of imports of its own, so borrowing its fault vocabulary does
+ * not drag the EPUB layer, and its Node-only declarations, into the window's
+ * compilation. A serialisation boundary should carry its own vocabulary
+ * anyway; what the main process happens to use internally is not the contract.
  */
+
+import { isBabelError, type Fault } from "../../core/errors.js";
 
 /**
  * The phases a run goes through, in the order it goes through them.
@@ -508,49 +510,73 @@ export interface VerifyOutcome {
 }
 
 /**
- * A failure, as it crosses the IPC boundary.
+ * A failure as the window receives it.
  *
- * Electron serialises a rejected invocation down to its message: a custom
- * class and its fields do not survive. Everything this application knows how to
- * say about a failure is a code plus its details, so both are packed into the
- * message and unpacked on the other side. Without that, "this is a MOBI"
- * arrives as a sentence nobody can translate or branch on.
+ * `code` names the thing that happened; `fault` says what to do about it, and
+ * is what lets a screen answer even for a code nobody catalogued.
  */
 export interface IpcFailure {
   code: string;
+  fault: Fault;
+  message?: string;
+  retryAfterMs?: number;
   [detail: string]: unknown;
 }
 
 const MARKER = "babelbook-failure:";
 
+/**
+ * Only what was named crosses.
+ *
+ * The own-enumerable scan below is the second net under the allow-list rule
+ * that `BabelError.detail` states: even if a classifier were careless, only
+ * scalars on the error's own surface can travel, and never `cause`, which is
+ * where a provider keeps the request it failed on.
+ */
 export function packFailure(error: unknown): string {
-  const failure = error as { code?: unknown; message?: unknown };
-  const code = typeof failure.code === "string" ? failure.code : "UNKNOWN";
+  const classified = isBabelError(error);
+  const failure = error as { code?: unknown; message?: unknown; detail?: unknown };
 
   const details: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(error as object)) {
-    if (key !== "code" && key !== "stack" && (typeof value === "string" || typeof value === "number")) {
-      details[key] = value;
+  if (classified && typeof failure.detail === "object" && failure.detail !== null) {
+    for (const [key, value] of Object.entries(failure.detail)) {
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        details[key] = value;
+      }
+    }
+  } else {
+    for (const [key, value] of Object.entries(error as object)) {
+      if (key !== "code" && key !== "fault" && key !== "stack" && key !== "cause"
+        && (typeof value === "string" || typeof value === "number")) {
+        details[key] = value;
+      }
     }
   }
 
+  const retryAfterMs = (error as { retryAfterMs?: unknown }).retryAfterMs;
+
   return MARKER + JSON.stringify({
-    code,
+    code: classified ? (failure.code as string) : "UNKNOWN",
+    // Unclassified is a defect, not an unknown: the window can still say
+    // something true, and the diagnostic file holds what this drops.
+    fault: classified ? (error as { fault: Fault }).fault : "defect",
     message: typeof failure.message === "string" ? failure.message : String(error),
+    ...(typeof retryAfterMs === "number" ? { retryAfterMs } : {}),
     ...details,
   });
 }
 
 export function unpackFailure(error: unknown): IpcFailure {
-  const message = (error as { message?: unknown }).message;
-  if (typeof message !== "string") return { code: "UNKNOWN" };
+  const message = (error as { message?: unknown } | null)?.message;
+  if (typeof message !== "string") return { code: "UNKNOWN", fault: "defect" };
 
   const at = message.indexOf(MARKER);
-  if (at === -1) return { code: "UNKNOWN", message };
+  if (at === -1) return { code: "UNKNOWN", fault: "defect", message };
 
   try {
-    return JSON.parse(message.slice(at + MARKER.length)) as IpcFailure;
+    const parsed = JSON.parse(message.slice(at + MARKER.length)) as IpcFailure;
+    return { ...parsed, fault: parsed.fault ?? "defect" };
   } catch {
-    return { code: "UNKNOWN", message };
+    return { code: "UNKNOWN", fault: "defect", message };
   }
 }
