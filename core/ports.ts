@@ -107,3 +107,46 @@ export interface Progress {
 export interface ProgressSink {
   report(progress: Progress): void;
 }
+
+/**
+ * How loud a line is, and by consequence where it goes.
+ *
+ * One axis, not two. `debug` goes to the diagnostic file only; `info`, `warn`
+ * and `error` go there and to the reader's log as well. A second field saying
+ * "this one is public" would be the same decision written twice.
+ */
+export type LogLevel = "debug" | "info" | "warn" | "error";
+
+/**
+ * Something that happened, in the same stable vocabulary as `RunEvent`.
+ *
+ * `code` is machine-readable and the interface composes the sentence from it,
+ * in its own language — the rule the whole core follows. `detail` is scalars
+ * only, and is an allow-list for the same reason `BabelError.detail` is: a
+ * provider's error holds the request it failed on, key included.
+ */
+export interface LogRecord {
+  level: LogLevel;
+  code: string;
+  detail?: Record<string, string | number | boolean>;
+}
+
+/**
+ * The narrative of a run, beside `ProjectStore.event`, which is its verdicts.
+ *
+ * They are not the same thing and are deliberately not merged: a `degradation`
+ * lowers a book to `incomplete` and belongs to the report; a log line says
+ * what happened and belongs to the story. Both end up in `run_event`, and the
+ * severity column tells them apart.
+ */
+export interface LogSink {
+  record(entry: LogRecord): void;
+}
+
+/**
+ * The default every phase gets when nobody wired one.
+ *
+ * Silent and total on purpose: a sink is an observation, and an observation
+ * that can fail a run is worse than no observation.
+ */
+export const nullSink: LogSink = { record: () => {} };

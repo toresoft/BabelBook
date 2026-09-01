@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { nullSink, type LogRecord, type LogSink } from "../ports.ts";
 import { runProjectStoreContract } from "./contract/project-store.ts";
 import { FakeStore } from "./fake/store.ts";
 import { FakeBackend } from "./fake/backend.ts";
@@ -52,5 +53,22 @@ describe("fakes", () => {
     const store = new FakeStore();
     await store.event({ code: "unit-fell-back", severity: "degradation", payload: { unitId: "c1.xhtml#1" } });
     expect(store.events.map((e) => e.code)).toEqual(["unit-fell-back"]);
+  });
+});
+
+describe("the log sink", () => {
+  /**
+   * The default has to be silent and total: every phase takes one optionally,
+   * and a default that threw would turn a missing wire into a failed run.
+   */
+  it("has a mute default that swallows anything", () => {
+    expect(() => nullSink.record({ level: "debug", code: "x" })).not.toThrow();
+  });
+
+  it("hands the record through as it was written", () => {
+    const seen: LogRecord[] = [];
+    const sink: LogSink = { record: (entry) => seen.push(entry) };
+    sink.record({ level: "warn", code: "provider-retry", detail: { attempt: 2 } });
+    expect(seen).toEqual([{ level: "warn", code: "provider-retry", detail: { attempt: 2 } }]);
   });
 });
