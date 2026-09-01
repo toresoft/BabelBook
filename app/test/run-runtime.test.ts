@@ -25,6 +25,28 @@ vi.mock("../main/compose.ts", () => ({
   composeEpub: () => composition.next(),
 }));
 
+/**
+ * Every write the runtime makes to the history, watched without changing it.
+ *
+ * The mock calls through, so every other test still reads a true history. The
+ * one test that watches needs to know whether a write happened at all, which
+ * the rows cannot say: `leaveState` only touches rows still open, so a refused
+ * write that lands on nothing leaves the history looking exactly like no
+ * write.
+ */
+const stateWrites = vi.hoisted(() => ({ leaveState: vi.fn() }));
+
+vi.mock("../main/run/states.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../main/run/states.ts")>();
+  return {
+    ...actual,
+    leaveState: (...args: Parameters<typeof actual.leaveState>) => {
+      stateWrites.leaveState(...args);
+      actual.leaveState(...args);
+    },
+  };
+});
+
 const restore: Array<() => void> = [];
 
 afterEach(() => {
@@ -415,17 +437,23 @@ describe("a run that stops", () => {
 
   /**
    * A project already paused refuses another PAUSE, and writing the state
-   * anyway records something the machine never lived through.
+   * anyway records something the machine never lived through. The write is
+   * watched, not its effect on the rows: `leaveState` only touches rows still
+   * open, so a refused write that lands on nothing leaves the history looking
+   * exactly like no write at all — the rows cannot tell those apart, the spy
+   * can.
    */
   it("does not write a pause the machine refused", async () => {
     const { runtime, db } = harness();
     await runtime.start("p1");
-    await runtime.pause("p1");
-    const first = lastPhase(db, "p1");
 
     await runtime.pause("p1");
+    expect(stateWrites.leaveState)
+      .toHaveBeenCalledWith(db, { projectId: "p1", kind: "phase", outcome: "paused" });
 
-    expect(lastPhase(db, "p1")).toEqual(first);
+    stateWrites.leaveState.mockClear();
+    await runtime.pause("p1");
+    expect(stateWrites.leaveState).not.toHaveBeenCalled();
   });
 
   it("refuses with a class the screen can act on", async () => {
