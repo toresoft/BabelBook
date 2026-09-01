@@ -43,7 +43,38 @@ const detail: ProjectDetail = {
   finishedAt: null,
 };
 
-function mount(project = detail) {
+/** A phase as a run leaves it: the counts blank, the info whatever the test says. */
+function phase(
+  name: ProjectDetail["phases"][number]["phase"],
+  state: ProjectDetail["phases"][number]["state"],
+  info: Record<string, unknown> | null = null,
+) {
+  return { phase: name, state, startedAt: null, endedAt: null, done: null, total: null, info };
+}
+
+/**
+ * The bridge's stand-in: it answers whatever a test scripted, an empty
+ * something to the rest, and remembers every channel it was asked — the
+ * tests distinguish "asked" from "never asked", which a plain stub cannot.
+ */
+const SCRIPTED: Record<string, unknown> = {};
+const EMPTY: Record<string, unknown> = {
+  "run.events": [],
+  "run.diagnostics": { lines: [], path: "" },
+};
+const ipc = {
+  invoked: [] as string[],
+  answer(channel: string, payload: unknown): void {
+    SCRIPTED[channel] = payload;
+  },
+  invoke(channel: string): Promise<unknown> {
+    ipc.invoked.push(channel);
+    return Promise.resolve(SCRIPTED[channel] ?? EMPTY[channel] ?? []);
+  },
+  on: () => () => {},
+};
+
+function mount(overrides: Partial<ProjectDetail> = {}) {
   // A test that mounts twice (one project, then another) needs a fresh
   // module each time: the first `createComponent` instantiates the testing
   // module, and Angular refuses to configure an instantiated one again.
@@ -54,13 +85,31 @@ function mount(project = detail) {
       ...provideI18n("it"),
       // The log asks the main process; here it answers with nothing, and no
       // listener ever fires.
-      { provide: IpcService, useValue: { invoke: () => Promise.resolve([]), on: () => () => {} } },
+      { provide: IpcService, useValue: ipc },
     ],
   });
   const fixture = TestBed.createComponent(Side);
-  fixture.componentRef.setInput("project", project);
+  fixture.componentRef.setInput("project", { ...detail, ...overrides });
+  // The questions of this mount only: what a previous test asked is its own
+  // business, and the scripted answers outlive a mount on purpose.
+  ipc.invoked.length = 0;
   fixture.detectChanges();
   return { fixture };
+}
+
+/** Mounted with the log tab open and the raw view already showing: where the raw tests start. */
+async function mountShowingRaw() {
+  const { fixture } = mount({ state: "done" });
+  // The `*transloco` root does not paint on the first synchronous tick, so
+  // the tab and its views have to be awaited into existence before use.
+  await fixture.whenStable();
+  fixture.detectChanges();
+  fixture.componentInstance.panel.set("log");
+  fixture.detectChanges();
+  fixture.nativeElement.querySelector("[data-testid=side-view-raw]")!.click();
+  await fixture.whenStable();
+  fixture.detectChanges();
+  return fixture;
 }
 
 describe("Side", () => {
@@ -228,6 +277,62 @@ describe("Side", () => {
     expect(lines[1].className).toContain("side__log-line--warning");
   });
 
+  /**
+   * The retry line was the one the Registro was missing. It is useless without
+   * its numbers, and `phrase()` used to translate without passing any.
+   */
+  it("fills in the numbers of a retry line", async () => {
+    const { fixture } = mount({ state: "running" });
+    // The catalogue arrives through a promise even though it is bundled, so
+    // the sentence is not there to ask for on the first synchronous tick.
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const spoken = fixture.componentInstance.phrase({
+      at: new Date().toISOString(), kind: "event", code: "provider-retry", severity: "warning",
+      info: { attempt: 2, max: 5, seconds: 4, reason: "PROVIDER_RATE_LIMITED" },
+    });
+
+    expect(spoken).toContain("2");
+    expect(spoken).toContain("5");
+    expect(spoken).not.toContain("{{");
+  });
+
+  it("offers the raw log beside the curated one, and asks for it only when shown", async () => {
+    const { fixture } = mount({ state: "done" });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    fixture.componentInstance.panel.set("log");
+    fixture.detectChanges();
+
+    expect(ipc.invoked).not.toContain("run.diagnostics");
+
+    fixture.nativeElement.querySelector("[data-testid=side-view-raw]").click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(ipc.invoked).toContain("run.diagnostics");
+    expect(fixture.nativeElement.querySelector("[data-testid=side-raw]")).toBeTruthy();
+  });
+
+  it("hides debug lines until asked", async () => {
+    ipc.answer("run.diagnostics", {
+      lines: [
+        JSON.stringify({ at: "2026-09-01T10:00:00Z", level: "debug", code: "call-finished" }),
+        JSON.stringify({ at: "2026-09-01T10:00:01Z", level: "warn", code: "provider-retry" }),
+      ],
+      path: "/w/logs",
+    });
+
+    const fixture = await mountShowingRaw();
+    expect(fixture.nativeElement.querySelector("[data-testid=side-raw]").textContent)
+      .not.toContain("call-finished");
+
+    fixture.nativeElement.querySelector("[data-testid=side-raw-level-debug]").click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=side-raw]").textContent)
+      .toContain("call-finished");
+  });
+
   it("warns that synchronised reading will not survive the translation", async () => {
     const { fixture } = mount({ ...detail, hasOverlays: true });
     await fixture.whenStable();
@@ -240,24 +345,47 @@ describe("Side", () => {
 
   /*
    * The catalogue holds a sentence for the codes it knows (`codes.*`); an
-   * engine can fail with one it does not, and a raw code on screen beats a
-   * blank card. The fallback is the case worth pinning, because it is the one
-   * nobody writes on purpose.
+   * engine can fail with one it does not, and the fault class turns that
+   * hole into a floor (`faults.*.body`) instead of a bare identifier. The
+   * fallback is the case worth pinning, because it is the one nobody writes
+   * on purpose.
    */
-  it("says why the run stopped, and shows the bare code when it has no sentence", async () => {
+  it("says why the run stopped, and the class of a code it has no sentence for", async () => {
     const { fixture } = mount({
-      ...detail,
       state: "failed",
-      phases: [{
-        phase: "translate", state: "failed", startedAt: null, endedAt: null,
-        done: null, total: null, info: { code: "provider-529" },
-      }],
+      phases: [phase("translate", "failed", { code: "provider-529" })],
     });
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector("[data-testid=alert-failed]").textContent)
-      .toContain("provider-529");
+    expect(fixture.nativeElement.querySelector("[data-testid=alert-stopped]").textContent)
+      .toContain(it_IT.faults.defect.body);
+  });
+
+  /** A pause with a reason is a card of its own, and warning-coloured. */
+  it("shows why a paused run stopped", async () => {
+    const { fixture } = mount({
+      state: "paused",
+      phases: [phase("translate", "paused", { code: "PROVIDER_OUT_OF_CREDIT", fault: "exhausted" })],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector("[data-testid=alert-stopped]");
+    expect(card.textContent).toContain("Il credito del provider è esaurito.");
+    expect(card.textContent).toContain("Ricarica");
+    expect(card.className).toContain("warning");
+  });
+
+  it("shows a failed run in the danger tone", async () => {
+    const { fixture } = mount({
+      state: "failed",
+      phases: [phase("compose", "failed", { code: "GATE_REFUSED", fault: "refused" })],
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector("[data-testid=alert-stopped]").className)
+      .toContain("danger");
   });
 
   it("says nothing when there is nothing to say", async () => {

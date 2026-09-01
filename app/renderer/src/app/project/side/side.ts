@@ -2,9 +2,10 @@ import {
   ChangeDetectionStrategy, Component, computed, effect, inject, input, OnDestroy, output, signal,
 } from "@angular/core";
 import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
-import type { LogLine, ProjectDetail } from "../../../../../shared/dto.js";
+import type { IpcFailure, LogLine, ProjectDetail } from "../../../../../shared/dto.js";
 import { IpcService } from "../../core/ipc.service";
 import { between, spell } from "../../core/durations";
+import { tell } from "../../core/failure";
 import { tone as toneOf, type Tone } from "../../core/tones";
 import { Detail } from "../detail";
 import { ProgressPanel } from "./progress-panel";
@@ -15,14 +16,13 @@ const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE
 
 /** One card of the things worth knowing before spending. */
 interface AlertCard {
-  kind: "failed" | "layout" | "overlays" | "description";
+  kind: "stopped" | "layout" | "overlays" | "description";
   testid: string;
   tone: "danger" | "warning" | "muted";
 }
 
-/** The card's title, keyed by catalogue. */
-const ALERT_TITLES: Record<AlertCard["kind"], string> = {
-  failed: "alerts.failed",
+/** The card's title, keyed by catalogue; the stopped card carries two, by state. */
+const ALERT_TITLES: Record<Exclude<AlertCard["kind"], "stopped">, string> = {
   layout: "alerts.layout",
   overlays: "alerts.overlays",
   description: "alerts.noDescription",
@@ -66,6 +66,28 @@ export class Side implements OnDestroy {
 
   /** The last run's story, read when its tab is the one open. */
   readonly log = signal<LogLine[]>([]);
+
+  /** Which of the log's two faces is showing: the curated one, or the raw one it is made from. */
+  readonly view = signal<"log" | "raw">("log");
+
+  /** The raw diagnostic lines, asked for only when the raw view is the one showing. */
+  readonly raw = signal<string[]>([]);
+
+  /** The folder the raw lines were read from, empty until it is known. */
+  readonly rawPath = signal<string>("");
+
+  /** Whether the raw view lets the `debug` lines through. */
+  readonly showDebug = signal(false);
+
+  /** The raw lines the filter lets through, newest last, as they were written. */
+  readonly rawLines = computed(() => this.raw().filter((line) => {
+    if (this.showDebug()) return true;
+    try {
+      return (JSON.parse(line) as { level?: string }).level !== "debug";
+    } catch {
+      return true;
+    }
+  }));
 
   #transloco = inject(TranslocoService);
   #ipc = inject(IpcService);
@@ -119,40 +141,60 @@ export class Side implements OnDestroy {
   readonly alerts = computed<AlertCard[]>(() => {
     const found = this.project();
     const cards: AlertCard[] = [];
-    if (found.state === "failed") {
-      cards.push({ kind: "failed", testid: "alert-failed", tone: "danger" });
+
+    // Two endings now, not one. `failed` means resuming would not fix it;
+    // `paused` with a reason is a run waiting for something outside itself,
+    // and calling it "Rifiutato" was telling the reader the wrong thing.
+    if (found.state === "failed" || (found.state === "paused" && this.#stopped() !== null)) {
+      cards.push({
+        kind: "stopped",
+        testid: "alert-stopped",
+        tone: found.state === "failed" ? "danger" : "warning",
+      });
     }
-    if (found.layout !== "reflowable") {
-      cards.push({ kind: "layout", testid: "alert-layout", tone: "warning" });
-    }
-    if (found.hasOverlays) {
-      cards.push({ kind: "overlays", testid: "alert-overlays", tone: "warning" });
-    }
+    if (found.layout !== "reflowable") cards.push({ kind: "layout", testid: "alert-layout", tone: "warning" });
+    if (found.hasOverlays) cards.push({ kind: "overlays", testid: "alert-overlays", tone: "warning" });
     if (found.description === null) {
       cards.push({ kind: "description", testid: "alert-description", tone: "muted" });
     }
     return cards;
   });
 
-  /** The card's title key: the titles are the only new sentences. */
-  titleOf(card: AlertCard): string {
-    return ALERT_TITLES[card.kind];
+  /** The classified reason of the last phase that carried one, whatever its outcome. */
+  #stopped(): IpcFailure | null {
+    for (const entry of [...this.project().phases].reverse()) {
+      const code = entry.info?.["code"];
+      if (typeof code !== "string") continue;
+      const fault = entry.info?.["fault"];
+      return { code, fault: (typeof fault === "string" ? fault : "defect") as IpcFailure["fault"] };
+    }
+    return null;
   }
 
-  /** The card's sentence, already in the reader's language. */
+  titleOf(card: AlertCard): string {
+    if (card.kind !== "stopped") return ALERT_TITLES[card.kind];
+    return this.project().state === "failed" ? "alerts.failed" : "alerts.paused";
+  }
+
   bodyOf(card: AlertCard): string | null {
     if (card.kind === "layout") return this.#transloco.translate("project.fixedLayout");
     if (card.kind === "overlays") return this.#transloco.translate("overlays.warning");
     if (card.kind === "description") return this.#transloco.translate("project.noDescription");
-    const code = this.#failureCode();
-    return code === null ? null : this.#sentence(`codes.${code}`, code);
+    const failure = this.#stopped();
+    return failure === null ? null : tell(this.#transloco, failure).body;
   }
 
-  /** The code the failed phase died of, when it left one. */
-  #failureCode(): string | null {
-    const phase = this.project().phases.find((entry) => entry.state === "failed");
-    const code = phase?.info?.["code"];
-    return typeof code === "string" ? code : null;
+  /** What to do next, which is the whole point of classifying. */
+  hintOf(card: AlertCard): string | null {
+    if (card.kind !== "stopped") return null;
+    const failure = this.#stopped();
+    return failure === null ? null : tell(this.#transloco, failure).hint;
+  }
+
+  /** True where the fix is in Settings rather than in pressing Resume. */
+  settingsHelp(): boolean {
+    const fault = this.#stopped()?.fault;
+    return fault === "config" || fault === "exhausted";
   }
 
   /** The badge tone the state wears: the colour of what the state means. */
@@ -231,7 +273,16 @@ export class Side implements OnDestroy {
    */
   phrase(line: LogLine): string {
     if (line.kind === "event") {
-      return this.#sentence(`codes.${line.code}`, line.code);
+      // The parameters were never passed, so a catalogue entry with
+      // placeholders showed its `{{ }}` to the reader. The retry line is
+      // nothing but its numbers.
+      const info = { ...(line.info ?? {}) };
+      // The sink writes milliseconds; the catalogue asks for seconds. The
+      // conversion is a choice of language, not of data, so it lives here and
+      // not in the log: the register keeps the milliseconds it measured.
+      if (typeof info["waitMs"] === "number") info["seconds"] = Math.round(info["waitMs"] / 1000);
+      if (typeof info["elapsedMs"] === "number") info["seconds"] = Math.round(info["elapsedMs"] / 1000);
+      return this.#sentence(`codes.${line.code}`, line.code, info);
     }
     const [, subject, outcome = "left"] = line.code.split(".");
     if (line.code.startsWith("phase.")) {
@@ -245,13 +296,32 @@ export class Side implements OnDestroy {
   }
 
   /** The catalogue's sentence for a key, or the fallback when it has none. */
-  #sentence(key: string, fallback: string): string {
-    const sentence = this.#transloco.translate(key);
+  #sentence(key: string, fallback: string, params: Record<string, unknown> = {}): string {
+    const sentence = this.#transloco.translate(key, params);
     return sentence === key ? fallback : sentence;
   }
 
   async #loadLog(): Promise<void> {
     this.log.set(await this.#ipc.invoke("run.events", { projectId: this.project().id }));
+  }
+
+  async #loadRaw(): Promise<void> {
+    const answer = await this.#ipc.invoke("run.diagnostics", { projectId: this.project().id });
+    this.raw.set(answer.lines);
+    this.rawPath.set(answer.path);
+  }
+
+  showRaw(): void {
+    this.view.set("raw");
+    void this.#loadRaw();
+  }
+
+  copyRaw(): void {
+    void navigator.clipboard.writeText(this.rawLines().join("\n"));
+  }
+
+  revealRaw(): void {
+    if (this.rawPath() !== "") void this.#ipc.invoke("file.reveal", { path: this.rawPath() });
   }
 
   /**

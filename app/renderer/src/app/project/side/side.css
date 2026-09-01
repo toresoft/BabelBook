@@ -91,6 +91,40 @@
 .side__log-line--error .side__log-text { color: var(--danger); }
 .side__log-empty { margin: 0; font-size: 0.8rem; color: var(--text-faint); }
 
+/* The choice between the curated story and the raw one it is made from: the
+   same quiet underline the panel's own tabs use, one level down, so the two
+   levels of choosing do not compete. */
+.side__log-views { display: flex; gap: 1rem; margin-bottom: 0.75rem; }
+.side__log-view {
+  appearance: none; background: none; border: none;
+  padding: 0.15rem 0; font-size: 0.74rem; color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+}
+.side__log-view--active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 500; }
+
+/* What the raw view offers beside its lines: the debug filter and the two
+   acts that carry the log elsewhere. */
+.side__raw-tools { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+.side__raw-toggle {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-size: 0.74rem; color: var(--text-muted);
+}
+
+/* The lines as they were written: monospaced, so the JSON lines up with
+   itself, and scrolling rather than wrapping, because a wrapped diagnostic
+   line is harder to quote than a wide one. */
+.side__raw {
+  margin: 0; padding: 0.6rem 0.75rem; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.68rem; line-height: 1.5; color: var(--text-soft);
+  overflow-x: auto; max-height: 24rem; overflow-y: auto;
+}
+
+/* The card's advice, set off from the sentence it follows: what to do next,
+   quieter than what happened. */
+.side__alert-hint { margin: 0.3rem 0 0; font-size: 0.72rem; line-height: 1.4; color: var(--text-muted); }
+
 .side__facts { margin: 0 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
 
 /* The quiet edit of everything the facts above just said: pulled up into the

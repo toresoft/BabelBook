@@ -78,10 +78,14 @@
     },
     "panel": {
       "progress": "Avanzamento",
-      "log": "Registro"
+      "log": "Registro",
+      "raw": "Grezzo"
     },
     "log": {
       "empty": "Il registro è vuoto.",
+      "showDebug": "Mostra le righe di debug",
+      "copy": "Copia",
+      "reveal": "Mostra nella cartella",
       "phase": {
         "done": "Fase completata in {{duration}}: {{phase}}",
         "failed": "Fase non riuscita: {{phase}}",

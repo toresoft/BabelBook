@@ -89,6 +89,13 @@
               @if (bodyOf(card); as body) {
                 <p class="side__alert-body">{{ body }}</p>
               }
+              @if (hintOf(card); as hint) {
+                <p class="side__alert-hint">{{ hint }}</p>
+              }
+              @if (card.kind === "stopped" && settingsHelp()) {
+                <button type="button" class="btn btn-xs" data-testid="alert-settings"
+                        (click)="editOpen.set(true)">{{ t('project.edit') }}</button>
+              }
             </div>
           </aside>
         }
@@ -205,19 +212,42 @@
         </div>
       } @else {
         <div class="side__panel-body" data-testid="side-panel-log">
-          @if (log().length === 0) {
-            <p class="side__log-empty">{{ t('project.log.empty') }}</p>
-          } @else {
-            <ol class="side__log">
-              @for (line of log(); track $index) {
-                <li class="side__log-line"
-                    [class.side__log-line--warning]="line.severity === 'warning'"
-                    [class.side__log-line--error]="line.severity === 'error'">
-                  <time class="side__log-time">{{ time(line.at) }}</time>
-                  <span class="side__log-text">{{ phrase(line) }}</span>
-                </li>
-              }
-            </ol>
+          <div class="side__log-views" role="group">
+            <button type="button" class="side__log-view" [class.side__log-view--active]="view() === 'log'"
+                    data-testid="side-view-log" (click)="view.set('log')">{{ t('project.panel.log') }}</button>
+            <button type="button" class="side__log-view" [class.side__log-view--active]="view() === 'raw'"
+                    data-testid="side-view-raw" (click)="showRaw()">{{ t('project.panel.raw') }}</button>
+          </div>
+
+          @if (view() === "raw") {
+            <div class="side__raw-tools">
+              <label class="side__raw-toggle">
+                <input type="checkbox" data-testid="side-raw-level-debug"
+                       [checked]="showDebug()" (change)="showDebug.set(!showDebug())" />
+                {{ t('project.log.showDebug') }}
+              </label>
+              <button type="button" class="btn btn-xs" (click)="copyRaw()">{{ t('project.log.copy') }}</button>
+              <button type="button" class="btn btn-xs" (click)="revealRaw()">{{ t('project.log.reveal') }}</button>
+            </div>
+            <pre class="side__raw" data-testid="side-raw">@for (line of rawLines(); track $index) {{{ line }}
+}</pre>
+          }
+
+          @if (view() === "log") {
+            @if (log().length === 0) {
+              <p class="side__log-empty">{{ t('project.log.empty') }}</p>
+            } @else {
+              <ol class="side__log">
+                @for (line of log(); track $index) {
+                  <li class="side__log-line"
+                      [class.side__log-line--warning]="line.severity === 'warning'"
+                      [class.side__log-line--error]="line.severity === 'error'">
+                    <time class="side__log-time">{{ time(line.at) }}</time>
+                    <span class="side__log-text">{{ phrase(line) }}</span>
+                  </li>
+                }
+              </ol>
+            }
           }
         </div>
       }

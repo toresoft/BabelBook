@@ -78,10 +78,14 @@
     },
     "panel": {
       "progress": "Progress",
-      "log": "Log"
+      "log": "Log",
+      "raw": "Raw"
     },
     "log": {
       "empty": "The log is empty.",
+      "showDebug": "Show debug lines",
+      "copy": "Copy",
+      "reveal": "Show in the folder",
       "phase": {
         "done": "Phase completed in {{duration}}: {{phase}}",
         "failed": "Phase failed: {{phase}}",
