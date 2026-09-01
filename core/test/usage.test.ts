@@ -51,4 +51,20 @@ describe("the counting backend", () => {
     await expect(counted.call({ prompt: "one" })).rejects.toThrow("nope");
     expect(seen).toEqual([]);
   });
+
+  /**
+   * A decorator that drops `structured` does not merely lose a property: it
+   * silently changes the contract the whole run translates under. This one is
+   * mounted in `runProject` around the backend every phase shares, so for as
+   * long as it dropped the flag no run anywhere used the schema contract —
+   * not even the models that support it, and not even when the flag had
+   * already gone into the cache key.
+   */
+  it("keeps the answer's shape imposable", async () => {
+    const structured = countingBackend({ ...backend(0), structured: true }, () => {});
+    expect(structured.structured).toBe(true);
+
+    const plain = countingBackend(backend(0), () => {});
+    expect(plain.structured).toBeUndefined();
+  });
 });

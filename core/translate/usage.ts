@@ -20,6 +20,12 @@ export interface Usage {
 export function countingBackend(inner: LlmBackend, onUsage: (total: Usage) => void): LlmBackend {
   const total: Usage = { tokensIn: 0, tokensOut: 0, reasoningTokens: 0 };
   return {
+    // Forwarded, not re-declared. This decorator is mounted around the backend
+    // every phase shares, so a flag dropped here is a contract changed for the
+    // whole run — and changed invisibly, because the text contract answers
+    // too, just worse.
+    ...(inner.structured === undefined ? {} : { structured: inner.structured }),
+
     async call(input) {
       const result = await inner.call(input);
       total.tokensIn += result.tokensIn;
