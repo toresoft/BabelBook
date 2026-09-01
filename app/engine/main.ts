@@ -3,6 +3,7 @@ import { generateObject, generateText } from "ai";
 import type { LlmBackend, ProjectStore } from "../../core/ports.ts";
 import { runProject } from "../main/run/orchestrator.ts";
 import { diagnosticsDir, fileSink } from "../main/run/diagnostics.ts";
+import { classifyProviderError } from "./backends/classify.ts";
 import { resolveModel } from "./backends/resolve.ts";
 import { sdkBackend } from "./backends/sdk.ts";
 import { fakeBackend } from "./fake.ts";
@@ -27,9 +28,22 @@ export interface EngineRunnerInput {
 /** Task 6 provides the orchestration behind this narrow, process-safe seam. */
 export type EngineRunner = (input: EngineRunnerInput) => Promise<void>;
 
-function failureCode(error: unknown): string {
-  const code = (error as { code?: unknown }).code;
-  return typeof code === "string" ? code : "ENGINE_FAILED";
+/**
+ * Whatever was thrown, as the message the main process can act on.
+ *
+ * What stood here read `error.code` and fell back to `ENGINE_FAILED`. SDK
+ * errors have no `.code`, so the fallback was not a fallback: it was the
+ * answer, every time, and with it went the status, the cause and the phase.
+ */
+export function toEngineFailure(error: unknown): Extract<EngineMessage, { type: "failed" }> {
+  const classified = classifyProviderError(error);
+  return {
+    type: "failed",
+    code: classified.code,
+    fault: classified.fault,
+    ...(Object.keys(classified.detail).length === 0 ? {} : { detail: classified.detail }),
+    ...(classified.retryAfterMs === undefined ? {} : { retryAfterMs: classified.retryAfterMs }),
+  };
 }
 
 function isRunConfig(config: unknown): config is RunConfig {
@@ -118,6 +132,20 @@ const productionRunner: EngineRunner = async (input) => {
     // the engine is finished, not that the book is: composition belongs to the
     // main process, and the reader is told once the file is on disk.
     input.emit({ type: "done", summary });
+  } catch (error) {
+    // An error that merely raced an abort used to disappear without trace: the
+    // outer catch swallows anything once the signal is aborted, which is right
+    // for a pause and wrong for everything else that happened to arrive with
+    // one.
+    sink.record({
+      level: input.signal.aborted ? "debug" : "error",
+      code: "run-ended-badly",
+      detail: {
+        aborted: input.signal.aborted,
+        message: String((error as { message?: unknown }).message ?? error),
+      },
+    });
+    throw error;
   } finally {
     sink.close();
   }
@@ -144,7 +172,7 @@ export function startEngineRuntime(port: MessagePortLike, runner?: EngineRunner)
     controller?.abort();
     controller = new AbortController();
     if (runner === undefined) {
-      port.postMessage({ type: "failed", code: "RUNNER_UNAVAILABLE" } satisfies EngineMessage);
+      port.postMessage({ type: "failed", code: "RUNNER_UNAVAILABLE", fault: "defect" } satisfies EngineMessage);
       return;
     }
 
@@ -160,7 +188,8 @@ export function startEngineRuntime(port: MessagePortLike, runner?: EngineRunner)
       emit: (message) => port.postMessage(message),
       signal,
     }).catch((error) => {
-      if (!signal.aborted) port.postMessage({ type: "failed", code: failureCode(error) } satisfies EngineMessage);
+      // An abort is the person's own hand, and stays swallowed here.
+      if (!signal.aborted) port.postMessage(toEngineFailure(error) satisfies EngineMessage);
     });
   });
   port.start?.();
@@ -171,7 +200,7 @@ if (parentPort !== null && parentPort !== undefined) {
   parentPort.on("message", (event) => {
     const port = event.ports[0] as MessagePortLike | undefined;
     if (port === undefined) {
-      parentPort.postMessage({ type: "failed", code: "ENGINE_PORT_MISSING" } satisfies EngineMessage);
+      parentPort.postMessage({ type: "failed", code: "ENGINE_PORT_MISSING", fault: "defect" } satisfies EngineMessage);
       return;
     }
     startEngineRuntime(port, productionRunner);

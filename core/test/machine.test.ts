@@ -124,6 +124,18 @@ describe("projectMachine", () => {
     }
   });
 
+  /**
+   * A pause the machine did not choose still deserves a reason. The reason
+   * does not enter the context — `project_state.info` already keeps it, and
+   * two places remembering one thing are two places that can disagree.
+   */
+  it("accepts a pause that says why", () => {
+    const actor = createProjectActor({ hasLanguage: true }).start();
+    actor.send({ type: "START" });
+    actor.send({ type: "PAUSE", reason: "PROVIDER_OUT_OF_CREDIT" });
+    expect(actor.getSnapshot().value).toBe("paused");
+  });
+
   it("ends done when the run declared no degradation", () => {
     const actor = start({ hasApprovedTerms: true, hasReviewedExclusions: true }, "composing");
     actor.send({ type: "COMPOSED" });

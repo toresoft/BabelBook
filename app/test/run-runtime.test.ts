@@ -253,7 +253,7 @@ describe("the runtime's state history", () => {
     const { db, id, engine } = await running();
 
     engine.emit({ type: "phase", phase: "translate" });
-    engine.emit({ type: "failed", code: "provider-529" });
+    engine.emit({ type: "failed", code: "provider-529", fault: "defect" });
 
     expect(statesOf(db, id).find((state) => state.kind === "phase" && state.name === "translate"))
       .toMatchObject({ outcome: "failed", info: { code: "provider-529" } });
@@ -273,7 +273,7 @@ describe("the runtime's state history", () => {
     const { db, id, engine, runtime } = await running();
 
     engine.emit({ type: "phase", phase: "translate" });
-    engine.emit({ type: "failed", code: "provider-529" });
+    engine.emit({ type: "failed", code: "provider-529", fault: "defect" });
     expect((db.prepare("SELECT state FROM project WHERE id = ?").get(id) as { state: string }).state)
       .toBe("failed");
 

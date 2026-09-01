@@ -53,7 +53,7 @@ describe("tooltipFor", () => {
    */
   it("stops counting when the run stops", () => {
     expect(tooltipFor({ type: "gate", gate: "terms" }, "Book", t)).toContain("[tray.waiting]");
-    expect(tooltipFor({ type: "failed", code: "boom" }, "Book", t)).toBe("[tray.idle]");
+    expect(tooltipFor({ type: "failed", code: "boom", fault: "defect" }, "Book", t)).toBe("[tray.idle]");
     expect(tooltipFor({ type: "done", summary: {} as never }, "Book", t)).toBe("[tray.idle]");
   });
 

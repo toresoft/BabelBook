@@ -47,7 +47,12 @@ export type ProjectEvent =
   | { type: "TERMS_READY" } | { type: "TERMS_APPROVED" }
   | { type: "CODE_INDEXED" } | { type: "CODE_REVIEWED" }
   | { type: "TRANSLATED" } | { type: "COMPOSED" } | { type: "COMPOSE" }
-  | { type: "PAUSE" } | { type: "RESUME" }
+  // The reason travels with the event and is written by the host into
+  // `project_state.info`, beside the one a `FAIL` already writes. It stays out
+  // of the context deliberately: the machine says what is lawful, not what
+  // happened, and a second memory of one fact is a second thing to keep true.
+  | { type: "PAUSE"; reason?: string }
+  | { type: "RESUME" }
   | { type: "FAIL"; reason: string };
 
 /**

@@ -6,6 +6,7 @@
  * import engine implementation just to understand a message.
  */
 
+import type { Fault } from "../../core/errors.ts";
 import type { RunPhase } from "./dto.ts";
 
 export type { RunPhase } from "./dto.ts";
@@ -111,7 +112,14 @@ export type EngineMessage =
   | { type: "gate"; gate: "terms" | "code" }
   | { type: "transition"; event: RunTransition }
   | { type: "done"; summary: RunSummary }
-  | { type: "failed"; code: string }
+  | {
+    type: "failed";
+    code: string;
+    /** What the main process reads to choose between `paused` and `failed`. */
+    fault: Fault;
+    detail?: Record<string, string | number | boolean>;
+    retryAfterMs?: number;
+  }
   | StoreRequest;
 
 /** The tiny common denominator shared by Electron's two MessagePort variants. */

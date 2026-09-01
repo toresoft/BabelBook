@@ -2,13 +2,14 @@ import { EventEmitter } from "node:events";
 import { readFile } from "node:fs/promises";
 import { generateText } from "ai";
 import { describe, expect, it } from "vitest";
-import { startEngineRuntime } from "../engine/main.ts";
+import { startEngineRuntime, toEngineFailure } from "../engine/main.ts";
 import { StoreClient, type MessagePortLike } from "../engine/store-client.ts";
 import {
   configureEngineHost, isEngineMessage, makeEngineHost, startEngine, type UtilityProcessLike,
 } from "../main/run/engine-host.ts";
 import { makeStoreProxy } from "../main/run/store-proxy.ts";
 import type { EngineCommand, StoreRequest } from "../shared/run.ts";
+import { BabelError } from "../../core/errors.ts";
 import { FakeStore } from "../../core/test/fake/store.ts";
 
 class TestPort extends EventEmitter implements MessagePortLike {
@@ -221,7 +222,7 @@ describe("engine runtime", () => {
     expect(() => port.send({ type: "start", projectId: 3 })).not.toThrow();
     port.send(command());
 
-    expect(port.sent).toEqual([{ type: "failed", code: "RUNNER_UNAVAILABLE" }]);
+    expect(port.sent).toEqual([{ type: "failed", code: "RUNNER_UNAVAILABLE", fault: "defect" }]);
   });
 
   // Catches the entry point importing Task 6 orchestration instead of accepting its runner at the boundary.
@@ -247,7 +248,35 @@ describe("engine runtime", () => {
 
     port.send(command());
 
-    expect(port.sent).toEqual([{ type: "failed", code: "RUNNER_UNAVAILABLE" }]);
+    expect(port.sent).toEqual([{ type: "failed", code: "RUNNER_UNAVAILABLE", fault: "defect" }]);
+  });
+});
+
+describe("what the engine says when it dies", () => {
+  it("carries the class, not only a word", () => {
+    expect(toEngineFailure(new BabelError("slow down", {
+      code: "PROVIDER_RATE_LIMITED", fault: "throttled",
+      detail: { status: 429 }, retryAfterMs: 4000,
+    }))).toEqual({
+      type: "failed", code: "PROVIDER_RATE_LIMITED", fault: "throttled",
+      detail: { status: 429 }, retryAfterMs: 4000,
+    });
+  });
+
+  /**
+   * The line this replaces read `error.code` — which SDK errors do not have,
+   * so every failure in the history of this application arrived as
+   * ENGINE_FAILED, and the window looked up a catalogue entry that was never
+   * written and printed the bare word.
+   */
+  it("classifies an SDK error instead of calling everything ENGINE_FAILED", () => {
+    const failure = toEngineFailure(Object.assign(new Error("fetch failed"), { code: "ECONNRESET" }));
+    expect(failure.code).toBe("PROVIDER_UNREACHABLE");
+    expect(failure.fault).toBe("transient");
+  });
+
+  it("calls what it cannot classify a defect", () => {
+    expect(toEngineFailure(new Error("who knows")).fault).toBe("defect");
   });
 });
 
