@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { DatabaseSync } from "node:sqlite";
+import { BabelError, PAUSES_ON } from "../../../core/errors.ts";
 import { sha256 } from "../../../core/epub/index.ts";
 import { SqliteProjectStore } from "../db/store.ts";
 import { composeEpub } from "../compose.ts";
@@ -44,10 +45,15 @@ interface ProjectRow {
   auto_accept_exclusions: number;
 }
 
-/** A failure the interface can name, because it was foreseen. */
-class RunRefusedError extends Error {
-  constructor(readonly code: string) {
-    super(code);
+/**
+ * A refusal the interface can name, because it was foreseen.
+ *
+ * All of these are `config`: something has to change before pressing the
+ * button again can work, and now the screen can say what.
+ */
+class RunRefusedError extends BabelError {
+  constructor(code: string) {
+    super(code, { code, fault: "config" });
     this.name = "RunRefusedError";
   }
 }
@@ -90,6 +96,20 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
   let activeComposition: symbol | null = null;
   /** The engine's accounting, held until the book exists to report it against. */
   let lastSummary: RunSummary | null = null;
+
+  /**
+   * Lets go of the engine, all at once.
+   *
+   * These three say one thing — who owns the engine now — and each ending used
+   * to blank a different subset of them. Nothing visible broke, because
+   * `onEngineMessage` leaves early on a null `activeId`; but three variables
+   * for one fact stay true only if they are set together.
+   */
+  const release = (): void => {
+    activeId = null;
+    activeRunId = null;
+    activeComposition = null;
+  };
 
   const project = (projectId: string): ProjectRow => {
     const row = db.prepare(`
@@ -201,7 +221,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
         current.send({ type: "COMPOSED" });
       }
 
-      activeId = null;
+      release();
       changed(projectId);
       if (result.status !== "failed") {
         feed({
@@ -226,7 +246,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
         });
         current.send({ type: "FAIL", reason: named });
       }
-      activeId = null;
+      release();
       changed(projectId);
     } finally {
       if (activeComposition === operation) activeComposition = null;
@@ -302,7 +322,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       // a gate. Leaving `activeId` set would make the next approval refuse
       // itself with ENGINE_BUSY — a gate that can be opened but never closed.
       const finished = activeId;
-      activeId = null;
+      release();
 
       // Not fed onward: `done` is what tells the user their book is ready, and
       // the book is not ready until the composer has written and checked it.
@@ -316,22 +336,35 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     }
     if (message.type === "failed") {
       const projectId = activeId;
-      leaveState(db, {
-        projectId, kind: "phase", outcome: "failed", info: { code: message.code },
-      });
-      machineHost(projectId).send({ type: "FAIL", reason: message.code });
-      activeComposition = null;
-      activeId = null;
+      // The taxonomy's table, read here and nowhere else. `failed` means
+      // "resuming would not fix it", and only three faults qualify: a network
+      // that went away is a pause, and used to be a rejection.
+      const ending = PAUSES_ON[message.fault] ? "paused" : "failed";
+      const info = {
+        code: message.code, fault: message.fault, ...(message.detail ?? {}),
+      };
+
+      const host = machineHost(projectId);
+      const accepted = host.send(ending === "paused"
+        ? { type: "PAUSE", reason: message.code }
+        : { type: "FAIL", reason: message.code });
+      // Written only if the machine lived through it: a state recorded that
+      // the machine refused is a history that did not happen.
+      if (accepted) leaveState(db, { projectId, kind: "phase", outcome: ending, info });
+
+      release();
       changed(projectId);
+      return;
     }
   }
 
   async function onCrash(projectId: string): Promise<void> {
     db.exec("SAVEPOINT babelbook_engine_crash");
     try {
-      const host = machineHost(projectId);
-      host.send({ type: "PAUSE" });
-      leaveState(db, { projectId, kind: "phase", outcome: "paused" });
+      // Sent before anything is written: a state recorded that the machine
+      // refused is a history that did not happen.
+      const accepted = machineHost(projectId).send({ type: "PAUSE" });
+      if (accepted) leaveState(db, { projectId, kind: "phase", outcome: "paused" });
       if (activeRunId !== null) {
         db.prepare(`
           INSERT INTO run_event (id, run_id, at, code, severity, payload_json)
@@ -344,8 +377,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       db.exec("RELEASE SAVEPOINT babelbook_engine_crash");
       throw error;
     }
-    activeComposition = null;
-    activeId = null;
+    release();
     changed(projectId);
   }
 
@@ -487,7 +519,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       try {
         await compose(projectId, project(projectId));
       } finally {
-        activeId = null;
+        release();
       }
     },
 
@@ -497,18 +529,17 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       }
       db.exec("SAVEPOINT babelbook_pause_run");
       try {
-        machineHost(projectId).send({ type: "PAUSE" });
-        leaveState(db, { projectId, kind: "phase", outcome: "paused" });
+        // Sent before anything is written: a state recorded that the machine
+        // refused is a history that did not happen.
+        const accepted = machineHost(projectId).send({ type: "PAUSE" });
+        if (accepted) leaveState(db, { projectId, kind: "phase", outcome: "paused" });
         db.exec("RELEASE SAVEPOINT babelbook_pause_run");
       } catch (error) {
         db.exec("ROLLBACK TO SAVEPOINT babelbook_pause_run");
         db.exec("RELEASE SAVEPOINT babelbook_pause_run");
         throw error;
       }
-      if (activeId === projectId) {
-        activeComposition = null;
-        activeId = null;
-      }
+      if (activeId === projectId) release();
       changed(projectId);
     },
 
