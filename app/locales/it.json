@@ -103,6 +103,7 @@
     "doneIn": "fatto in {{duration}}"
   },
   "alerts": {
+    "paused": "La corsa si è messa in pausa",
     "failed": "La corsa si è fermata",
     "layout": "Impaginazione fissa",
     "overlays": "L'audio non seguirà la traduzione",
@@ -496,6 +497,40 @@
       "messageNone": "Eliminare il glossario «{{name}}»? Nessun progetto lo usa."
     }
   },
+  "faults": {
+    "transient": {
+      "body": "Il provider non ha risposto.",
+      "hint": "Di solito passa da sé: riprendi fra qualche minuto."
+    },
+    "throttled": {
+      "body": "Il provider ha chiesto di rallentare.",
+      "hint": "Ha imposto un'attesa. Riprendi più tardi, o riduci le richieste in parallelo nelle impostazioni."
+    },
+    "exhausted": {
+      "body": "Il credito del provider è finito.",
+      "hint": "Ricarica il credito o attendi il rinnovo della quota, poi riprendi: ciò che è già tradotto resta."
+    },
+    "config": {
+      "body": "Qualcosa nella configurazione impedisce di procedere.",
+      "hint": "Controlla il provider e il modello del progetto in Impostazioni, poi riprendi."
+    },
+    "input": {
+      "body": "Il libro non si presta a essere lavorato.",
+      "hint": "Il file di partenza va sostituito: riprendere non cambierebbe l'esito."
+    },
+    "refused": {
+      "body": "Il controllo finale ha rifiutato il libro composto.",
+      "hint": "Apri il report: dice quale verifica non è stata superata."
+    },
+    "defect": {
+      "body": "Si è rotto qualcosa dentro babelBook.",
+      "hint": "Il registro grezzo contiene il dettaglio: copialo se vuoi segnalare il problema."
+    },
+    "cancelled": {
+      "body": "La corsa è stata interrotta.",
+      "hint": "Riprendi quando vuoi: nulla di ciò che era stato tradotto è andato perso."
+    }
+  },
   "codes": {
     "unit-fell-back": "Un'unità è rimasta nella lingua di partenza dopo i tentativi previsti.",
     "chunk-exhausted": "Un gruppo ha esaurito i tentativi.",
@@ -505,7 +540,33 @@
     "document-skipped": "Un documento non è stato letto.",
     "author-translate-no": "L'autore ha chiesto di non tradurre questa parte.",
     "abstained": "La classificazione si è astenuta.",
-    "unsupported-format": "Questo è un {{format}}: babelBook tratta solo EPUB."
+    "unsupported-format": "Questo è un {{format}}: babelBook tratta solo EPUB.",
+    "PROVIDER_UNREACHABLE": "Non si è riusciti a raggiungere il provider.",
+    "PROVIDER_TIMEOUT": "Il provider non ha risposto in tempo.",
+    "PROVIDER_RATE_LIMITED": "Il provider ha imposto un limite di frequenza.",
+    "PROVIDER_OUT_OF_CREDIT": "Il credito del provider è esaurito.",
+    "PROVIDER_UNAUTHORIZED": "La chiave non è stata accettata.",
+    "PROVIDER_SERVER_ERROR": "Il provider ha risposto con un errore proprio.",
+    "PROVIDER_UNKNOWN": "Il provider ha rifiutato la richiesta senza spiegarsi.",
+    "MODEL_NOT_FOUND": "Il provider non conosce questo modello.",
+    "CONTEXT_EXCEEDED": "La richiesta non entra nella finestra del modello.",
+    "RESPONSE_UNUSABLE": "La risposta non aveva la forma richiesta.",
+    "SOURCE_MISSING": "Il file di partenza non è più dove era.",
+    "DISK_FULL": "Il disco è pieno.",
+    "PATH_NOT_WRITABLE": "Non si può scrivere in quella cartella.",
+    "DATABASE_BUSY": "Il database era occupato.",
+    "COMPOSE_NO_PACKAGE": "L'archivio non contiene il documento di pacchetto.",
+    "COMPOSE_NO_CACHE_KEY": "Questo progetto non ha ancora una chiave di lavoro.",
+    "GATE_REFUSED": "Il controllo finale ha rifiutato il libro.",
+    "ENGINE_BUSY": "Un altro libro sta occupando il motore.",
+    "GATE_OPEN": "C'è una decisione in sospeso da prendere prima.",
+    "NO_LANGUAGE": "Manca la lingua di destinazione.",
+    "SOURCE_CHANGED": "Il file di partenza è cambiato dopo l'analisi.",
+    "provider-retry": "Tentativo {{attempt}} di {{max}} fra {{seconds}} s — {{reason}}",
+    "provider-recovered": "Il provider ha ripreso a rispondere dopo {{attempts}} tentativi.",
+    "provider-slow": "Una richiesta ha impiegato {{seconds}} s.",
+    "run-paused": "La corsa si è messa in pausa: {{reason}}",
+    "chunk-failed": "Un gruppo di {{units}} unità non è stato tradotto."
   },
   "errors": {
     "noBridge": "L'interfaccia non riesce a parlare con l'applicazione."

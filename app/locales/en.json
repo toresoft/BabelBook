@@ -103,6 +103,7 @@
     "doneIn": "done in {{duration}}"
   },
   "alerts": {
+    "paused": "The run paused",
     "failed": "The run stopped",
     "layout": "Fixed layout",
     "overlays": "The audio will not follow the translation",
@@ -496,6 +497,40 @@
       "messageNone": "Delete the glossary “{{name}}”? No project uses it."
     }
   },
+  "faults": {
+    "transient": {
+      "body": "The provider did not answer.",
+      "hint": "It usually clears on its own: resume in a few minutes."
+    },
+    "throttled": {
+      "body": "The provider asked us to slow down.",
+      "hint": "It imposed a wait. Resume later, or reduce the parallel requests in the settings."
+    },
+    "exhausted": {
+      "body": "The provider's credit ran out.",
+      "hint": "Top up the credit or wait for the quota to renew, then resume: what is already translated stays."
+    },
+    "config": {
+      "body": "Something in the configuration stands in the way.",
+      "hint": "Check the project's provider and model in Settings, then resume."
+    },
+    "input": {
+      "body": "The book does not lend itself to being worked on.",
+      "hint": "The source file must be replaced: resuming would not change the outcome."
+    },
+    "refused": {
+      "body": "The final check refused the composed book.",
+      "hint": "Open the report: it says which verification was not passed."
+    },
+    "defect": {
+      "body": "Something inside babelBook broke.",
+      "hint": "The raw log holds the detail: copy it if you want to report the problem."
+    },
+    "cancelled": {
+      "body": "The run was interrupted.",
+      "hint": "Resume whenever you like: nothing that had been translated is lost."
+    }
+  },
   "codes": {
     "unit-fell-back": "A unit stayed in the source language after the attempts it was given.",
     "chunk-exhausted": "A chunk ran out of attempts.",
@@ -505,7 +540,33 @@
     "document-skipped": "A document could not be read.",
     "author-translate-no": "The author asked for this part not to be translated.",
     "abstained": "The classification abstained.",
-    "unsupported-format": "This is a {{format}}: babelBook only handles EPUB."
+    "unsupported-format": "This is a {{format}}: babelBook only handles EPUB.",
+    "PROVIDER_UNREACHABLE": "The provider could not be reached.",
+    "PROVIDER_TIMEOUT": "The provider did not answer in time.",
+    "PROVIDER_RATE_LIMITED": "The provider imposed a rate limit.",
+    "PROVIDER_OUT_OF_CREDIT": "The provider's credit is exhausted.",
+    "PROVIDER_UNAUTHORIZED": "The key was not accepted.",
+    "PROVIDER_SERVER_ERROR": "The provider answered with an error of its own.",
+    "PROVIDER_UNKNOWN": "The provider refused the request without explaining itself.",
+    "MODEL_NOT_FOUND": "The provider does not know this model.",
+    "CONTEXT_EXCEEDED": "The request does not fit in the model's window.",
+    "RESPONSE_UNUSABLE": "The answer did not have the required shape.",
+    "SOURCE_MISSING": "The source file is no longer where it was.",
+    "DISK_FULL": "The disk is full.",
+    "PATH_NOT_WRITABLE": "That folder cannot be written to.",
+    "DATABASE_BUSY": "The database was busy.",
+    "COMPOSE_NO_PACKAGE": "The archive does not contain the package document.",
+    "COMPOSE_NO_CACHE_KEY": "This project has no work key yet.",
+    "GATE_REFUSED": "The final check refused the book.",
+    "ENGINE_BUSY": "Another book is occupying the engine.",
+    "GATE_OPEN": "There is a decision waiting to be taken first.",
+    "NO_LANGUAGE": "The target language is missing.",
+    "SOURCE_CHANGED": "The source file changed after the analysis.",
+    "provider-retry": "Attempt {{attempt}} of {{max}} in {{seconds}}s — {{reason}}",
+    "provider-recovered": "The provider started answering again after {{attempts}} attempts.",
+    "provider-slow": "A request took {{seconds}}s.",
+    "run-paused": "The run paused: {{reason}}",
+    "chunk-failed": "A group of {{units}} units was not translated."
   },
   "errors": {
     "noBridge": "The interface cannot reach the application."

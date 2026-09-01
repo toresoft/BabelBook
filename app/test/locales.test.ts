@@ -98,3 +98,59 @@ describe("catalogues", () => {
     expect(missing).toEqual([]);
   });
 });
+
+const FAULTS = [
+  "transient", "throttled", "exhausted", "config",
+  "input", "refused", "defect", "cancelled",
+];
+
+const CODES = [
+  "PROVIDER_UNREACHABLE", "PROVIDER_TIMEOUT", "PROVIDER_RATE_LIMITED",
+  "PROVIDER_OUT_OF_CREDIT", "PROVIDER_UNAUTHORIZED", "PROVIDER_SERVER_ERROR",
+  "PROVIDER_UNKNOWN", "MODEL_NOT_FOUND", "CONTEXT_EXCEEDED", "RESPONSE_UNUSABLE",
+  "SOURCE_MISSING", "DISK_FULL", "PATH_NOT_WRITABLE", "DATABASE_BUSY",
+  "COMPOSE_NO_PACKAGE", "COMPOSE_NO_CACHE_KEY", "GATE_REFUSED",
+  "ENGINE_BUSY", "GATE_OPEN", "NO_LANGUAGE", "SOURCE_CHANGED",
+];
+
+const LOG_CODES = [
+  "provider-retry", "provider-recovered", "provider-slow",
+  "run-paused", "chunk-failed", "unit-fell-back",
+];
+
+import italiano from "../locales/it.json" with { type: "json" };
+import english from "../locales/en.json" with { type: "json" };
+
+describe.each([["it", italiano], ["en", english]] as [string, Record<string, any>][])("the %s catalogue", (_language, catalogue) => {
+  /**
+   * The floor under every unnamed code. If a fault had no sentence, an error
+   * nobody catalogued would print its bare identifier in the middle of an
+   * Italian paragraph — which is what it did before.
+   */
+  it("has a sentence and an advice for every fault", () => {
+    for (const fault of FAULTS) {
+      expect(catalogue.faults?.[fault]?.body, fault).toBeTruthy();
+      expect(catalogue.faults?.[fault]?.hint, fault).toBeTruthy();
+    }
+  });
+
+  it("names every code the classifiers can produce", () => {
+    for (const code of CODES) expect(catalogue.codes?.[code], code).toBeTruthy();
+  });
+
+  it("names every line the log can write", () => {
+    for (const code of LOG_CODES) expect(catalogue.codes?.[code], code).toBeTruthy();
+  });
+
+  it("has a title for a run that paused as well as one that failed", () => {
+    expect(catalogue.alerts?.paused).toBeTruthy();
+    expect(catalogue.alerts?.failed).toBeTruthy();
+  });
+
+  /** The Registro's retry line is useless without its numbers. */
+  it("interpolates the retry line", () => {
+    for (const token of ["{{attempt}}", "{{max}}", "{{seconds}}"]) {
+      expect(catalogue.codes["provider-retry"]).toContain(token);
+    }
+  });
+});
