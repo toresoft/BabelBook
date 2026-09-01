@@ -97,6 +97,8 @@ export interface Invocations {
   "run.approve": { req: { projectId: string; gate: "terms" | "code" }; res: void };
   /** The last run's log: the states the project lived through, beside the events its engine reported. */
   "run.events": { req: { projectId: string }; res: LogLine[] };
+  /** The last run's raw chronicle: both processes' NDJSON, merged, tail first trimmed. */
+  "run.diagnostics": { req: { projectId: string }; res: { lines: string[]; path: string } };
   "terms.list": { req: { projectId: string }; res: TermRow[] };
   "terms.decide": {
     req: {
@@ -218,7 +220,7 @@ export const INVOCATIONS = [
   "env.hasKey",
   "projects.list", "projects.counts", "project.chooseEpub", "project.create", "project.update", "project.delete",
   "project.export", "project.get", "units.list",
-  "run.start", "run.compose", "run.pause", "run.approve", "run.events",
+  "run.start", "run.compose", "run.pause", "run.approve", "run.events", "run.diagnostics",
   "terms.list", "terms.decide", "terms.add", "terms.promote",
   "terms.previewInvalidation", "terms.invalidate",
   "exclusions.list", "exclusions.force", "exclusions.clear",

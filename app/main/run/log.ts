@@ -5,6 +5,9 @@ import { statesOf, type StateRecord } from "./states.ts";
 /** What the log calls an event the engine recorded with the given severity. */
 const SEVERITIES: Record<string, LogLine["severity"]> = {
   degradation: "warning",
+  // The sink's own levels, beside the verdicts a degradation records.
+  warn: "warning",
+  warning: "warning",
   error: "error",
 };
 

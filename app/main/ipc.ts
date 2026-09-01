@@ -7,6 +7,8 @@ import {
   type LocalRuntime, type ProviderModel, type Settings, type VerifyOutcome,
 } from "../shared/channels.ts";
 import { packFailure } from "../shared/dto.ts";
+import type { LogSink } from "../../core/ports.ts";
+import { classifySystemError } from "./failure.ts";
 import { type Translate } from "./catalogue.ts";
 import { createProject } from "./projects/create.ts";
 import { assertProviderChosen } from "./projects/provider.ts";
@@ -27,6 +29,7 @@ import { projectDetail } from "./projects/detail.ts";
 import { countProjects, listProjects } from "./projects/query.ts";
 import { listUnits } from "./units/list.ts";
 import { runLog } from "./run/log.ts";
+import { diagnosticsDir, readDiagnostics } from "./run/diagnostics.ts";
 import { enterState } from "./run/states.ts";
 import { deleteWorkspace, type Workspace } from "./workspace.ts";
 
@@ -86,6 +89,12 @@ export interface IpcDeps {
   openPath(path: string): Promise<void>;
   revealPath(path: string): Promise<void>;
   broadcast<K extends keyof Events>(channel: K, payload: Events[K]): void;
+  /**
+   * Where a failure that belongs to no book is written down. Optional because
+   * a test may not want a file, and total because this sits in a `catch`: a
+   * logging failure must never replace the failure it was asked to record.
+   */
+  log?: LogSink;
 }
 
 export function readSettings(db: DatabaseSync): Settings {
@@ -369,6 +378,19 @@ export function buildHandlers(deps: IpcDeps): Handlers {
 
     "run.events": async ({ projectId }) => runLog(deps.db, projectId),
 
+    "run.diagnostics": async ({ projectId }) => {
+      const row = deps.db.prepare(`
+        SELECT p.workspace_path AS workspace,
+               (SELECT id FROM run WHERE project_id = p.id ORDER BY started_at DESC LIMIT 1) AS run_id
+          FROM project p WHERE p.id = ?
+      `).get(projectId) as { workspace: string; run_id: string | null } | undefined;
+
+      // A project that never ran has nothing to show, and saying so is an
+      // answer: refusing would make an empty panel look like a broken one.
+      if (row === undefined || row.run_id === null) return { lines: [], path: "" };
+      return readDiagnostics(diagnosticsDir(row.workspace), row.run_id);
+    },
+
     "provider.verify": async (request) => deps.verifyProvider(request),
 
     // A closed port is an absent runtime, not an error: the answer is simply
@@ -587,9 +609,17 @@ export function registerIpc(ipcMain: IpcMainLike, deps: IpcDeps): void {
       try {
         return await (handlers[channel] as (request: unknown) => unknown)(request);
       } catch (error) {
-        // Repacked, not rethrown: the class and its fields do not cross, and
-        // a code the window cannot read is a code that does not exist.
-        throw new Error(packFailure(error));
+        // Repacked, not rethrown: the class and its fields do not cross, and a
+        // code the window cannot read is a code that does not exist. Written
+        // down as well, because a failure outside a run belongs to no
+        // Registro and used to leave no trace at all.
+        const classified = classifySystemError(error);
+        deps.log?.record({
+          level: "error",
+          code: classified.code,
+          detail: { channel, fault: classified.fault, ...classified.detail },
+        });
+        throw new Error(packFailure(classified));
       }
     });
   }

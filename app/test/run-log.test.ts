@@ -76,6 +76,14 @@ describe("runLog", () => {
     expect(log.find((line) => line.code === "phase.translate.failed")!.severity).toBe("error");
   });
 
+  /** A `warn` from the new sink must read as a warning, not fall through to info. */
+  it("reads the sink's own levels", () => {
+    const db = seeded();
+    event(db, "e1", "2026-08-30T09:00:30.000Z", { code: "provider-retry", severity: "warn" });
+    const line = runLog(db, "p1").find((entry) => entry.code === "provider-retry");
+    expect(line?.severity).toBe("warning");
+  });
+
   it("tells the project's own story at the moment each state was entered", () => {
     const db = seeded();
     for (const [name, at] of [

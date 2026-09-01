@@ -20,6 +20,7 @@ import {
 } from "./providers/store.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
 import { registerIpc, readSettings } from "./ipc.ts";
+import { appSink } from "./run/diagnostics.ts";
 import { restoreRunningProjects } from "./run/machine-host.ts";
 import { makeRunRuntime, type RunRuntime } from "./run/runtime.ts";
 import {
@@ -348,6 +349,10 @@ app.whenReady().then(async () => {
     userDataDir,
     crypto,
     t,
+    // Constructed once, before any channel can fail: a failure that belongs to
+    // no book goes to the app file, and constructing it per failure would be
+    // one more thing that can go wrong while saying so.
+    log: appSink(userDataDir),
     theme: () => ({ dark: nativeTheme.shouldUseDarkColors }),
     // The question is assembled in the ipc layer; this is only the platform's
     // part of it. The buttons' order is the contract — cancel first — so the

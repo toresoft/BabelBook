@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import { buildEpub } from "../../core/test/corpus/build.ts";
 import { EVENTS, INVOCATIONS, type LocalRuntime } from "../shared/channels.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
-import { buildHandlers, type IpcDeps } from "../main/ipc.ts";
+import { buildHandlers, registerIpc, type IpcDeps } from "../main/ipc.ts";
+import type { LogRecord } from "../../core/ports.ts";
 import { readKey } from "../main/providers/store.ts";
 import { statesOf } from "../main/run/states.ts";
 
@@ -46,6 +47,23 @@ async function deps(overrides: Partial<IpcDeps> = {}) {
       broadcast: () => {},
       ...overrides,
     } as IpcDeps,
+  };
+}
+
+/**
+ * An `ipcMain` that keeps its handlers, so a test can call one the way the
+ * window would — through `registerIpc`, where the packing and the writing down
+ * happen, rather than around them.
+ */
+function fakeIpcMain() {
+  const listeners = new Map<string, (event: unknown, request: unknown) => unknown>();
+  return {
+    handle(channel: string, listener: (event: unknown, request: unknown) => unknown): void {
+      listeners.set(channel, listener);
+    },
+    call(channel: string, request: unknown): unknown {
+      return listeners.get(channel)?.(undefined, request);
+    },
   };
 }
 
@@ -827,5 +845,49 @@ describe("clearing a setting", () => {
 
     expect(cleared.epubcheckJar).toBeNull();
     expect((await handlers["settings.get"](undefined)).epubcheckJar).toBeNull();
+  });
+});
+
+describe("run.diagnostics", () => {
+  /** One project that ran once, and one that never ran: both owe the window an answer. */
+  async function withRuns() {
+    const { dir, db, deps: d } = await deps();
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state)
+      VALUES ('p1','a.epub','A',?,'h','2026-08-24','it','done'),
+             ('never-ran','b.epub','B',?,'h','2026-08-24','it','ready')
+    `).run(`${dir}/projects/p1`, `${dir}/projects/never-ran`);
+    db.prepare(`
+      INSERT INTO run (id, project_id, phase, started_at, ended_at)
+      VALUES ('r1', 'p1', 'translate', '2026-08-30T09:00:00.000Z', NULL)
+    `).run();
+    return { dir, db, deps: d };
+  }
+
+  it("serves the raw log of the last run", async () => {
+    const { deps } = await withRuns();
+    const handlers = buildHandlers(deps);
+    const answer = await handlers["run.diagnostics"]({ projectId: "p1" });
+    expect(Array.isArray(answer.lines)).toBe(true);
+    expect(typeof answer.path).toBe("string");
+  });
+
+  /** A project that never ran answers with nothing, not with a rejection. */
+  it("answers with nothing when no run ever wrote a line", async () => {
+    const { deps } = await withRuns();
+    const handlers = buildHandlers(deps);
+    expect((await handlers["run.diagnostics"]({ projectId: "never-ran" })).lines).toEqual([]);
+  });
+
+  /** A failure on a channel belongs to no book, so it belongs to the app file. */
+  it("writes down a failure that reaches no Registro", async () => {
+    const { deps } = await withRuns();
+    const logged: LogRecord[] = [];
+    const ipcMain = fakeIpcMain();
+    registerIpc(ipcMain, { ...deps, log: { record: (entry) => logged.push(entry) } });
+
+    await expect(ipcMain.call("provider.verify", { id: "nope" })).rejects.toThrow();
+    expect(logged[0]).toMatchObject({ level: "error", detail: { channel: "provider.verify" } });
   });
 });
