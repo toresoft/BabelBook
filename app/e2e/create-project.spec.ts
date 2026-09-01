@@ -18,7 +18,15 @@ async function launch(userData: string, epub: string) {
   const app = await electron.launch({
     args: ["."],
     cwd: join(import.meta.dirname, ".."),
-    env: { ...process.env, BABELBOOK_USER_DATA: userData, BABELBOOK_EPUB_FOR_TEST: epub },
+    env: {
+      ...process.env, BABELBOOK_USER_DATA: userData, BABELBOOK_EPUB_FOR_TEST: epub,
+      // The seeded provider names an endpoint nothing answers on, which is
+      // fine until a test presses "translate" — one below does, to prove the
+      // button acts, and a real run then keeps the engine process alive and
+      // `app.close()` waiting on it. The deterministic backend never reaches
+      // the network, so the run ends and the window really closes.
+      BABELBOOK_FAKE_BACKEND: "1",
+    },
   });
   return { app, window: await mainWindow(app) };
 }

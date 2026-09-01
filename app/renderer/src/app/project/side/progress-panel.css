@@ -16,7 +16,16 @@
   border-color: var(--warning); background: var(--warning-box); color: var(--warning);
 }
 .phases__dot--paused i { width: 2px; height: 7px; border-radius: 1px; background: currentColor; }
-.phases__dot--spin { border: none; background: none; color: var(--accent); }
+/* The running mark is a spinner daisyUI draws, and it must not be a
+   `phases__dot`.
+
+   daisyUI shapes the spinner with a `mask-image` over the element's own
+   `background-color: currentColor` — the background *is* the spinner. Every
+   rule in this file is unlayered and everything daisyUI ships lives inside
+   `@layer`, so a background set here wins whatever its specificity, and wins
+   by painting nothing: the dot kept its size and its colour and vanished.
+   So this one sets a box and a colour, and no background at all. */
+.phases__spin { flex: none; width: 1.15rem; height: 1.15rem; color: var(--accent); }
 /* The connector closes only after the row's own news: a link that ended at
    the name would tie a phase to the one above it more tightly than to its
    own outcome. */

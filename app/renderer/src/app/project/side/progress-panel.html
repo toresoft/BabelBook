@@ -4,7 +4,9 @@
       <span class="phases__rail" aria-hidden="true">
         @switch (p.state) {
           @case ("running") {
-            <span class="phases__dot phases__dot--spin loading loading-spinner loading-xs"></span>
+            <!-- Not a `phases__dot`: this is the one mark daisyUI draws, and
+                 it draws it as a background behind a mask. See the stylesheet. -->
+            <span class="phases__spin loading loading-spinner"></span>
           }
           @case ("done") {
             <span class="phases__dot phases__dot--done">
