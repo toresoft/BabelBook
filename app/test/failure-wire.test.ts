@@ -49,5 +49,9 @@ describe("a failure crossing the bridge", () => {
     }));
 
     expect(packed).not.toContain("sk-secret-key");
+
+    // The same error with nobody to name its fields: the raw error's own
+    // surface is not read either, so its key does not cross by accident.
+    expect(packFailure(Object.assign(new Error("401"), { apiKey: "sk-secret-key" }))).not.toContain("sk-secret-key");
   });
 });

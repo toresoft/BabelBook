@@ -528,10 +528,10 @@ const MARKER = "babelbook-failure:";
 /**
  * Only what was named crosses.
  *
- * The own-enumerable scan below is the second net under the allow-list rule
- * that `BabelError.detail` states: even if a classifier were careless, only
- * scalars on the error's own surface can travel, and never `cause`, which is
- * where a provider keeps the request it failed on.
+ * The allow-list that `BabelError.detail` states is the one net: the raw
+ * error is never trusted, so an unclassified one crosses with no detail at
+ * all, and the diagnostic file holds the rest. `cause` never travels either,
+ * which is where a provider keeps the request it failed on.
  */
 export function packFailure(error: unknown): string {
   const classified = isBabelError(error);
@@ -541,13 +541,6 @@ export function packFailure(error: unknown): string {
   if (classified && typeof failure.detail === "object" && failure.detail !== null) {
     for (const [key, value] of Object.entries(failure.detail)) {
       if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-        details[key] = value;
-      }
-    }
-  } else {
-    for (const [key, value] of Object.entries(error as object)) {
-      if (key !== "code" && key !== "fault" && key !== "stack" && key !== "cause"
-        && (typeof value === "string" || typeof value === "number")) {
         details[key] = value;
       }
     }
