@@ -261,6 +261,32 @@ describe("the runtime's state history", () => {
       .toMatchObject({ name: "failed" });
   });
 
+  /**
+   * The half a run got through is the reason to offer it again.
+   *
+   * A translation that died on a provider error left its units in the store,
+   * under the key the next run will look them up by. Refusing to start meant
+   * the only thing on offer was composing a book that was mostly the original
+   * — and paying for the whole translation again was not on offer at all.
+   */
+  it("picks a failed run back up, and keeps what it had already translated", async () => {
+    const { db, id, engine, runtime } = await running();
+
+    engine.emit({ type: "phase", phase: "translate" });
+    engine.emit({ type: "failed", code: "provider-529" });
+    expect((db.prepare("SELECT state FROM project WHERE id = ?").get(id) as { state: string }).state)
+      .toBe("failed");
+
+    await runtime.start(id);
+
+    expect((db.prepare("SELECT state FROM project WHERE id = ?").get(id) as { state: string }).state)
+      .toBe("running");
+    // The key is not rewritten into something else on the way back in: the
+    // stored translations are found under it, or resuming pays twice.
+    expect(statesOf(db, id).filter((state) => state.kind === "project").map((state) => state.name))
+      .toEqual(["ready", "running", "failed", "running"]);
+  });
+
   it("closes the active phase when a run is paused", async () => {
     const { db, id, engine, runtime } = await running();
 

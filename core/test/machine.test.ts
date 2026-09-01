@@ -33,6 +33,41 @@ describe("projectMachine", () => {
     expect(actor.getSnapshot().value).toBe("waiting-terms");
   });
 
+  /**
+   * A run that stopped is not a run that is over.
+   *
+   * `failed` used to offer COMPOSE alone, and COMPOSE over a translation that
+   * died at unit 400 of 3000 builds a book that is mostly the original. The
+   * units already translated are the expensive half and they survive the
+   * ending — which is the argument this state was written on, and it argues
+   * for picking the work back up, not only for composing it.
+   */
+  it("lets a run that failed be picked up again", () => {
+    const actor = start({}, "failed");
+    expect(actor.getSnapshot().can({ type: "RESUME" })).toBe(true);
+
+    actor.send({ type: "RESUME" });
+    expect(actor.getSnapshot().value).toBe("running");
+  });
+
+  /** Composing again is still offered: a failure of the composer is not a failure of the book. */
+  it("still lets a run that failed be composed again", () => {
+    const actor = start({}, "failed");
+    actor.send({ type: "COMPOSE" });
+    expect(actor.getSnapshot().value).toBe("composing");
+  });
+
+  /**
+   * The same guard a pause carries, for the same reason: a stopped run is
+   * exactly the window in which the file on disk has time to change, and
+   * translating against moved ranges composes the wrong book.
+   */
+  it("refuses to pick up a failed run when the source no longer matches", () => {
+    const actor = start({ sourceHashMatches: false }, "failed");
+    actor.send({ type: "RESUME" });
+    expect(actor.getSnapshot().value).toBe("failed");
+  });
+
   it("walks through the terms gate when auto-acceptance is on", () => {
     const actor = start({ autoAcceptTerms: true });
     actor.send({ type: "START" });

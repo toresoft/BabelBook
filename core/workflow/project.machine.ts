@@ -221,7 +221,30 @@ export const projectMachine = setup({
      */
     done: { on: { COMPOSE: "composing" } },
     incomplete: { on: { COMPOSE: "composing" } },
-    failed: { on: { COMPOSE: "composing" } },
+
+    /**
+     * The one ending that is also an interruption, so it offers both retries.
+     *
+     * A run reaches `failed` two ways that look alike here and are not: the
+     * composer refused or threw, with every unit already translated — and the
+     * translation itself stopped, on a provider that answered 529 or a network
+     * that went away, with the book half done. `COMPOSE` answers the first.
+     * For the second it builds a book that is mostly the original, while the
+     * units already paid for sit in the store under the key the next run would
+     * look them up by, unreachable.
+     *
+     * So `RESUME` is offered as well, under the same guard a pause carries and
+     * for the same reason: a stopped run is exactly the window in which the
+     * file on disk has time to change. When nothing was left to translate the
+     * resumed run finds it so and walks on to composing, which is the other
+     * retry arriving by a longer road.
+     */
+    failed: {
+      on: {
+        RESUME: { target: "running", guard: "sourceMatches" },
+        COMPOSE: "composing",
+      },
+    },
   },
 });
 

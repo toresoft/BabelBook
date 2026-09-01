@@ -439,9 +439,12 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       let accepted = true;
       if (host.state === "ready") {
         accepted = host.send({ type: "START" });
-      } else if (host.state === "paused") {
-        // A pause is exactly the window in which the file on disk has time to
-        // change, so the hash is recomputed before the machine is asked.
+      } else if (host.state === "paused" || host.state === "failed") {
+        // A stop is exactly the window in which the file on disk has time to
+        // change, so the hash is recomputed before the machine is asked. A run
+        // that failed is picked up the same way a paused one is: what it
+        // managed to translate is in the store under the key the next run
+        // reads, so resuming costs only what is left.
         if (!(await sourceMatches(row))) throw new RunRefusedError("SOURCE_CHANGED");
         accepted = host.send({ type: "RESUME" });
       } else if (host.state === "waiting-terms" || host.state === "waiting-code") {

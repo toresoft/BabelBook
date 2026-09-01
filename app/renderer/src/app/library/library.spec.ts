@@ -120,6 +120,26 @@ describe("Library", () => {
     expect(calls(invoke, "file.open")[0]![1]).toEqual({ path: "/w/p1/out/a-book-it.epub" });
   });
 
+  /**
+   * A translation that stopped is work half paid for, and the shelf is where
+   * anyone looks for it. The book's own screen asks the machine what it may
+   * do and so already offered this; the tile switches on the state's name and
+   * offered nothing at all, which read as "this book is over".
+   */
+  it("offers a book whose run failed the way back into it", async () => {
+    const stopped = { ...summary, state: "failed", progress: { done: 3, total: 9 } };
+    const { fixture, invoke } = mount({ "projects.list": [stopped] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const resume = fixture.nativeElement.querySelector("[data-testid=resume]");
+    expect(resume).not.toBeNull();
+    resume.click();
+    await fixture.whenStable();
+
+    expect(calls(invoke, "run.start")[0]![1]).toEqual({ projectId: "p1" });
+  });
+
   it("offers nothing to open for a book that was never composed", async () => {
     const { fixture } = mount();
     await fixture.whenStable();

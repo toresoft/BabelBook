@@ -71,7 +71,16 @@
                 {{ t('library.pause') }}
               </button>
             }
+            <!-- A run that stopped and a run that failed are the same offer:
+                 what was translated is kept, and picking it back up costs
+                 only what is left. The book's own screen asks the machine and
+                 has always said so; the shelf said nothing at all. -->
             @case ("paused") {
+              <button class="btn btn-sm btn-primary tile__run" data-testid="resume" (click)="onStart(project)">
+                {{ t('library.resume') }}
+              </button>
+            }
+            @case ("failed") {
               <button class="btn btn-sm btn-primary tile__run" data-testid="resume" (click)="onStart(project)">
                 {{ t('library.resume') }}
               </button>
