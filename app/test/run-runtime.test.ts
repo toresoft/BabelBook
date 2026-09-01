@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { BabelError } from "../../core/errors.ts";
 import { buildEpub } from "../../core/test/corpus/build.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import { createProject } from "../main/projects/create.ts";
@@ -220,13 +221,44 @@ describe("the runtime's state history", () => {
         notTranslated: {}, tokensIn: 12, tokensOut: 8, reasoningTokens: 0,
       },
     });
-    composition.reject(Object.assign(new Error("disk full"), { code: "DISK_FULL" }));
+    composition.reject(new BabelError("the file is not where it was", {
+      code: "SOURCE_MISSING", fault: "input",
+    }));
 
     await vi.waitFor(() => expect(runtime.active).toBeNull());
     expect(statesOf(db, id).find((state) => state.kind === "phase" && state.name === "compose"))
-      .toMatchObject({ outcome: "failed", info: { code: "DISK_FULL" } });
+      .toMatchObject({ outcome: "failed", info: { code: "SOURCE_MISSING", fault: "input" } });
     expect(statesOf(db, id).filter((state) => state.kind === "project").at(-1))
       .toMatchObject({ name: "failed" });
+  });
+
+  /**
+   * A composition that cannot write its book is not a rejected book: the
+   * machine would not let us, and once somebody clears the way the same
+   * translations still compose. The fault decides the ending, exactly as it
+   * does for the engine's own failures.
+   */
+  it("pauses the phase when composition cannot write, and somebody has to act", async () => {
+    const { db, id, engine, runtime } = await running();
+
+    engine.emit({ type: "transition", event: "TRANSLATED" });
+    engine.emit({ type: "phase", phase: "compose" });
+    engine.emit({
+      type: "done",
+      summary: {
+        units: { total: 1, translated: 1, fellBack: 0, identical: 0 },
+        notTranslated: {}, tokensIn: 12, tokensOut: 8, reasoningTokens: 0,
+      },
+    });
+    composition.reject(new BabelError("the machine would not let us write", {
+      code: "PATH_NOT_WRITABLE", fault: "config", detail: { path: "/w/out", errno: "EACCES" },
+    }));
+
+    await vi.waitFor(() => expect(runtime.active).toBeNull());
+    expect(statesOf(db, id).find((state) => state.kind === "phase" && state.name === "compose"))
+      .toMatchObject({ outcome: "paused", info: { code: "PATH_NOT_WRITABLE", fault: "config" } });
+    expect(statesOf(db, id).filter((state) => state.kind === "project").at(-1))
+      .toMatchObject({ name: "paused" });
   });
 
   it("does not let a stale composition overwrite a crash pause", async () => {

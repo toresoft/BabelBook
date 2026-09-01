@@ -5,6 +5,7 @@ import { BabelError, PAUSES_ON } from "../../../core/errors.ts";
 import { sha256 } from "../../../core/epub/index.ts";
 import { SqliteProjectStore } from "../db/store.ts";
 import { composeEpub } from "../compose.ts";
+import { classifySystemError } from "../failure.ts";
 import { priceTokens } from "../../shared/estimate.ts";
 import type { Events } from "../../shared/channels.ts";
 import type {
@@ -184,7 +185,11 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       // The key the run translated under, which every other screen already reads
       // from here. The source hash names the book, not the work done on it: no
       // translation answers to it, so every unit re-emitted its source.
-      if (row.cache_key === null) throw new Error("COMPOSE_NO_CACHE_KEY");
+      if (row.cache_key === null) {
+        throw new BabelError("this project has never run under a key", {
+          code: "COMPOSE_NO_CACHE_KEY", fault: "defect",
+        });
+      }
 
       const result = await composeEpub({
         workspace: workspaceOf(row),
@@ -211,7 +216,8 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
 
       if (result.status === "failed") {
         leaveState(db, {
-          projectId, kind: "phase", outcome: "failed", info: { code: "GATE_REFUSED" },
+          projectId, kind: "phase", outcome: "failed",
+          info: { code: "GATE_REFUSED", fault: "refused" },
         });
         current.send({ type: "FAIL", reason: "GATE_REFUSED" });
       } else {
@@ -237,14 +243,19 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       }
     } catch (error) {
       if (activeComposition !== operation || activeId !== projectId || activeRunId !== runId) return;
-      const code = (error as { code?: unknown }).code;
-      const named = typeof code === "string" ? code : "COMPOSE_FAILED";
+      const classified = classifySystemError(error);
+      const ending = PAUSES_ON[classified.fault] ? "paused" : "failed";
       const current = machineHost(projectId);
       if (current.state === "composing") {
-        leaveState(db, {
-          projectId, kind: "phase", outcome: "failed", info: { code: named },
-        });
-        current.send({ type: "FAIL", reason: named });
+        const accepted = current.send(ending === "paused"
+          ? { type: "PAUSE", reason: classified.code }
+          : { type: "FAIL", reason: classified.code });
+        if (accepted) {
+          leaveState(db, {
+            projectId, kind: "phase", outcome: ending,
+            info: { code: classified.code, fault: classified.fault, ...classified.detail },
+          });
+        }
       }
       release();
       changed(projectId);

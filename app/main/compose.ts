@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { BabelError } from "../../core/errors.ts";
 import {
   assertUtf8, buildSkeleton, checkInvariants, fillSkeleton, findPackagePath, hasOverlays,
   inspect, isWork, readEpub, removeOverlays, render, runEpubcheck, writeEpub, writeLanguage,
@@ -7,6 +8,7 @@ import {
   type EpubcheckResult, type InvariantResult, type TranslationUnit, type ZipEntry,
 } from "../../core/epub/index.ts";
 import type { ProjectStore } from "../../core/ports.ts";
+import { classifySystemError } from "./failure.ts";
 import type { Workspace } from "./workspace.ts";
 
 export interface ComposeResult {
@@ -48,7 +50,11 @@ function fileName(title: string, targetLanguage: string): string {
 export async function composeEpub(input: ComposeInput): Promise<ComposeResult> {
   const { workspace, store, cacheKey, targetLanguage, title } = input;
 
-  const archive = await readEpub(await readFile(workspace.source));
+  const archive = await readEpub(await readFile(workspace.source).catch((error: unknown) => {
+    // The workspace copy is the book: without it there is nothing to compose,
+    // and no retry produces one.
+    throw classifySystemError(error, { path: workspace.source });
+  }));
   const before = inspect(archive.entries);
   const opfPath = findPackagePath(archive.entries);
 
@@ -122,7 +128,11 @@ export async function composeEpub(input: ComposeInput): Promise<ComposeResult> {
 
   // The language goes in first; the overlay removal then cleans the result.
   const opfIndex = entries.findIndex((e) => e.path === opfPath);
-  if (opfIndex === -1) throw new Error("COMPOSE_NO_PACKAGE");
+  if (opfIndex === -1) {
+    throw new BabelError("the archive has no package document", {
+      code: "COMPOSE_NO_PACKAGE", fault: "input", detail: { path: opfPath },
+    });
+  }
   const withLanguage = writeLanguage(entries[opfIndex].bytes.toString("utf8"), targetLanguage, new Date());
   entries[opfIndex] = { ...entries[opfIndex], bytes: Buffer.from(withLanguage, "utf8") };
 
@@ -134,7 +144,11 @@ export async function composeEpub(input: ComposeInput): Promise<ComposeResult> {
   }
 
   const outputPath = join(workspace.outputDir, fileName(title, targetLanguage));
-  await writeFile(outputPath, await writeEpub(entries));
+  try {
+    await writeFile(outputPath, await writeEpub(entries));
+  } catch (error) {
+    throw classifySystemError(error, { path: outputPath });
+  }
 
   // The gate inspects the file that was written, not the entries in memory:
   // what a reader would open is the only thing worth asserting about.
