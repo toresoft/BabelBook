@@ -38,4 +38,14 @@ describe("classifying what the machine answered", () => {
   it("calls anything else a defect", () => {
     expect(classifySystemError(new Error("who knows")).fault).toBe("defect");
   });
+
+  /** `Promise.reject()` with no argument rejects with `undefined`: the classifier still owes it a name. */
+  it("calls a rejection without a body a defect rather than throwing", () => {
+    for (const empty of [null, undefined, "just a string"] as unknown[]) {
+      const classified = classifySystemError(empty);
+      expect(classified.code).toBe("UNKNOWN");
+      expect(classified.fault).toBe("defect");
+      expect(classified.cause).toBe(empty);
+    }
+  });
 });

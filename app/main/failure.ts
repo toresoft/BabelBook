@@ -25,8 +25,11 @@ export function classifySystemError(error: unknown, context: Context = {}): Babe
 
   const detail: Record<string, string | number | boolean> =
     context.path === undefined ? {} : { path: context.path };
-  const code = (error as { code?: unknown }).code;
-  const errno = typeof code === "string" ? code : "";
+  // A classifier that throws in a catch block replaces the failure it was asked to name.
+  const body = typeof error === "object" && error !== null
+    ? (error as { code?: unknown; message?: unknown })
+    : undefined;
+  const errno = typeof body?.code === "string" ? body.code : "";
 
   if (errno === "ENOENT") {
     return new BabelError("the file is not where it was", {
@@ -43,7 +46,7 @@ export function classifySystemError(error: unknown, context: Context = {}): Babe
 
   // SQLite says this in words rather than in an errno, and it is the one
   // database failure that passes on its own.
-  const message = (error as { message?: unknown }).message;
+  const message = body?.message;
   if (typeof message === "string" && /database is locked|database is busy/i.test(message)) {
     return new BabelError("the database was busy", {
       code: "DATABASE_BUSY", fault: "transient", detail, cause: error,
