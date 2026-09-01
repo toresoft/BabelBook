@@ -174,15 +174,48 @@ export interface RunInput {
   signal?: AbortSignal;
 }
 
-/** Runs `worker` over `items`, `limit` at a time, in order. */
-async function inParallel<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
+/**
+ * Runs `worker` over `items`, `limit` at a time, in order — and stops when one
+ * of them fails.
+ *
+ * `Promise.all` alone rejects on the first throw and leaves the other workers
+ * running: they keep taking chunks off the queue and keep writing, on a run
+ * the caller has already declared over. `allSettled` is what makes the
+ * rejection mean the work has actually stopped, and the shared controller is
+ * what makes it stop soon rather than at the end of the queue.
+ */
+async function inParallel<T>(
+  items: T[],
+  limit: number,
+  worker: (item: T, signal: AbortSignal) => Promise<void>,
+): Promise<void> {
   const queue = [...items];
-  const running = Array.from({ length: Math.max(1, Math.min(limit, queue.length)) }, async () => {
-    for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-      await worker(next);
-    }
-  });
-  await Promise.all(running);
+  const stop = new AbortController();
+  const failures: unknown[] = [];
+
+  const running = Array.from(
+    { length: Math.max(1, Math.min(limit, queue.length)) },
+    async () => {
+      for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
+        if (stop.signal.aborted) return;
+        try {
+          await worker(next, stop.signal);
+        } catch (error) {
+          failures.push(error);
+          stop.abort();
+          return;
+        }
+      }
+    },
+  );
+
+  await Promise.allSettled(running);
+
+  // A cancellation is what the other workers report once the first failure has
+  // aborted them; the first real failure is the one worth telling.
+  const real = failures.find((error) => (error as { name?: string }).name !== "AbortError");
+  if (real !== undefined) throw real;
+  if (failures.length > 0) throw failures[0];
 }
 
 /**
@@ -227,11 +260,12 @@ export async function translateUnits(input: RunInput): Promise<RunSummary> {
   let tokensIn = 0;
   let tokensOut = 0;
 
-  await inParallel(chunks, input.concurrency ?? 2, async (chunk) => {
-    const outcome = await translateChunk({
-      chunk, terms, backend: input.backend,
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-    });
+  await inParallel(chunks, input.concurrency ?? 2, async (chunk, stopping) => {
+    const signal = input.signal === undefined
+      ? stopping
+      : AbortSignal.any([input.signal, stopping]);
+
+    const outcome = await translateChunk({ chunk, terms, backend: input.backend, signal });
     tokensIn += outcome.tokensIn;
     tokensOut += outcome.tokensOut;
 

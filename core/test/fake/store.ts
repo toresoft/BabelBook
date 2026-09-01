@@ -4,6 +4,12 @@ import type { TermEntry } from "../../glossary/types.ts";
 import type { CandidateReport } from "../../analyze/candidates.ts";
 import type { CodeIndex } from "../../analyze/code.ts";
 
+/** What a test wants to observe about the double while it runs. */
+export interface FakeStoreOptions {
+  /** Called with the unit id on every write, once the write has landed. */
+  onPutTranslation?: (unitId: string) => void;
+}
+
 /** A `ProjectStore` that keeps everything in memory, for tests that must not touch a database. */
 export class FakeStore implements ProjectStore {
   readonly events: RunEvent[] = [];
@@ -13,9 +19,11 @@ export class FakeStore implements ProjectStore {
   #terms: TermEntry[] = [];
   #candidateReports = new Map<string, CandidateReport>();
   #codeIndexes = new Map<string, CodeIndex>();
+  #onPutTranslation?: (unitId: string) => void;
 
-  constructor(units: TranslationUnit[] = []) {
+  constructor(units: TranslationUnit[] = [], options: FakeStoreOptions = {}) {
     this.#units = [...units];
+    this.#onPutTranslation = options.onPutTranslation;
   }
 
   async units(filter?: UnitFilter): Promise<TranslationUnit[]> {
@@ -37,6 +45,7 @@ export class FakeStore implements ProjectStore {
     const forKey = this.#translations.get(translation.cacheKey) ?? new Map<string, StoredTranslation>();
     forKey.set(translation.unitId, translation);
     this.#translations.set(translation.cacheKey, forKey);
+    this.#onPutTranslation?.(translation.unitId);
   }
 
   async terms(): Promise<TermEntry[]> {
@@ -90,4 +99,9 @@ export class FakeStore implements ProjectStore {
   async event(event: RunEvent): Promise<void> {
     this.events.push(event);
   }
+}
+
+/** A `FakeStore` built from what a test wants to observe rather than what it holds. */
+export function fakeStore(options: FakeStoreOptions = {}): FakeStore {
+  return new FakeStore([], options);
 }

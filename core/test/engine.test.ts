@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { translateChunk, translateUnits } from "../translate/engine.ts";
 import { FakeBackend } from "./fake/backend.ts";
-import { FakeStore } from "./fake/store.ts";
+import { FakeStore, fakeStore } from "./fake/store.ts";
 import type { Chunk } from "../translate/plan.ts";
 import type { TranslationUnit } from "../epub/index.ts";
 
@@ -343,5 +343,54 @@ describe("translateUnits and the model's window", () => {
     await translateUnits({ ...base(units), backend: unknowing });
 
     expect(unknowing.prompts).toHaveLength(1);
+  });
+});
+
+/**
+ * The failure that used to leave the run in a state nobody could describe.
+ *
+ * `Promise.all` rejects on the first throw, but the workers behind it keep
+ * taking chunks off the queue. What they wrote landed after the run had been
+ * declared failed: translations for a run that was over, tokens after the last
+ * usage message, a `run_event` on a closed run. Whoever pressed resume then
+ * started from a state that was still moving.
+ */
+describe("a run whose backend fails", () => {
+  it("stops every worker, and writes nothing after the failure", async () => {
+    // Long on purpose: the brief's short sentences all fit one chunk, and one
+    // chunk means one worker — nothing left running for the defect to show.
+    // At a thousand characters each, the planner cuts eight chunks of five,
+    // and the workers that survive a failure have somewhere to be stopped.
+    const units = Array.from({ length: 40 }, (_, at) => ({
+      id: `u${at}`, kind: "block" as const, doc: "c1.xhtml", ordinal: at,
+      range: [at, at] as [number, number], state: "translate" as const,
+      source: `sentence number ${at} ${"x".repeat(1000)}`,
+      raw: `<p>sentence number ${at}</p>`,
+    }));
+
+    let calls = 0;
+    const backend = {
+      call: async () => {
+        calls++;
+        if (calls === 2) throw new Error("the provider went away");
+        await new Promise((resume) => setTimeout(resume, 5));
+        return {
+          text: "", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop" as const,
+        };
+      },
+    };
+
+    const written: string[] = [];
+    const store = fakeStore({ onPutTranslation: (unitId: string) => written.push(unitId) });
+
+    await expect(translateUnits({
+      units, store, backend, concurrency: 4,
+      progress: { report: () => {} },
+      cacheKey: "k", sourceLanguage: "en", targetLanguage: "it",
+    })).rejects.toThrow("the provider went away");
+
+    const afterTheThrow = written.length;
+    await new Promise((resume) => setTimeout(resume, 60));
+    expect(written.length).toBe(afterTheThrow);
   });
 });
