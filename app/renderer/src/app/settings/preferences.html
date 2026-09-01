@@ -48,8 +48,14 @@
       <small class="prefs__hint">{{ t('prefs.epubcheckHint') }}</small>
     }
 
-    @if (failure()) {
-      <p class="prefs__failure" data-testid="prefs-failure">{{ t('prefs.failed') }}</p>
+    @if (failureBody(); as body) {
+      <div class="alert alert-error" data-testid="prefs-failure">
+        <div>
+          <p>{{ t('prefs.failed') }}</p>
+          <p class="text-sm">{{ body }}</p>
+          @if (failureHint(); as hint) { <p class="text-sm opacity-70">{{ hint }}</p> }
+        </div>
+      </div>
     }
   }
 </section>

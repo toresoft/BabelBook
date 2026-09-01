@@ -111,6 +111,36 @@ describe("Preferences", () => {
     expect(fixture.componentInstance.failure()).toBe("BAD_VALUE");
   });
 
+  /**
+   * A refused setting used to cost one sentence that named no reason. The
+   * classified failure says which afternoon this is: a busy database is waited
+   * out, and a code nobody catalogued still gets a floor.
+   */
+  it("says why the setting could not be saved, even for a code nobody catalogued", async () => {
+    // The code is read when the question is asked, so one mount watches the
+    // answer change between the two attempts.
+    let code = "DATABASE_BUSY";
+    const invoke = vi.fn(async (channel: string) => {
+      if (channel === "settings.get") return stored;
+      throw { code, fault: "transient" };
+    });
+    const { fixture } = mount("translation", invoke as never);
+    await fixture.whenStable();
+
+    await fixture.componentInstance.patch({ concurrency: 4 });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=prefs-failure]").textContent)
+      .toContain("Il database era occupato.");
+
+    code = "SOMETHING_NEW";
+    await fixture.componentInstance.patch({ concurrency: 4 });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=prefs-failure]").textContent)
+      .toContain("Il provider non ha risposto.");
+  });
+
   it("writes no sentence of its own: every label comes from the catalogue", async () => {
     const { fixture } = mount("application");
     await fixture.whenStable();

@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { TranslocoDirective } from "@jsverse/transloco";
+import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import type { GlossaryTerm, GlossaryView, TermRule } from "../../../../shared/dto.js";
+import { tell } from "../core/failure";
 import { IpcService } from "../core/ipc.service";
 
 /**
@@ -25,8 +26,19 @@ export class Glossaries {
   readonly draft = signal<GlossaryView | null>(null);
   readonly saving = signal(false);
   readonly failure = signal<string | null>(null);
+  /** The classified explanation of the last failure: what happened, what to do. */
+  readonly failureBody = signal<string | null>(null);
+  readonly failureHint = signal<string | null>(null);
 
   #ipc = inject(IpcService);
+  #transloco = inject(TranslocoService);
+
+  /** The title stays each screen's own; only the explanation is shared. */
+  #explain(error: unknown): void {
+    const told = tell(this.#transloco, error);
+    this.failureBody.set(told.body);
+    this.failureHint.set(told.hint);
+  }
 
   constructor() {
     void this.reload();
@@ -119,6 +131,7 @@ export class Glossaries {
       await this.reload();
     } catch (error) {
       this.failure.set((error as { code?: string }).code ?? "unknown");
+      this.#explain(error);
     } finally {
       this.saving.set(false);
     }
@@ -131,6 +144,7 @@ export class Glossaries {
       if (await this.#ipc.invoke("glossary.importFile", undefined) !== null) await this.reload();
     } catch (error) {
       this.failure.set((error as { code?: string }).code ?? "unknown");
+      this.#explain(error);
     }
   }
 

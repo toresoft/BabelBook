@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, input, signal } from "@angu
 import { FormsModule } from "@angular/forms";
 import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import type { Settings } from "../../../../shared/dto.js";
+import { tell } from "../core/failure";
 import { AVAILABLE_LANGUAGES } from "../core/i18n";
 import { IpcService } from "../core/ipc.service";
 
@@ -25,9 +26,19 @@ export class Preferences {
 
   readonly settings = signal<Settings | null>(null);
   readonly failure = signal<string | null>(null);
+  /** The classified explanation of the last failure: what happened, what to do. */
+  readonly failureBody = signal<string | null>(null);
+  readonly failureHint = signal<string | null>(null);
 
   #ipc = inject(IpcService);
   #transloco = inject(TranslocoService);
+
+  /** The title stays each screen's own; only the explanation is shared. */
+  #explain(error: unknown): void {
+    const told = tell(this.#transloco, error);
+    this.failureBody.set(told.body);
+    this.failureHint.set(told.hint);
+  }
 
   constructor() {
     void this.reload();
@@ -47,6 +58,7 @@ export class Preferences {
       if (change.uiLanguage !== undefined) this.#transloco.setActiveLang(change.uiLanguage);
     } catch (error) {
       this.failure.set((error as { code?: string }).code ?? "unknown");
+      this.#explain(error);
       // The store refused, so the screen must not keep showing the new value
       // as if it had been accepted.
       await this.reload();

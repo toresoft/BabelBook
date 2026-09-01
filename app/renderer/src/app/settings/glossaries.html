@@ -4,6 +4,16 @@
     <p class="glossaries__lead">{{ t('glossaries.lead') }}</p>
   </header>
 
+  @if (failureBody(); as body) {
+    <div class="alert alert-error" data-testid="glossaries-failure">
+      <div>
+        <p>{{ t('glossaries.failed') }}</p>
+        <p class="text-sm">{{ body }}</p>
+        @if (failureHint(); as hint) { <p class="text-sm opacity-70">{{ hint }}</p> }
+      </div>
+    </div>
+  }
+
   @if (glossaries().length === 0) {
     <p class="glossaries__empty" data-testid="glossaries-empty">{{ t('glossaries.empty') }}</p>
   }

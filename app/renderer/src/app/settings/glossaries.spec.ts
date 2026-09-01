@@ -80,6 +80,36 @@ describe("Glossaries", () => {
     expect(calls(invoke, "glossaries.list")).toHaveLength(before);
   });
 
+  /**
+   * A failed import used to cost one sentence that named no reason. The
+   * classified failure says which afternoon this is: a busy database is waited
+   * out, and a code nobody catalogued still gets a floor.
+   */
+  it("says why the import could not happen, even for a code nobody catalogued", async () => {
+    // The code is read when the question is asked, so one mount watches the
+    // answer change between the two imports.
+    let code = "DATABASE_BUSY";
+    const invoke = vi.fn(async (channel: string) => {
+      if (channel === "glossaries.list") return [fantasy];
+      throw { code, fault: "transient" };
+    });
+    const { fixture } = mount(invoke as never);
+    await fixture.whenStable();
+
+    await fixture.componentInstance.importFile();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=glossaries-failure]").textContent)
+      .toContain("Il database era occupato.");
+
+    code = "SOMETHING_NEW";
+    await fixture.componentInstance.importFile();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=glossaries-failure]").textContent)
+      .toContain("Il provider non ha risposto.");
+  });
+
   it("asks before a glossary goes, and a refusal deletes nothing", async () => {
     const { fixture, invoke } = mount(bridge({ "ui.confirm": { confirmed: false } }));
     await fixture.whenStable();

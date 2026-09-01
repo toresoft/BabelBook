@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, OnDestroy, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { TranslocoDirective } from "@jsverse/transloco";
+import { TranslocoDirective, TranslocoService } from "@jsverse/transloco";
 import { REASONING_LEVELS, type ReasoningLevel } from "../../../../shared/dto.js";
 import type {
   CatalogEntry, CatalogState, LocalRuntime, Provider, ProviderModel, ProviderPreset, VerifyCode,
 } from "../../../../shared/dto.js";
 import { POPULAR } from "../../../../main/catalog/popular.js";
+import { tell } from "../core/failure";
 import { IpcService } from "../core/ipc.service";
 
 /**
@@ -97,6 +98,9 @@ export class Providers implements OnDestroy {
   readonly saving = signal(false);
   /** Why the last connect or find failed, as a code: the interface owns the words. */
   readonly failure = signal<string | null>(null);
+  /** The classified explanation of the last failure: what happened, what to do. */
+  readonly failureBody = signal<string | null>(null);
+  readonly failureHint = signal<string | null>(null);
 
   readonly query = signal("");
   readonly entries = signal<CatalogEntry[]>([]);
@@ -124,6 +128,7 @@ export class Providers implements OnDestroy {
   readonly useEnvKey = signal(false);
 
   #ipc = inject(IpcService);
+  #transloco = inject(TranslocoService);
   #unsubscribe: Array<() => void> = [];
   /** Monotonic id of the newest search: an older answer must not land. */
   #searchSeq = 0;
@@ -166,8 +171,9 @@ export class Providers implements OnDestroy {
     try {
       this.catalogState.set(await this.#ipc.invoke("catalog.refresh", undefined));
       this.catalogOutcome.set("updated");
-    } catch {
+    } catch (error) {
       this.catalogOutcome.set("refreshFailed");
+      this.#explain(error);
     } finally {
       this.refreshing.set(false);
     }
@@ -185,6 +191,7 @@ export class Providers implements OnDestroy {
       this.catalogOutcome.set((error as { code?: string }).code === "BAD_CATALOG"
         ? "badImport"
         : "refreshFailed");
+      this.#explain(error);
     } finally {
       this.importing.set(false);
     }
@@ -353,6 +360,13 @@ export class Providers implements OnDestroy {
     this.useEnvKey.set(false);
   }
 
+  /** The title stays each screen's own; only the explanation is shared. */
+  #explain(error: unknown): void {
+    const told = tell(this.#transloco, error);
+    this.failureBody.set(told.body);
+    this.failureHint.set(told.hint);
+  }
+
   /**
    * Asks, for the draft just opened, whether the variable its entry names
    * holds anything. Once per draft, and only of drafts that name a variable:
@@ -459,6 +473,7 @@ export class Providers implements OnDestroy {
       // A fetch that failed left nothing created: a provider connected
       // without its models is the half-state this screen refuses.
       this.failure.set((error as { code?: string }).code ?? "unknown");
+      this.#explain(error);
     } finally {
       this.saving.set(false);
     }
@@ -575,8 +590,9 @@ export class Providers implements OnDestroy {
     try {
       const outcome = await this.#ipc.invoke("provider.verify", { providerId: provider.id, modelId });
       this.verified.update((all) => ({ ...all, [provider.id]: outcome }));
-    } catch {
+    } catch (error) {
       this.verified.update((all) => ({ ...all, [provider.id]: { ok: false, code: "unknown" } }));
+      this.#explain(error);
     } finally {
       this.verifying.set(null);
     }

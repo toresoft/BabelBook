@@ -1,6 +1,16 @@
 <section class="providers" data-testid="providers" *transloco="let t">
   <h2>{{ t('providers.title') }}</h2>
 
+  @if (failureBody(); as body) {
+    <div class="alert alert-error" data-testid="providers-failure">
+      <div>
+        <p>{{ t('providers.findFailed') }}</p>
+        <p class="text-sm">{{ body }}</p>
+        @if (failureHint(); as hint) { <p class="text-sm opacity-70">{{ hint }}</p> }
+      </div>
+    </div>
+  }
+
   <p class="providers__lead">{{ t('providers.lead') }}</p>
 
   @if (providers().length === 0) {

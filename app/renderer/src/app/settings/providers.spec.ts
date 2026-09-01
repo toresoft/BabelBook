@@ -77,8 +77,8 @@ const saved: Provider = {
 };
 
 /** A rejection the way the preload delivers it: packed in a marker message. */
-const failureOf = (code: string) =>
-  new Error(`babelbook-failure:${JSON.stringify({ code })}`);
+const failureOf = (code: string, fault = "defect") =>
+  new Error(`babelbook-failure:${JSON.stringify({ code, fault })}`);
 
 function bridge(answers: Record<string, unknown> = {}) {
   return vi.fn(async (channel: string, payload?: unknown) => {
@@ -349,6 +349,41 @@ describe("Providers", () => {
     // half-modelled is the dead end this refuses.
     expect(calls(invoke, "provider.create")).toHaveLength(0);
     expect(fixture.nativeElement.querySelector("[data-testid=provider-form]")).not.toBeNull();
+  });
+
+  /**
+   * The first place a network failure ever reaches, and the one where it costs
+   * nothing yet. "Non è stato possibile chiedere l'elenco dei modelli" is the
+   * same sentence for a wrong key and for an endpoint that is down, and those
+   * are two very different afternoons.
+   */
+  it("says why the model list could not be asked for", async () => {
+    const { fixture } = mount(bridge({
+      "catalog.models": failureOf("PROVIDER_UNAUTHORIZED", "config"),
+    }));
+    await fixture.whenStable();
+
+    fixture.componentInstance.pick(entry);
+    await fixture.componentInstance.save();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.querySelector("[data-testid=providers-failure]").textContent;
+    expect(text).toContain("La chiave non è stata accettata.");
+    expect(text).toContain("Impostazioni");
+  });
+
+  it("says something even for a code nobody catalogued", async () => {
+    const { fixture } = mount(bridge({
+      "catalog.models": failureOf("SOMETHING_NEW", "transient"),
+    }));
+    await fixture.whenStable();
+
+    fixture.componentInstance.pick(entry);
+    await fixture.componentInstance.save();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=providers-failure]").textContent)
+      .toContain("Il provider non ha risposto.");
   });
 
   it("keeps the compatible endpoint as the declared way to what the catalogue does not know", async () => {
