@@ -1,4 +1,4 @@
-import type { LlmBackend, ProgressSink } from "../ports.ts";
+import { nullSink, type LlmBackend, type LogSink, type ProgressSink } from "../ports.ts";
 import type { TermEntry } from "../glossary/index.ts";
 import { isWork, type TranslationUnit } from "../epub/index.ts";
 import { languageName } from "../translate/instructions.ts";
@@ -43,6 +43,8 @@ export interface ExtractInput {
   signal?: AbortSignal;
   /** Absent in the tests that only care about the report. */
   progress?: ProgressSink;
+  /** The run's chronicle, when there is one to write to. */
+  log?: LogSink;
 }
 
 interface Proposal {
@@ -159,6 +161,7 @@ function sameProposal(a: Proposal, b: Proposal): boolean {
 }
 
 export async function extractCandidates(input: ExtractInput): Promise<CandidateReport> {
+  const log = input.log ?? nullSink;
   const samples = sampleBlocks(input.units);
   const work = input.units.filter((unit) => isWork(unit.state));
 
@@ -167,11 +170,26 @@ export async function extractCandidates(input: ExtractInput): Promise<CandidateR
   let answered = 0;
   let asked = 0;
 
-  for (const sample of samples) {
+  for (const [at, sample] of samples.entries()) {
     input.signal?.throwIfAborted();
+    const began = Date.now();
     const result = await input.backend.call({
       prompt: buildPrompt(sample, input),
       ...(input.signal === undefined ? {} : { signal: input.signal }),
+    });
+    log.record({
+      level: "debug",
+      code: "batch-finished",
+      detail: {
+        phase: "candidates",
+        batch: at,
+        of: samples.length,
+        tokensIn: result.tokensIn,
+        tokensOut: result.tokensOut,
+        reasoningTokens: result.reasoningTokens,
+        finishReason: result.finishReason,
+        elapsedMs: Date.now() - began,
+      },
     });
 
     const parsed = parseAnswer(result.text);

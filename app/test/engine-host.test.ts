@@ -44,6 +44,8 @@ class TestUtilityProcess extends EventEmitter implements UtilityProcessLike {
 const command = (projectId = "p1"): EngineCommand => ({
   type: "start",
   projectId,
+  runId: "r1",
+  workspaceRoot: "/w",
   config: {
     projectId, cacheKey: "k1", sourceLanguage: "en", targetLanguage: "it",
     autoAcceptTerms: false, autoAcceptExclusions: false, concurrency: 1,

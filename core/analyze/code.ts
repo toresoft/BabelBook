@@ -1,4 +1,4 @@
-import type { LlmBackend, ProgressSink } from "../ports.ts";
+import { nullSink, type LlmBackend, type LogSink, type ProgressSink } from "../ports.ts";
 import type { TranslationUnit } from "../epub/index.ts";
 import { batchUnits, buildCodePrompt, parseCodeVerdict } from "./code-wire.ts";
 import type { CodeBatch } from "./code-wire.ts";
@@ -24,6 +24,8 @@ export interface IndexInput {
   signal?: AbortSignal;
   /** Absent in the tests that only care about the verdicts. */
   progress?: ProgressSink;
+  /** The run's chronicle, when there is one to write to. */
+  log?: LogSink;
 }
 
 const ATTEMPTS = 3;
@@ -54,6 +56,7 @@ const FROM_CSS = "css-code-surface";
  * would be damage; flagging it is help.
  */
 export async function indexCodeBlocks(input: IndexInput): Promise<CodeIndex> {
+  const log = input.log ?? nullSink;
   const questionable = input.units.filter((unit) =>
     unit.state === "translate" || (unit.state === "code" && unit.reason === FROM_CSS));
 
@@ -67,9 +70,24 @@ export async function indexCodeBlocks(input: IndexInput): Promise<CodeIndex> {
 
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       input.signal?.throwIfAborted();
+      const began = Date.now();
       const result = await input.backend.call({
         prompt: buildCodePrompt(batch, retryReason),
         ...(input.signal === undefined ? {} : { signal: input.signal }),
+      });
+      log.record({
+        level: "debug",
+        code: "batch-finished",
+        detail: {
+          phase: "code-index",
+          batch: batch.index,
+          of: batch.total,
+          tokensIn: result.tokensIn,
+          tokensOut: result.tokensOut,
+          reasoningTokens: result.reasoningTokens,
+          finishReason: result.finishReason,
+          elapsedMs: Date.now() - began,
+        },
       });
 
       const verdict = parseCodeVerdict(result.text, batch);

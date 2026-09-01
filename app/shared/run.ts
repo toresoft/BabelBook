@@ -66,6 +66,10 @@ export type EngineCommand =
   | {
     type: "start";
     projectId: string;
+    /** The run the engine's diagnostic file is named after. */
+    runId: string;
+    /** Where the run's workspace — and so its `logs/` directory — lives. */
+    workspaceRoot: string;
     config: RunConfig;
     backend: BackendSpec;
     machineSnapshot?: unknown;

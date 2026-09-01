@@ -1,4 +1,4 @@
-import type { LlmBackend, LlmResult, ProgressSink, ProjectStore } from "../ports.ts";
+import { nullSink, type LlmBackend, type LlmResult, type LogSink, type ProgressSink, type ProjectStore } from "../ports.ts";
 import type { TermEntry } from "../glossary/index.ts";
 import type { TranslationUnit, UnitState } from "../epub/index.ts";
 import { isWork } from "../epub/index.ts";
@@ -45,6 +45,8 @@ export interface ChunkInput {
   backend: LlmBackend;
   maxAttempts?: number;
   signal?: AbortSignal;
+  /** The run's chronicle, when there is one to write to. */
+  log?: LogSink;
 }
 
 const DEFAULT_ATTEMPTS = 3;
@@ -83,6 +85,7 @@ function diagnose(rejections: Rejection[]): string[] {
  */
 export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
   const maxAttempts = input.maxAttempts ?? DEFAULT_ATTEMPTS;
+  const log = input.log ?? nullSink;
   const translated = new Map<string, string>();
 
   let pending = input.chunk.units;
@@ -130,6 +133,24 @@ export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
     );
     for (const [unitId, text] of validation.accepted) translated.set(unitId, text);
 
+    // Visible at the first rejection instead of at the third. The engine has
+    // always built this diagnosis and only ever kept it for `unit-fell-back`,
+    // which is to say for the moment when it is already too late.
+    for (const rejection of validation.rejections) {
+      log.record({
+        level: "debug",
+        code: "unit-rejected",
+        detail: {
+          attempt: attempts,
+          ...(rejection.unitId === null ? {} : { unitId: rejection.unitId }),
+          reason: rejection.code,
+          finishReason: result.finishReason,
+          reasoningTokens: result.reasoningTokens,
+          excerpt: result.text.slice(0, EXCERPT_CHARS),
+        },
+      });
+    }
+
     rejections = validation.rejections;
     pending = pending.filter((unit) => !translated.has(unit.id));
   }
@@ -172,6 +193,8 @@ export interface RunInput {
    */
   contextWindowTokens?: number | null;
   signal?: AbortSignal;
+  /** The run's chronicle, when there is one to write to. */
+  log?: LogSink;
 }
 
 /**
@@ -226,6 +249,7 @@ async function inParallel<T>(
  * what is missing rather than remembering where we were.
  */
 export async function translateUnits(input: RunInput): Promise<RunSummary> {
+  const log = input.log ?? nullSink;
   const terms = await input.store.terms();
   const held = await input.store.translations(input.cacheKey);
 
@@ -265,7 +289,10 @@ export async function translateUnits(input: RunInput): Promise<RunSummary> {
       ? stopping
       : AbortSignal.any([input.signal, stopping]);
 
-    const outcome = await translateChunk({ chunk, terms, backend: input.backend, signal });
+    const outcome = await translateChunk({
+      chunk, terms, backend: input.backend, signal,
+      ...(input.log === undefined ? {} : { log }),
+    });
     tokensIn += outcome.tokensIn;
     tokensOut += outcome.tokensOut;
 
@@ -303,6 +330,16 @@ export async function translateUnits(input: RunInput): Promise<RunSummary> {
           unitId: fallen.unitId, reason: fallen.reason, attempts: outcome.attempts,
           ...(outcome.lastAnswer ?? {}),
         },
+      });
+    }
+
+    // Once per chunk, not once per unit: the chronicle says how big the loss
+    // was, and the run events above are what say which units it touched.
+    if (outcome.fellBack.length > 0) {
+      log.record({
+        level: "warn",
+        code: "chunk-failed",
+        detail: { units: outcome.fellBack.length, attempts: outcome.attempts },
       });
     }
   });

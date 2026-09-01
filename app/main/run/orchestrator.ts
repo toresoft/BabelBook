@@ -1,13 +1,15 @@
 import { extractCandidates } from "../../../core/analyze/candidates.ts";
 import { indexCodeBlocks } from "../../../core/analyze/code.ts";
 import { isWork, type TranslationUnit } from "../../../core/epub/index.ts";
-import type { LlmBackend, ProjectStore } from "../../../core/ports.ts";
+import { nullSink, type LlmBackend, type LogSink, type ProjectStore } from "../../../core/ports.ts";
+import { retryingBackend } from "../../../core/translate/retry.ts";
 import { translateUnits } from "../../../core/translate/engine.ts";
 import { countingBackend, type Usage } from "../../../core/translate/usage.ts";
 import {
   createProjectActor, projectMachine,
 } from "../../../core/workflow/project.machine.ts";
 import { createActor } from "xstate";
+import { classifyProviderError } from "../../engine/backends/classify.ts";
 import type { EngineRunner } from "../../engine/main.ts";
 import type { EngineMessage, RunConfig, RunSummary } from "../../shared/run.ts";
 import { codeIndexKey } from "./code-index-key.ts";
@@ -21,6 +23,10 @@ export interface RunProjectDeps {
   machineSnapshot?: unknown;
   emit(message: EngineMessage): void;
   signal: AbortSignal;
+  /** The run's chronicle. Silent by default: an observation must not fail a run. */
+  log?: LogSink;
+  /** Injected so the tests do not wait out a real backoff. */
+  sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
 
 function summaryBeforeTranslation(
@@ -78,18 +84,34 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
   // filled, on a run that has done nothing yet.
   emit({ type: "phase", phase: "analyze" });
 
-  // Mounted once, around the backend every phase already shares. A phase
-  // added later has to be remembered to count if this were a parameter on
-  // each call; mounted here, it never has to be remembered again. `spent`
-  // is what a stopped-at-a-gate summary reports instead of the zeros that
-  // used to claim a sampled, paid-for book cost nothing.
+  const log = deps.log ?? nullSink;
+  // A wait that a pause can cut short. Without the listener, stopping a run
+  // during a sixty-second backoff would take sixty seconds to be felt.
+  const sleep = deps.sleep ?? ((ms: number, signal?: AbortSignal) => new Promise<void>((resume, refuse) => {
+    const stop = (): void => {
+      clearTimeout(timer);
+      refuse(signal?.reason ?? Object.assign(new Error("aborted"), { name: "AbortError" }));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", stop);
+      resume();
+    }, ms);
+    signal?.addEventListener("abort", stop, { once: true });
+  }));
+
   const spent: Usage = { tokensIn: 0, tokensOut: 0, reasoningTokens: 0 };
-  const backend = countingBackend(deps.backend, (total) => {
-    spent.tokensIn = total.tokensIn;
-    spent.tokensOut = total.tokensOut;
-    spent.reasoningTokens = total.reasoningTokens;
-    emit({ type: "usage", ...total });
-  });
+  // Counting innermost, retrying outermost: the counter must see the calls the
+  // provider actually answered, and the three phases that speak to a model
+  // inherit the retry without any of them having to remember it.
+  const backend = retryingBackend(
+    countingBackend(deps.backend, (total) => {
+      spent.tokensIn = total.tokensIn;
+      spent.tokensOut = total.tokensOut;
+      spent.reasoningTokens = total.reasoningTokens;
+      emit({ type: "usage", ...total });
+    }),
+    { classify: classifyProviderError, log, sleep },
+  );
 
   const actor = deps.machineSnapshot === undefined
     ? createProjectActor({
@@ -129,6 +151,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
         targetLanguage: config.targetLanguage,
         progress: { report: (p) => emit({ type: "progress", phase: p.phase, done: p.done, total: p.total }) },
         signal,
+        log,
       });
       await store.putCandidateReport(config.cacheKey, report);
     }
@@ -164,6 +187,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
         concurrency: config.concurrency,
         progress: { report: (p) => emit({ type: "progress", phase: p.phase, done: p.done, total: p.total }) },
         signal,
+        log,
       });
       await store.commitCodeIndex(code);
     }
@@ -188,6 +212,7 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
     concurrency: config.concurrency,
     contextWindowTokens: config.contextWindowTokens ?? null,
     signal,
+    log,
     progress: {
       report(progress): void {
         emit({ type: "progress", phase: progress.phase, done: progress.done, total: progress.total });

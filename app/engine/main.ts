@@ -2,6 +2,7 @@ import { StoreClient } from "./store-client.ts";
 import { generateObject, generateText } from "ai";
 import type { LlmBackend, ProjectStore } from "../../core/ports.ts";
 import { runProject } from "../main/run/orchestrator.ts";
+import { diagnosticsDir, fileSink } from "../main/run/diagnostics.ts";
 import { resolveModel } from "./backends/resolve.ts";
 import { sdkBackend } from "./backends/sdk.ts";
 import { fakeBackend } from "./fake.ts";
@@ -11,6 +12,10 @@ import type {
 
 export interface EngineRunnerInput {
   projectId: string;
+  /** Names the diagnostic file this run's engine side writes to. */
+  runId: string;
+  /** The run's workspace: where `logs/` is, or would be. */
+  workspaceRoot: string;
   config: RunConfig;
   backendSpec: BackendSpec;
   machineSnapshot?: unknown;
@@ -60,6 +65,8 @@ function isEngineCommand(message: unknown): message is EngineCommand {
   if (command.type === "pause" || command.type === "cancel") return true;
   return command.type === "start"
     && typeof command.projectId === "string"
+    && typeof command.runId === "string"
+    && typeof command.workspaceRoot === "string"
     && isRunConfig(command.config)
     && isBackendSpec(command.backend);
 }
@@ -89,19 +96,31 @@ async function backendFromSpec(spec: BackendSpec): Promise<LlmBackend> {
 /** The production runner: a backend from the spec, then the phases. */
 const productionRunner: EngineRunner = async (input) => {
   const backend = await backendFromSpec(input.backendSpec);
-  const summary = await runProject({
-    store: input.store,
-    backend,
-    config: input.config,
-    ...(input.machineSnapshot === undefined ? {} : { machineSnapshot: input.machineSnapshot }),
-    emit: input.emit,
-    signal: input.signal,
+  const sink = fileSink({
+    dir: diagnosticsDir(input.workspaceRoot),
+    process: "engine",
+    runId: input.runId,
+    projectId: input.projectId,
   });
 
-  // The engine's last word, and the only place the token counts exist. It says
-  // the engine is finished, not that the book is: composition belongs to the
-  // main process, and the reader is told once the file is on disk.
-  input.emit({ type: "done", summary });
+  try {
+    const summary = await runProject({
+      store: input.store,
+      backend,
+      config: input.config,
+      ...(input.machineSnapshot === undefined ? {} : { machineSnapshot: input.machineSnapshot }),
+      emit: input.emit,
+      signal: input.signal,
+      log: sink,
+    });
+
+    // The engine's last word, and the only place the token counts exist. It says
+    // the engine is finished, not that the book is: composition belongs to the
+    // main process, and the reader is told once the file is on disk.
+    input.emit({ type: "done", summary });
+  } finally {
+    sink.close();
+  }
 };
 
 /**
@@ -132,6 +151,8 @@ export function startEngineRuntime(port: MessagePortLike, runner?: EngineRunner)
     const signal = controller.signal;
     void runner({
       projectId: command.projectId,
+      runId: command.runId,
+      workspaceRoot: command.workspaceRoot,
       config: command.config,
       backendSpec: command.backend,
       ...(command.machineSnapshot === undefined ? {} : { machineSnapshot: command.machineSnapshot }),

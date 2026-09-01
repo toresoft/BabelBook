@@ -1,7 +1,8 @@
 import type { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
+import { BabelError } from "../../core/errors.ts";
 import type { TranslationUnit } from "../../core/epub/index.ts";
-import type { LlmBackend } from "../../core/ports.ts";
+import type { LlmBackend, LogRecord } from "../../core/ports.ts";
 import { FakeBackend } from "../../core/test/fake/backend.ts";
 import { FakeStore } from "../../core/test/fake/store.ts";
 import { createProjectActor } from "../../core/workflow/project.machine.ts";
@@ -474,7 +475,7 @@ describe("runProject", () => {
     const runner = makeEngineRunner({ backend: scriptedBackend() });
 
     await runner({
-      projectId: "p1", config: config(), backendSpec: { kind: "fake" },
+      projectId: "p1", runId: "r1", workspaceRoot: "/w", config: config(), backendSpec: { kind: "fake" },
       store, signal, emit: (message) => seen.push(message),
     });
 
@@ -505,6 +506,42 @@ describe("runProject", () => {
     // summary said zero — a book's worth of sampling, recorded as free.
     expect(summary.tokensIn).toBe(10);
     expect(summary.tokensIn).toBe(usage[usage.length - 1]!.tokensIn);
+  });
+});
+
+describe("a run whose provider stumbles", () => {
+  /**
+   * Mounted once, around the backend every phase shares — the same argument that
+   * put `countingBackend` there. A retry wired into the translation alone would
+   * leave `candidates` and `code-index` dying on the first 429, and those are
+   * the two phases that run before a single line is translated.
+   */
+  it("retries in every phase, not only in the translation", async () => {
+    const logged: LogRecord[] = [];
+    let calls = 0;
+    const backend: LlmBackend = {
+      call: async () => {
+        calls++;
+        if (calls === 1) {
+          throw new BabelError("gone", { code: "PROVIDER_UNREACHABLE", fault: "transient" });
+        }
+        return {
+          text: "", tokensIn: 1, tokensOut: 1, reasoningTokens: 0, finishReason: "stop",
+        };
+      },
+    };
+
+    await runProject({
+      store: new FakeStore([unit(1)]),
+      backend,
+      config: config(),
+      emit: () => {},
+      signal: new AbortController().signal,
+      log: { record: (entry) => logged.push(entry) },
+      sleep: async () => {},
+    });
+
+    expect(logged.filter((entry) => entry.code === "provider-retry")).toHaveLength(1);
   });
 });
 

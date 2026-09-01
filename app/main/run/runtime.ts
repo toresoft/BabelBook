@@ -10,6 +10,7 @@ import type {
   BackendSpec, EngineHandle, EngineMessage, RunConfig, RunSummary,
 } from "../../shared/run.ts";
 import { projectCacheKey } from "./cache-key.ts";
+import { diagnosticsDir, pruneDiagnostics } from "./diagnostics.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
 import { enterState, leaveState } from "./states.ts";
@@ -357,6 +358,10 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     const runId = randomUUID();
     db.prepare("INSERT INTO run (id, project_id, phase, started_at) VALUES (?,?,'translate',?)")
       .run(runId, projectId, new Date().toISOString());
+    // Best-effort, at the start rather than the end: the pruning of old
+    // diaries must never be the thing a run waits on, and a run that is
+    // starting is the only moment that knows how many came before.
+    void pruneDiagnostics(diagnosticsDir(row.workspace_path));
 
     if (engine === null || !engine.alive) {
       engine = startEngine();
@@ -406,6 +411,8 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     engine.send({
       type: "start",
       projectId,
+      runId,
+      workspaceRoot: row.workspace_path,
       config,
       backend,
       machineSnapshot: machineHost(projectId).snapshot,
