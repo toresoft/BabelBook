@@ -57,10 +57,12 @@ due gate, la modifica di un termine che dichiara cosa disferebbe prima di
 disfarlo, e un provider che risponde 429 due volte senza che il libro ne
 soffra. Typecheck e build di produzione sono puliti.
 
-**`create-project.spec.ts:73` e' instabile.** Con la stessa build passa in due
-secondi o in trentasei, e ogni tanto supera il minuto e cade. Non e' un difetto
-del prodotto — avvia una corsa e poi chiude la finestra — ma non e' stato
-indagato, e prima o poi va guardato.
+L'intera suite e2e gira in **trentaquattro secondi**. Prima ne impiegava due
+minuti e quaranta, e quel tempo era quasi tutto una prova che aspettava un
+dialogo che nessuno avrebbe chiuso: uscire con del lavoro in volo e' una
+domanda, e `create-project.spec.ts` premeva «traduci» e chiudeva subito. Ora
+aspetta che la corsa lasci la presa, come gia' facevano `translate` e
+`resilience`. Se scrivi una prova che preme quel bottone, fai altrettanto.
 
 **Le cinque prove e2e che erano rosse da giorni sono state corrette**, e nessuna
 delle cinque era un difetto del prodotto: erano tre doppi e asserzioni rimasti
