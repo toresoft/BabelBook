@@ -28,6 +28,27 @@ describe("a failure crossing the bridge", () => {
     expect(failure.fault).toBe("defect");
   });
 
+  /**
+   * Nine error classes in this application carried a `code` long before any of
+   * them carried a `fault`. Reading the code only off a classified error threw
+   * every one of them away and answered `UNKNOWN` — which is how a screen that
+   * used to name a MOBI started saying the bridge was down.
+   */
+  it("keeps a code the thrower chose, even unclassified", () => {
+    const legacy = Object.assign(new Error("UNSUPPORTED_FORMAT: MOBI"), {
+      code: "UNSUPPORTED_FORMAT", format: "MOBI",
+    });
+    const failure = unpackFailure(overTheBridge(legacy));
+
+    expect(failure.code).toBe("UNSUPPORTED_FORMAT");
+    // The fault is a judgement, and only a classifier gets to make one.
+    expect(failure.fault).toBe("defect");
+    // Its own properties still do not cross: an error nobody classified may be
+    // holding the request that caused it, and with it a key. That is what
+    // `BabelError.detail` is for, and why the classes were migrated to it.
+    expect(failure["format"]).toBeUndefined();
+  });
+
   it("survives a message that is not one of ours", () => {
     expect(unpackFailure(new Error("plain")).fault).toBe("defect");
     expect(unpackFailure(null).fault).toBe("defect");

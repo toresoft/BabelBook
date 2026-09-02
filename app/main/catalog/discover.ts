@@ -1,4 +1,5 @@
 import { classifyError } from "../providers/verify.ts";
+import { BabelError, type Fault } from "../../../core/errors.ts";
 
 /**
  * What an endpoint says it serves, asked the one way almost everybody answers:
@@ -22,13 +23,26 @@ export interface Discovered {
 export type DiscoverCode = "unauthorized" | "unreachable" | "bad-response";
 
 /** Thrown with a code, never with the provider's words. */
-export class DiscoverError extends Error {
-  readonly code: DiscoverCode;
+/**
+ * The three codes mean three different afternoons, and now say so.
+ *
+ * This is the taxonomy earning its keep on a screen that never ran a model: a
+ * key the endpoint refused, an endpoint that is not answering, and an endpoint
+ * answering something that is not a model list are fixed in three different
+ * ways, and used to arrive under one sentence.
+ */
+const DISCOVER_FAULTS: Record<DiscoverCode, Fault> = {
+  unauthorized: "config",
+  unreachable: "transient",
+  "bad-response": "defect",
+};
+
+export class DiscoverError extends BabelError {
+  declare readonly code: DiscoverCode;
 
   constructor(code: DiscoverCode, message: string) {
-    super(`${code}: ${message}`);
+    super(`${code}: ${message}`, { code, fault: DISCOVER_FAULTS[code] });
     this.name = "DiscoverError";
-    this.code = code;
   }
 }
 

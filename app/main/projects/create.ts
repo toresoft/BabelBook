@@ -10,6 +10,7 @@ import type { CreatedProject, CreateProjectRequest as CreateInput } from "../../
 import { enterState, leaveState } from "../run/states.ts";
 import { assertProviderChosen } from "./provider.ts";
 import { createWorkspace, copySource, deleteWorkspace, extractCover, type Workspace } from "../workspace.ts";
+import { BabelError } from "../../../core/errors.ts";
 
 export type { CreatedProject, CreateProjectRequest as CreateInput } from "../../shared/dto.ts";
 
@@ -20,12 +21,16 @@ export type { CreatedProject, CreateProjectRequest as CreateInput } from "../../
  * nothing they can act on, while "this is a MOBI, babelBook only handles EPUB"
  * tells them to convert it.
  */
-export class UnsupportedFormatError extends Error {
-  code = "UNSUPPORTED_FORMAT";
-  format: string;
+export class UnsupportedFormatError extends BabelError {
+  readonly format: string;
 
   constructor(format: string) {
-    super(`UNSUPPORTED_FORMAT: ${format}`);
+    // `input`: no retry produces an EPUB from a MOBI. The format travels in
+    // `detail`, which is the only way a field reaches the window — the bridge
+    // deliberately copies nothing off an error it did not build.
+    super(`UNSUPPORTED_FORMAT: ${format}`, {
+      code: "UNSUPPORTED_FORMAT", fault: "input", detail: { format },
+    });
     this.name = "UnsupportedFormatError";
     this.format = format;
   }

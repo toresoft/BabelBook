@@ -8,6 +8,7 @@
  */
 
 import { GENERIC_ROUTE, PROVIDER_PACKAGES, type ProviderPackages } from "./registry.ts";
+import { BabelError } from "../../../core/errors.ts";
 
 /**
  * A spec that cannot become a model, with a code the interface can translate.
@@ -16,14 +17,14 @@ import { GENERIC_ROUTE, PROVIDER_PACKAGES, type ProviderPackages } from "./regis
  * shown to the user has to say which one; the code is what the catalogue keys
  * off, never the sentence.
  */
-export class ModelSpecError extends Error {
+export class ModelSpecError extends BabelError {
   readonly spec: string;
-  readonly code: string;
 
   constructor(code: string, spec: string, message: string) {
-    super(`${code}: ${message}`);
+    // `config`: the route or the model named in the settings is not one this
+    // build can resolve, and only the settings can fix that.
+    super(`${code}: ${message}`, { code, fault: "config", detail: { spec } });
     this.name = "ModelSpecError";
-    this.code = code;
     this.spec = spec;
   }
 }

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { BabelError } from "../../../core/errors.ts";
 
 /**
  * A choice the request had to carry and did not.
@@ -8,13 +9,16 @@ import type { DatabaseSync } from "node:sqlite";
  * disconnected since, or whether the model belongs to somebody else — three
  * different sentences, and only the boundary knows which one is true.
  */
-export class ProviderChoiceError extends Error {
-  code: "PROVIDER_REQUIRED" | "UNKNOWN_PROVIDER" | "UNKNOWN_MODEL";
+type ChoiceCode = "PROVIDER_REQUIRED" | "UNKNOWN_PROVIDER" | "UNKNOWN_MODEL";
 
-  constructor(code: "PROVIDER_REQUIRED" | "UNKNOWN_PROVIDER" | "UNKNOWN_MODEL") {
-    super(code);
+export class ProviderChoiceError extends BabelError {
+  declare readonly code: ChoiceCode;
+
+  constructor(code: ChoiceCode) {
+    // `config`: a provider has to be chosen, or reconnected, before anything
+    // else can happen.
+    super(code, { code, fault: "config" });
     this.name = "ProviderChoiceError";
-    this.code = code;
   }
 }
 

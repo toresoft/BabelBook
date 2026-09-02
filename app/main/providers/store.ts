@@ -6,6 +6,7 @@ import type {
 } from "../../shared/dto.ts";
 import { GENERIC_ROUTE } from "../../engine/backends/registry.ts";
 import type { Catalog } from "../catalog/shape.ts";
+import { BabelError } from "../../../core/errors.ts";
 
 // The shapes live in `shared/dto.ts` because they cross the IPC boundary, and
 // a second definition here would be free to drift from the one the renderer
@@ -27,13 +28,12 @@ export interface Crypto {
 }
 
 /** Thrown with a code, never with a sentence: the interface owns the words. */
-export class ProviderStoreError extends Error {
-  readonly code: string;
-
+export class ProviderStoreError extends BabelError {
   constructor(code: string, message: string) {
-    super(`${code}: ${message}`);
+    // `config`: every one of these refuses because of a state somebody can
+    // change. Pressing the same button again is never the answer.
+    super(`${code}: ${message}`, { code, fault: "config" });
     this.name = "ProviderStoreError";
-    this.code = code;
   }
 }
 

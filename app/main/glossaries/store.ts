@@ -2,17 +2,17 @@ import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import { parseGlossary, serializeGlossary } from "../../../core/glossary/index.ts";
 import type { GlossaryTerm, GlossaryView } from "../../shared/dto.ts";
+import { BabelError } from "../../../core/errors.ts";
 
 export type { GlossaryTerm, GlossaryView } from "../../shared/dto.ts";
 
 /** Thrown with a code, never with a sentence: the interface owns the words. */
-export class GlossaryStoreError extends Error {
-  readonly code: string;
-
+export class GlossaryStoreError extends BabelError {
   constructor(code: string, message: string) {
-    super(`${code}: ${message}`);
+    // `config`: every one of these refuses because of a state somebody can
+    // change. Pressing the same button again is never the answer.
+    super(`${code}: ${message}`, { code, fault: "config" });
     this.name = "GlossaryStoreError";
-    this.code = code;
   }
 }
 

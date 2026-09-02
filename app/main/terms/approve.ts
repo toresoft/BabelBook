@@ -1,17 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { DatabaseSync } from "node:sqlite";
 import type { TermRow, TermRule } from "../../shared/dto.ts";
+import { BabelError } from "../../../core/errors.ts";
 
 export type { TermRow, TermRule } from "../../shared/dto.ts";
 
 /** Thrown with a code, never with a sentence: the interface owns the words. */
-export class TermError extends Error {
-  readonly code: string;
-
+export class TermError extends BabelError {
   constructor(code: string, message: string) {
-    super(`${code}: ${message}`);
+    // `config`: every one of these refuses because of a state somebody can
+    // change. Pressing the same button again is never the answer.
+    super(`${code}: ${message}`, { code, fault: "config" });
     this.name = "TermError";
-    this.code = code;
   }
 }
 

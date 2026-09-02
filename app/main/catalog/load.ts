@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { isCatalog, pruneCatalog, type Catalog, type CatalogProvider } from "./shape.ts";
+import { BabelError } from "../../../core/errors.ts";
 
 export const CATALOG_URL = "https://models.dev/api.json";
 
@@ -57,13 +58,12 @@ export interface RefreshDeps {
 }
 
 /** Refused rather than installed: a file that is not a catalogue. */
-export class CatalogError extends Error {
-  readonly code: string;
-
+export class CatalogError extends BabelError {
   constructor(code: string, message: string) {
-    super(`${code}: ${message}`);
+    // `input`: the file offered is not a catalogue, and reading it again will
+    // not make it one. Another file is the only way forward.
+    super(`${code}: ${message}`, { code, fault: "input" });
     this.name = "CatalogError";
-    this.code = code;
   }
 }
 

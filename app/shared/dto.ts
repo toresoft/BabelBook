@@ -548,8 +548,16 @@ export function packFailure(error: unknown): string {
 
   const retryAfterMs = (error as { retryAfterMs?: unknown }).retryAfterMs;
 
+  // A code the thrower chose is kept even when nobody classified it. Reading
+  // it only off a `BabelError` turned every error class that had not been
+  // migrated yet into `UNKNOWN` — silently, and on nine screens at once,
+  // because a `code` is exactly what those classes already carried. The fault
+  // still degrades to `defect`: that is a judgement, and only a classifier
+  // gets to make it.
+  const declared = typeof failure.code === "string" ? failure.code : "UNKNOWN";
+
   return MARKER + JSON.stringify({
-    code: classified ? (failure.code as string) : "UNKNOWN",
+    code: declared,
     // Unclassified is a defect, not an unknown: the window can still say
     // something true, and the diagnostic file holds what this drops.
     fault: classified ? (error as { fault: Fault }).fault : "defect",

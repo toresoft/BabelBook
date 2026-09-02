@@ -4,15 +4,16 @@ import type { TranslationUnit, UnitState } from "../../core/epub/index.ts";
 import type { CandidateReport } from "../../core/analyze/candidates.ts";
 import type { CodeIndex } from "../../core/analyze/code.ts";
 import type { MessagePortLike, StoreMethod, StoreRequest, StoreResponse } from "../shared/run.ts";
+import { BabelError } from "../../core/errors.ts";
 
 export type { MessagePortLike } from "../shared/run.ts";
 
-class StoreRpcError extends Error {
-  readonly code: string;
-
+class StoreRpcError extends BabelError {
   constructor(code: string) {
-    super(code);
-    this.code = code;
+    // `defect`: the proxy to the main process failed, which is ours to fix and
+    // never the reader's.
+    super(code, { code, fault: "defect" });
+    this.name = "StoreRpcError";
   }
 }
 
