@@ -297,6 +297,39 @@ describe("Side", () => {
     expect(spoken).not.toContain("{{");
   });
 
+  /**
+   * The reason is a stable code, and a stable code is not Italian. Interpolated
+   * as it arrives it put PROVIDER_RATE_LIMITED in the middle of a sentence —
+   * the very thing the catalogue exists to prevent, reintroduced one layer in.
+   */
+  it("says the reason in words, not as an identifier", async () => {
+    const { fixture } = mount({ state: "running" });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const spoken = fixture.componentInstance.phrase({
+      at: new Date().toISOString(), kind: "event", code: "provider-retry", severity: "warning",
+      info: { attempt: 1, max: 5, seconds: 4, reason: "PROVIDER_RATE_LIMITED" },
+    });
+
+    expect(spoken).toContain("Il provider ha imposto un limite di frequenza.");
+    expect(spoken).not.toContain("PROVIDER_RATE_LIMITED");
+  });
+
+  /** A code nobody catalogued still reads better than a blank. */
+  it("keeps a reason it cannot translate rather than dropping it", async () => {
+    const { fixture } = mount({ state: "running" });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const spoken = fixture.componentInstance.phrase({
+      at: new Date().toISOString(), kind: "event", code: "run-paused", severity: "warning",
+      info: { reason: "INVENTED_TOMORROW" },
+    });
+
+    expect(spoken).toContain("INVENTED_TOMORROW");
+  });
+
   it("offers the raw log beside the curated one, and asks for it only when shown", async () => {
     const { fixture } = mount({ state: "done" });
     await fixture.whenStable();

@@ -1,7 +1,7 @@
 import { appendFileSync, mkdirSync, renameSync, statSync } from "node:fs";
 import { readdir, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { LogRecord, LogSink } from "../../../core/ports.ts";
+import type { LogLevel, LogRecord, LogSink, ProjectStore, RunEvent } from "../../../core/ports.ts";
 
 /**
  * The whole story of a run, on disk, in the language nobody has to translate.
@@ -109,6 +109,64 @@ export async function readDiagnostics(
 
   lines.sort((one, other) => one.at.localeCompare(other.at));
   return { lines: lines.slice(-limit).map((line) => line.raw), path: dir };
+}
+
+/**
+ * A level as `run_event` records it. `debug` is not recorded at all.
+ *
+ * That null is the whole rule of the two logs, written once: everything goes
+ * to the file, and only what a reader would want goes to the table the
+ * Registro is built from.
+ */
+const SEVERITY_OF: Record<LogLevel, RunEvent["severity"] | null> = {
+  debug: null,
+  info: "info",
+  warn: "warning",
+  error: "error",
+};
+
+/**
+ * The other half of the pair: the sink the reader's log is built from.
+ *
+ * `run_event` is where `runLog` looks, so a run that wrote only a file left
+ * the retry lines where nobody ever looks — and "am I retrying?" is the
+ * question the whole log was rebuilt to answer.
+ *
+ * `record` is synchronous and `event` is not, so the write is started and not
+ * waited for. That is deliberate: an observation that can fail a run, or slow
+ * one down by a round trip across a process boundary per line, is worse than
+ * no observation. The proxy delivers in order, so the lines arrive in order.
+ */
+export function storeSink(store: ProjectStore): LogSink {
+  return {
+    record(entry: LogRecord): void {
+      const severity = SEVERITY_OF[entry.level];
+      if (severity === null) return;
+      void store.event({
+        code: entry.code,
+        severity,
+        payload: entry.detail ?? {},
+      }).catch(() => {
+        // A store with no run to attribute an event to refuses, and it is
+        // right to: what it must not do is take the run down for a log line.
+      });
+    },
+  };
+}
+
+/** One record, every destination. A sink that throws does not silence the rest. */
+export function bothSinks(...sinks: LogSink[]): LogSink {
+  return {
+    record(entry: LogRecord): void {
+      for (const sink of sinks) {
+        try {
+          sink.record(entry);
+        } catch {
+          // Already swallowed by each sink; this is the net under the net.
+        }
+      }
+    },
+  };
 }
 
 /** Past this the application file is rolled over; one spare is kept. */

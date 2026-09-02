@@ -31,7 +31,14 @@ export interface StoredTranslation {
  */
 export interface RunEvent {
   code: string;
-  severity: "info" | "warning" | "degradation";
+  /**
+   * `degradation` is the verdict; the other three are the chronicle.
+   *
+   * Only `degradation` lowers a book to `incomplete`, and only it is counted
+   * as one — the rest are what `LogSink` writes here so the reader's log has
+   * something to show. The column is what tells a verdict from a story.
+   */
+  severity: "info" | "warning" | "degradation" | "error";
   payload: Record<string, unknown>;
 }
 

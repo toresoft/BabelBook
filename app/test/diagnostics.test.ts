@@ -3,8 +3,9 @@ import { mkdtemp, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { ProjectStore, RunEvent } from "../../core/ports.ts";
 import {
-  appSink, diagnosticsDir, fileSink, pruneDiagnostics, readDiagnostics,
+  appSink, bothSinks, diagnosticsDir, fileSink, pruneDiagnostics, readDiagnostics, storeSink,
 } from "../main/run/diagnostics.ts";
 
 const workspace = () => mkdtemp(join(tmpdir(), "babelbook-diag-"));
@@ -120,6 +121,54 @@ describe("the diagnostic file", () => {
     const dir = join(userData, "logs");
     expect(await readdir(dir)).toEqual(expect.arrayContaining(["app.ndjson", "app.1.ndjson"]));
     expect((await stat(join(dir, "app.ndjson"))).size).toBeLessThan(2 * 1024 * 1024);
+  });
+
+  /**
+   * The half the file cannot do.
+   *
+   * The reader's Registro is built from `run_event`, so a sink that only wrote
+   * a file left the retry lines where no reader ever looks — and "am I
+   * retrying?" was the question the whole log was rebuilt to answer.
+   */
+  it("writes the reader's levels to the store, and debug to neither", async () => {
+    const written: RunEvent[] = [];
+    const sink = storeSink({ event: async (event) => { written.push(event); } } as ProjectStore);
+
+    sink.record({ level: "debug", code: "call-finished", detail: { tokensOut: 9 } });
+    sink.record({ level: "info", code: "provider-recovered", detail: { attempts: 3 } });
+    sink.record({ level: "warn", code: "provider-retry", detail: { attempt: 1 } });
+    sink.record({ level: "error", code: "run-ended-badly" });
+    await Promise.resolve();
+
+    expect(written).toEqual([
+      { code: "provider-recovered", severity: "info", payload: { attempts: 3 } },
+      { code: "provider-retry", severity: "warning", payload: { attempt: 1 } },
+      { code: "run-ended-badly", severity: "error", payload: {} },
+    ]);
+  });
+
+  /** A store that refuses must not take the run down with it. */
+  it("swallows a store that will not have it", async () => {
+    const sink = storeSink({
+      event: async () => { throw new Error("no run"); },
+    } as unknown as ProjectStore);
+
+    expect(() => sink.record({ level: "warn", code: "x" })).not.toThrow();
+    await Promise.resolve();
+  });
+
+  it("hands one record to both destinations", async () => {
+    const dir = diagnosticsDir(await workspace());
+    const written: RunEvent[] = [];
+    const file = fileSink({ dir, process: "engine", runId: "r9", projectId: "p1" });
+
+    bothSinks(file, storeSink({ event: async (e) => { written.push(e); } } as ProjectStore))
+      .record({ level: "warn", code: "provider-retry", detail: { attempt: 1 } });
+    file.close();
+    await Promise.resolve();
+
+    expect(written).toHaveLength(1);
+    expect((await readDiagnostics(dir, "r9")).lines).toHaveLength(1);
   });
 
   /** A sink that can fail a run is worse than a sink nobody reads. */

@@ -2,7 +2,7 @@ import { StoreClient } from "./store-client.ts";
 import { generateObject, generateText } from "ai";
 import type { LlmBackend, ProjectStore } from "../../core/ports.ts";
 import { runProject } from "../main/run/orchestrator.ts";
-import { diagnosticsDir, fileSink } from "../main/run/diagnostics.ts";
+import { bothSinks, diagnosticsDir, fileSink, storeSink } from "../main/run/diagnostics.ts";
 import { classifyProviderError } from "./backends/classify.ts";
 import { resolveModel } from "./backends/resolve.ts";
 import { sdkBackend } from "./backends/sdk.ts";
@@ -110,12 +110,18 @@ async function backendFromSpec(spec: BackendSpec): Promise<LlmBackend> {
 /** The production runner: a backend from the spec, then the phases. */
 const productionRunner: EngineRunner = async (input) => {
   const backend = await backendFromSpec(input.backendSpec);
-  const sink = fileSink({
+  const file = fileSink({
     dir: diagnosticsDir(input.workspaceRoot),
     process: "engine",
     runId: input.runId,
     projectId: input.projectId,
   });
+  // Both, and this is the pair the design rests on: the file takes everything
+  // so a run that went wrong can be understood afterwards, and the store takes
+  // the reader's levels so the Registro has something to show. Written to the
+  // file alone, "the provider is being retried" would land where nobody looks
+  // — which is where it was before any of this.
+  const sink = bothSinks(file, storeSink(input.store));
 
   try {
     const summary = await runProject({
@@ -137,17 +143,28 @@ const productionRunner: EngineRunner = async (input) => {
     // outer catch swallows anything once the signal is aborted, which is right
     // for a pause and wrong for everything else that happened to arrive with
     // one.
+    //
+    // Classified before it is written, and not merely described. This file
+    // exists so a run that died can be understood afterwards, and a prose
+    // message is not what anybody searches for: the code is the one thing that
+    // is stable, greppable, and the same word the reader's alert was built
+    // from. Recording only the sentence left the file unable to answer the one
+    // question it is kept for.
+    const classified = classifyProviderError(error);
     sink.record({
       level: input.signal.aborted ? "debug" : "error",
       code: "run-ended-badly",
       detail: {
         aborted: input.signal.aborted,
-        message: String((error as { message?: unknown }).message ?? error),
+        reason: classified.code,
+        fault: classified.fault,
+        message: classified.message,
+        ...classified.detail,
       },
     });
     throw error;
   } finally {
-    sink.close();
+    file.close();
   }
 };
 

@@ -363,6 +363,17 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
       // the machine refused is a history that did not happen.
       if (accepted) leaveState(db, { projectId, kind: "phase", outcome: ending, info });
 
+      // The log's own line for it. The phase state says a phase paused; only
+      // this says why, and the reason is the whole reason any of this exists.
+      // `failed` needs none: the project state it enters is already a sentence.
+      if (accepted && ending === "paused" && activeRunId !== null) {
+        db.prepare(`
+          INSERT INTO run_event (id, run_id, at, code, severity, payload_json)
+          VALUES (?, ?, ?, 'run-paused', 'warning', ?)
+        `).run(randomUUID(), activeRunId, new Date().toISOString(),
+          JSON.stringify({ reason: message.code, fault: message.fault }));
+      }
+
       release();
       changed(projectId);
       return;

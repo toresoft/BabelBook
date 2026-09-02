@@ -282,6 +282,14 @@ export class Side implements OnDestroy {
       // not in the log: the register keeps the milliseconds it measured.
       if (typeof info["waitMs"] === "number") info["seconds"] = Math.round(info["waitMs"] / 1000);
       if (typeof info["elapsedMs"] === "number") info["seconds"] = Math.round(info["elapsedMs"] / 1000);
+      // A reason is a stable code, and a stable code is not Italian.
+      // Interpolated as it arrives it put `PROVIDER_RATE_LIMITED` in the
+      // middle of a sentence — the thing the catalogue exists to prevent,
+      // reintroduced one layer further in. Untranslatable it stays as it is:
+      // a word the reader can quote beats a gap where a reason should be.
+      if (typeof info["reason"] === "string") {
+        info["reason"] = this.#sentence(`codes.${info["reason"]}`, info["reason"]);
+      }
       return this.#sentence(`codes.${line.code}`, line.code, info);
     }
     const [, subject, outcome = "left"] = line.code.split(".");
