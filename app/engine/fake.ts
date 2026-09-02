@@ -1,4 +1,5 @@
 import { appendFileSync } from "node:fs";
+import { APICallError } from "@ai-sdk/provider";
 import type { LlmBackend, LlmCall, LlmResult } from "../../core/ports.ts";
 
 /**
@@ -24,11 +25,43 @@ export const FAKE_MARKER = "[FAKE]";
  * `BABELBOOK_FAKE_DELAY_MS` paces the calls so a test can pause a run while it
  * is genuinely in flight; `BABELBOOK_FAKE_LOG` names a file that receives one
  * JSON line per call with the ids it was asked for, so a test can prove the
- * resume asked for nothing it already had. Without them the fake is instant
- * and silent, which is what every other consumer wants.
+ * resume asked for nothing it already had; `BABELBOOK_FAKE_FAILURES` makes it
+ * stumble. Without them the fake is instant, silent and reliable, which is
+ * what every other consumer wants.
  */
 const DELAY_MS = Number(process.env["BABELBOOK_FAKE_DELAY_MS"] ?? "0");
 const CALL_LOG = process.env["BABELBOOK_FAKE_LOG"];
+
+/**
+ * How the deterministic backend is told to stumble.
+ *
+ * `429x2` throws a rate limit on the first two calls and answers after that;
+ * `402` alone throws for ever. It exists so the suite can prove the retry
+ * without a provider and without a network — which is to say, so it can prove
+ * it at all: every other way of producing a 429 depends on somebody else's
+ * endpoint having a bad afternoon.
+ *
+ * The error is a real `APICallError` and not a shortcut, because the thing
+ * under test is the classifier that reads one.
+ */
+interface FailurePlan {
+  status: number;
+  times: number;
+}
+
+function plannedFailures(): FailurePlan | null {
+  const plan = process.env["BABELBOOK_FAKE_FAILURES"];
+  if (plan === undefined || plan === "") return null;
+
+  const [status, times] = plan.split("x");
+  const parsed = Number(status);
+  if (!Number.isFinite(parsed)) return null;
+
+  return {
+    status: parsed,
+    times: times === undefined ? Number.POSITIVE_INFINITY : Number(times),
+  };
+}
 
 interface Response {
   text: string;
@@ -146,8 +179,30 @@ function logCall(kind: "units" | "verdicts" | "terms" | "sample", ids: string[])
 }
 
 export function fakeBackend(): LlmBackend {
+  const plan = plannedFailures();
+  let failed = 0;
+
   return {
     async call(input: LlmCall): Promise<LlmResult> {
+      // Before anything else, and before the call log: a call that threw was
+      // made and answered nothing, and counting it as work would make the
+      // resume test's arithmetic quietly wrong.
+      if (plan !== null && failed < plan.times) {
+        failed++;
+        throw new APICallError({
+          message: `fake provider answered ${plan.status}`,
+          url: "https://fake.invalid/v1/messages",
+          requestBodyValues: {},
+          statusCode: plan.status,
+          // Short on purpose: the backoff honours it, and a test must not wait
+          // out a real provider's idea of a polite pause.
+          responseHeaders: { "retry-after": "1" },
+          ...(plan.status === 402
+            ? { responseBody: '{"error":{"message":"insufficient credits"}}' }
+            : {}),
+        });
+      }
+
       const { text, ids, kind } = respond(input.prompt);
       logCall(kind, ids);
       if (DELAY_MS > 0) await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
