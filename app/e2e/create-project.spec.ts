@@ -1,7 +1,7 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { _electron as electron, expect, test } from "@playwright/test";
+import { _electron as electron, expect, test, type Page } from "@playwright/test";
 import { buildEpub } from "../../core/test/corpus/build.ts";
 import { mainWindow, seedProvider } from "./support.ts";
 
@@ -22,13 +22,38 @@ async function launch(userData: string, epub: string) {
       ...process.env, BABELBOOK_USER_DATA: userData, BABELBOOK_EPUB_FOR_TEST: epub,
       // The seeded provider names an endpoint nothing answers on, which is
       // fine until a test presses "translate" — one below does, to prove the
-      // button acts, and a real run then keeps the engine process alive and
-      // `app.close()` waiting on it. The deterministic backend never reaches
-      // the network, so the run ends and the window really closes.
+      // button acts. The deterministic backend never reaches the network, so
+      // the run ends quickly; `settled()` is what waits for it to, because
+      // quickly is not the same as before the next line.
       BABELBOOK_FAKE_BACKEND: "1",
     },
   });
   return { app, window: await mainWindow(app) };
+}
+
+/** The settled states: from any of these the run is no longer holding the app. */
+const SETTLED = ["waiting-terms", "waiting-code", "done", "incomplete", "failed", "paused"];
+
+/**
+ * Waits for the run to let go before the window is closed.
+ *
+ * Quitting with work in flight is a question, not an assumption
+ * (`main.ts`'s `askQuit`): the application raises a native dialog and waits for
+ * an answer that no test is there to give, and `app.close()` hangs until
+ * Playwright gives up. The other specs that press this button already wait
+ * this way; this one pressed and closed, and only got away with it for as long
+ * as the run happened to finish inside the same tick.
+ */
+async function settled(window: Page): Promise<void> {
+  const started = Date.now();
+  while (Date.now() - started < 30_000) {
+    const listed = await window.evaluate(() =>
+      (window as unknown as { babelbook: { invoke(channel: string, payload: unknown): Promise<unknown> } })
+        .babelbook.invoke("projects.list", {})) as Array<{ state: string }>;
+    if (listed[0] !== undefined && SETTLED.includes(listed[0].state)) return;
+    await window.waitForTimeout(50);
+  }
+  throw new Error("the run never let go of the application");
 }
 
 async function fixture(dir: string, name: string, spec: Parameters<typeof buildEpub>[0]) {
@@ -100,6 +125,7 @@ test("the whole card opens the book, and its buttons still act where they are", 
   await window.getByTestId("start").click();
   await expect(window.getByTestId("library")).toBeVisible();
 
+  await settled(window);
   await app.close();
 });
 
