@@ -47,13 +47,20 @@ nei messaggi di commit, la traccia di cosa è stato corretto e perché.
 | 9. La corsa osservabile e il discovery | **completo**, 11/11 + revisione finale dell'intero ramo | `core/analyze/`, `core/translate/usage.ts`, `app/main/run/`, `app/main/providers/` |
 | Difetti trovati sul primo libro vero | **quattro, corretti** | `app/renderer/src/app/project/`, `app/main/providers/`, `app/main/run/`, `core/workflow/` |
 | Provider obbligatorio e auto-accettazione per progetto | **completo**, 10/10 | `app/main/db/migrations/015-*`, `app/main/projects/`, `app/renderer/src/app/project/side/`, `app/renderer/src/app/library/` |
+| Errori classificati e log | **completo**, 19/19, sul ramo `errori-classificati` | `core/errors.ts`, `core/translate/retry.ts`, `app/engine/backends/classify.ts`, `app/main/failure.ts`, `app/main/run/diagnostics.ts`, `app/renderer/src/app/core/failure.ts` |
 
-Suite: **975 test verdi** (336 core, 463 app, 176 componenti) piu' **14 prove
+Suite: **1093 test verdi** (365 core, 536 app, 192 componenti) piu' **17 prove
 end-to-end verdi** e una saltata — `packaged`, che gira solo contro un pacchetto
 gia' costruito. Fra le altre: un libro intero dal file all'EPUB tradotto, una
 pausa con ripresa che non ritraduce nulla, una persona che attraversa a mano i
-due gate, e la modifica di un termine che dichiara cosa disferebbe prima di
-disfarlo. Typecheck e build di produzione sono puliti.
+due gate, la modifica di un termine che dichiara cosa disferebbe prima di
+disfarlo, e un provider che risponde 429 due volte senza che il libro ne
+soffra. Typecheck e build di produzione sono puliti.
+
+**`create-project.spec.ts:73` e' instabile.** Con la stessa build passa in due
+secondi o in trentasei, e ogni tanto supera il minuto e cade. Non e' un difetto
+del prodotto — avvia una corsa e poi chiude la finestra — ma non e' stato
+indagato, e prima o poi va guardato.
 
 **Le cinque prove e2e che erano rosse da giorni sono state corrette**, e nessuna
 delle cinque era un difetto del prodotto: erano tre doppi e asserzioni rimasti
