@@ -27,6 +27,27 @@ export function onWindowClose(hasRunningWork: boolean, hasTray: boolean): "hide"
   return hasRunningWork && hasTray ? "hide" : "quit";
 }
 
+/**
+ * Whether the desktop's watcher lists an item this process owns.
+ *
+ * `new Tray(...)` returning without throwing proves nothing on Linux.
+ * Chromium registers its item by calling `RegisterStatusNotifierItem` with the
+ * bus name and the object path joined into one string —
+ * `org.freedesktop.StatusNotifierItem-<pid>-1/StatusNotifierItem/1`. KDE's
+ * watcher reads that argument as a bus name or as an object path and never as
+ * both: it takes the whole thing for a name, finds nobody owning it, and drops
+ * the item. The call returns cleanly, the object sits complete on the bus, and
+ * no icon is ever drawn.
+ *
+ * The name carries our process id, which is what makes the answer ours and not
+ * a neighbour's. Anything unreadable is a no, deliberately: hiding a window
+ * into a tray that turns out not to exist costs the user their book, and
+ * refusing to hide into a tray that did exist costs them one dialog.
+ */
+export function isTrayRegistered(watcherReply: string, pid: number): boolean {
+  return new RegExp(`StatusNotifierItem-${pid}-\\d`).test(watcherReply);
+}
+
 /** Quitting with work in flight is a decision, so it is asked for, not assumed. */
 export function onQuitRequested(hasRunningWork: boolean): "confirm" | "quit" {
   return hasRunningWork ? "confirm" : "quit";

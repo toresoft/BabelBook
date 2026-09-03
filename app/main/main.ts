@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { generateText } from "ai";
@@ -34,7 +36,7 @@ import { sdkBackend } from "../engine/backends/sdk.ts";
 import type { BackendSpec, EngineMessage } from "../shared/run.ts";
 import type { Events } from "../shared/channels.ts";
 import type { VerifyOutcome } from "../shared/dto.ts";
-import { notifyOn, onQuitRequested, onWindowClose, tooltipFor } from "./tray.ts";
+import { isTrayRegistered, notifyOn, onQuitRequested, onWindowClose, tooltipFor } from "./tray.ts";
 import { TRAY_ICON } from "./icons.ts";
 import { createMainWindow, createSplashWindow } from "./window.ts";
 
@@ -61,6 +63,36 @@ const devServerUrl = process.env["NG_DEV_SERVER"] ?? process.env["VITE_DEV_SERVE
  * the code becomes a production path by accident.
  */
 const userDataDir = process.env["BABELBOOK_USER_DATA"] ?? app.getPath("userData");
+
+// Chromium's own profile follows ours, or it does not follow at all.
+//
+// `BABELBOOK_USER_DATA` used to move only our database and our workspaces,
+// while Electron kept its profile — and its single-instance lock — at the real
+// one. Two end-to-end runs therefore shared a Chromium profile with each other
+// and with whatever the developer had open, and the lock below would have
+// refused every test after the first.
+if (process.env["BABELBOOK_USER_DATA"] !== undefined) app.setPath("userData", userDataDir);
+
+/**
+ * One application, one database.
+ *
+ * There is no lock inside SQLite that makes two of these safe, and the natural
+ * thing to do when a window cannot be found is to start the application again.
+ * Without this, that instinct opens a second process on the same file: two
+ * machines deciding the state of one book, two engines, and a run each of them
+ * believes it owns. The second instance now raises the first one's window,
+ * which is what the person wanted in the first place.
+ */
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (glue.window === null || glue.window === undefined) return;
+    if (!glue.window.isVisible()) glue.window.show();
+    if (glue.window.isMinimized()) glue.window.restore();
+    glue.window.focus();
+  });
+}
 
 /**
  * The end-to-end catalogue: a file the test writes, served instead of the
@@ -179,6 +211,47 @@ function trayMenu(): Menu {
 /** The one act the tray offers while the window is hidden: it must work. */
 function refreshTray(): void {
   glue.tray?.setContextMenu(trayMenu());
+}
+
+/** Long enough for a desktop that works, short enough not to hold the window. */
+const TRAY_CHECKS = 8;
+const TRAY_CHECK_MS = 250;
+
+/**
+ * Asks the desktop's watcher whether it actually took our item.
+ *
+ * Only on Linux, and only through `gdbus`, which ships with glib and is
+ * therefore already on any machine that can run Electron. An answer we cannot
+ * read is a no: see `isTrayRegistered` for why that is the safe direction.
+ */
+async function trayIsShown(): Promise<boolean> {
+  if (process.platform !== "linux") return true;
+
+  const ask = async (): Promise<boolean> => {
+    try {
+      const { stdout } = await promisify(execFile)("gdbus", [
+        "call", "--session",
+        "--dest", "org.kde.StatusNotifierWatcher",
+        "--object-path", "/StatusNotifierWatcher",
+        "--method", "org.freedesktop.DBus.Properties.Get",
+        "org.kde.StatusNotifierWatcher", "RegisteredStatusNotifierItems",
+      ], { timeout: 2000 });
+      return isTrayRegistered(stdout, process.pid);
+    } catch {
+      // No watcher, no gdbus, or no answer in time.
+      return false;
+    }
+  };
+
+  // Asked again rather than once. Chromium registers its item after the
+  // constructor returns, so a single question asked immediately would be
+  // answered "no" on every desktop, including the ones where the icon appears
+  // a moment later — and we would throw away a tray that works.
+  for (let attempt = 0; attempt < TRAY_CHECKS; attempt++) {
+    if (await ask()) return true;
+    await new Promise((resume) => setTimeout(resume, TRAY_CHECK_MS));
+  }
+  return false;
 }
 
 function buildTray(): Tray | null {
@@ -466,6 +539,22 @@ app.whenReady().then(async () => {
   handleRendererProtocol(devServerUrl === undefined ? RENDERER_ROOT : "", join(userDataDir, "projects"));
   glue.tray = buildTray();
   openWindow();
+
+  // Constructed is not shown. Where the desktop never took the item, the tray
+  // is let go of rather than believed in: `onWindowClose` reads `glue.tray`,
+  // and a window hidden into an icon that does not exist is a book its owner
+  // cannot reach.
+  //
+  // Not awaited: the answer takes up to two seconds and the window must not
+  // wait for it. Nothing can be hidden before it arrives either, because
+  // hiding needs both a tray and a run, and a run needs a window first.
+  if (glue.tray !== null) {
+    void trayIsShown().then((shown) => {
+      if (shown || glue.tray === null) return;
+      glue.tray.destroy();
+      glue.tray = null;
+    });
+  }
 
   // The network is asked now, in the background and off every critical path:
   // a catalogue that got fresher prices is worth having, and a machine with

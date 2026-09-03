@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { notifyOn, onQuitRequested, onWindowClose, tooltipFor } from "../main/tray.ts";
+import {
+  isTrayRegistered, notifyOn, onQuitRequested, onWindowClose, tooltipFor,
+} from "../main/tray.ts";
 
 describe("lifecycle", () => {
   it("hides the window instead of quitting while a book is being translated", () => {
@@ -68,4 +70,58 @@ describe("tooltipFor", () => {
       .toBeNull();
     expect(tooltipFor({ type: "done", summary: {} as never }, null, t)).toBe("[tray.idle]");
   });
+});
+
+/**
+ * Whether the tray is really there, and not merely constructed.
+ *
+ * `new Tray(...)` succeeding proves nothing on Linux. Chromium registers its
+ * item with the desktop's watcher by passing the bus name and the object path
+ * joined into one string; KDE's watcher reads that argument as one or the
+ * other and never as both, takes the whole thing for a bus name, finds nobody
+ * owning it and drops the item. The call returns without error, the object
+ * sits complete on the bus, and no icon is ever drawn.
+ *
+ * The application believed it had a tray, and so hid its only window into it
+ * whenever a book was being translated. On that desktop the window was gone
+ * and the icon that would bring it back did not exist.
+ */
+describe("whether the tray is really registered", () => {
+  const OURS = 132451;
+
+  it("recognises our own item in the watcher's list", () => {
+    const reply = "(<['" + [
+      ":1.91/StatusNotifierItem",
+      `org.freedesktop.StatusNotifierItem-${OURS}-1/StatusNotifierItem/1`,
+      "com.jetbrains.toolbox/StatusNotifierItem",
+    ].join("', '") + "']>,)";
+
+    expect(isTrayRegistered(reply, OURS)).toBe(true);
+  });
+
+  /** The observed failure: everyone else is listed, and we are not. */
+  it("says no when the watcher lists everyone but us", () => {
+    const reply = "(<[':1.91/StatusNotifierItem', "
+      + "'org.kde.StatusNotifierItem-2828-1/StatusNotifierItem', "
+      + "':1.104/org/ayatana/NotificationItem/spotify_client']>,)";
+
+    expect(isTrayRegistered(reply, OURS)).toBe(false);
+  });
+
+  /** Another process's number must never be read as ours. */
+  it("does not mistake a neighbour's item for ours", () => {
+    const reply = `(<['org.freedesktop.StatusNotifierItem-${OURS}9-1/StatusNotifierItem/1']>,)`;
+    expect(isTrayRegistered(reply, OURS)).toBe(false);
+  });
+
+  /**
+   * Every unreadable answer means no. A tray we cannot prove is a tray we must
+   * not hide a window into: being wrong that way costs a confirmation dialog,
+   * and being wrong the other way costs the user their book.
+   */
+  it.each([["", "vuota"], ["(<@as []>,)", "senza elementi"], ["Errore: ...", "un errore"]])(
+    "treats %s as no tray", (reply) => {
+      expect(isTrayRegistered(reply, OURS)).toBe(false);
+    },
+  );
 });
