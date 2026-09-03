@@ -13,6 +13,15 @@ export interface EpubDocumentSpec {
   path: string;
   xhtml: string;
   layout?: FixtureLayout;
+  /**
+   * What the manifest declares this document to be.
+   *
+   * EPUB 3 says `application/xhtml+xml`, and that is the default. Real books
+   * say other things — ebooklib, which made a good share of what is on disk,
+   * writes `text/html` — and a fixture has to be able to say so, or the
+   * selection can only ever be tested against books that were already correct.
+   */
+  mediaType?: string;
 }
 
 export interface EpubExtraSpec {
@@ -35,6 +44,8 @@ export interface EpubSpec {
   extra?: EpubExtraSpec[];
   packageProperties?: string;
   manifestExtra?: string;
+  /** One more `itemref`, for a reading order that holds something unusual. */
+  spineExtra?: string;
   metadataExtra?: string;
   overlays?: EpubOverlaySpec[];
 }
@@ -139,7 +150,7 @@ function packageOpf(spec: EpubSpec, language: string, title: string): string {
       const attached = overlay === -1 ? "" : ` media-overlay="${smilId(overlay)}"`;
       return (
         `    <item id="${documentId(i)}" href="${attrEscape(href(d.path))}"`
-        + ` media-type="application/xhtml+xml"${attached}/>`
+        + ` media-type="${attrEscape(d.mediaType ?? "application/xhtml+xml")}"${attached}/>`
       );
     }),
     ...overlays.map(
@@ -163,6 +174,7 @@ function packageOpf(spec: EpubSpec, language: string, title: string): string {
           : "";
     return `    <itemref idref="${documentId(i)}"${properties}/>`;
   });
+  if (spec.spineExtra) spine.push(`    ${spec.spineExtra}`);
 
   const metadata = [
     `    <dc:identifier id="pub-id">${xmlEscape(identifier)}</dc:identifier>`,

@@ -272,3 +272,121 @@ describe("createProject", () => {
       .get(created.id)).toEqual({ p: "pv1", m: "m1" });
   });
 });
+
+/**
+ * What a book is made of, as the manifest happens to have written it down.
+ *
+ * A book found on disk had 193 and 677 translatable paragraphs per chapter and
+ * produced one unit: `<h2>` out of `nav.xhtml`. Every chapter was declared
+ * `text/html` — ebooklib writes that, and a good share of what exists was made
+ * by ebooklib — and the selection took only `application/xhtml+xml`. The
+ * project was created, ran to `done`, and wrote out a book still entirely in
+ * English, and nobody was told any of it.
+ */
+describe("choosing what to translate", () => {
+  it("reads a chapter the manifest calls text/html", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "ebooklib.epub", {
+      title: "Designing Agents", language: "en",
+      documents: [
+        { path: "OEBPS/chapter-1.html", xhtml: "<p>One</p><p>Two</p>", mediaType: "text/html" },
+        { path: "OEBPS/chapter-2.html", xhtml: "<p>Three</p>", mediaType: "text/html" },
+      ],
+    });
+
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
+
+    const chapters = db.prepare(`
+      SELECT d.zip_path AS path, count(u.id) AS n
+        FROM project_document d JOIN unit u ON u.document_id = d.id
+       WHERE d.project_id = ? AND d.zip_path LIKE '%chapter%'
+       GROUP BY d.id ORDER BY d.spine_order
+    `).all(created.id) as Array<{ path: string; n: number }>;
+
+    expect(chapters).toEqual([
+      { path: "OEBPS/chapter-1.html", n: 2 },
+      { path: "OEBPS/chapter-2.html", n: 1 },
+    ]);
+  });
+
+  /** Non-conforming is not the same as wrong, but it is worth writing down. */
+  it("declares that the book named a type EPUB does not use", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "ebooklib.epub", {
+      title: "Designing Agents", language: "en",
+      documents: [{ path: "OEBPS/chapter-1.html", xhtml: "<p>One</p>", mediaType: "text/html" }],
+    });
+
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
+
+    const event = db.prepare(
+      "SELECT code, severity, payload_json FROM run_event WHERE run_id = ? AND code = 'html-media-type'",
+    ).get(created.id) as { code: string; severity: string; payload_json: string } | undefined;
+    expect(event?.severity).toBe("info");
+    expect(JSON.parse(event!.payload_json)).toMatchObject({ documents: 1 });
+  });
+
+  /**
+   * The reading order decides, with one exception. The manifest holds things
+   * no reader ever opens, and translating one of those spends money on a page
+   * nobody sees; the navigation document is shown by every reader whether the
+   * spine names it or not, so it is taken either way.
+   */
+  it("takes the spine's order, and only the spine", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "aside.epub", {
+      title: "With An Aside", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+      extra: [{ path: "OEBPS/orphan.xhtml", bytes: Buffer.from("<html><body><p>Nobody</p></body></html>", "utf8") }],
+      manifestExtra: '<item id="orphan" href="orphan.xhtml" media-type="application/xhtml+xml"/>',
+    });
+
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
+
+    const paths = db.prepare(
+      "SELECT zip_path FROM project_document WHERE project_id = ?",
+    ).all(created.id) as Array<{ zip_path: string }>;
+    expect(paths.map((row) => row.zip_path)).not.toContain("OEBPS/orphan.xhtml");
+    // Taken even though this fixture leaves it out of the spine: a contents
+    // page in English in front of an Italian book is a defect a reader sees
+    // first.
+    expect(paths.map((row) => row.zip_path)).toContain("OEBPS/nav.xhtml");
+  });
+
+  /** A spine entry of a kind we do not read stops disappearing quietly. */
+  it("declares a spine entry it cannot read", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "mixed.epub", {
+      title: "Mixed", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+      extra: [{ path: "OEBPS/plate.svg", bytes: Buffer.from("<svg xmlns='http://www.w3.org/2000/svg'/>", "utf8") }],
+      manifestExtra: '<item id="plate" href="plate.svg" media-type="image/svg+xml"/>',
+      spineExtra: '<itemref idref="plate"/>',
+    });
+
+    const created = await createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE });
+
+    const event = db.prepare(
+      "SELECT severity, payload_json FROM run_event WHERE run_id = ? AND code = 'document-skipped'",
+    ).get(created.id) as { severity: string; payload_json: string } | undefined;
+    expect(JSON.parse(event!.payload_json)).toMatchObject({ documents: 1 });
+  });
+
+  /**
+   * The net that would have caught the book above in ten seconds instead of
+   * after a whole translation: a project that can translate nothing is not a
+   * project, and saying so at the door costs nothing.
+   */
+  it("refuses a book with nothing to translate instead of creating an empty project", async () => {
+    const { dir, db } = await setup();
+    const epub = await epubAt(dir, "plates.epub", {
+      title: "Plates Only", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: '<p><img src="plate.png" /></p>' }],
+    });
+
+    await expect(createProject(db, dir, { epubPath: epub, targetLanguage: "it", ...CHOICE }))
+      .rejects.toMatchObject({ code: "NO_TRANSLATABLE_CONTENT", fault: "input" });
+
+    expect(count(db, "project")).toBe(0);
+  });
+});

@@ -109,13 +109,15 @@ const CODES = [
   "PROVIDER_OUT_OF_CREDIT", "PROVIDER_UNAUTHORIZED", "PROVIDER_SERVER_ERROR",
   "PROVIDER_UNKNOWN", "MODEL_NOT_FOUND", "CONTEXT_EXCEEDED", "RESPONSE_UNUSABLE",
   "SOURCE_MISSING", "DISK_FULL", "PATH_NOT_WRITABLE", "DATABASE_BUSY",
+  "NO_TRANSLATABLE_CONTENT",
+  "PROVIDER_REFUSED_SHAPE", "PROVIDER_REFUSED_REQUEST",
   "COMPOSE_NO_PACKAGE", "COMPOSE_NO_CACHE_KEY", "GATE_REFUSED",
   "ENGINE_BUSY", "GATE_OPEN", "NO_LANGUAGE", "SOURCE_CHANGED",
 ];
 
 const LOG_CODES = [
   "provider-retry", "provider-recovered", "provider-slow",
-  "run-paused", "chunk-failed", "unit-fell-back",
+  "run-paused", "chunk-failed", "unit-fell-back", "shape-refused", "html-media-type",
 ];
 
 import italiano from "../locales/it.json" with { type: "json" };

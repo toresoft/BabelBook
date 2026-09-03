@@ -551,10 +551,14 @@
     "PROVIDER_OUT_OF_CREDIT": "Il credito del provider è esaurito.",
     "PROVIDER_UNAUTHORIZED": "La chiave non è stata accettata.",
     "PROVIDER_SERVER_ERROR": "Il provider ha risposto con un errore proprio.",
+    "shape-refused": "Questo endpoint non accetta uno schema: la traduzione prosegue chiedendo la forma a parole.",
+    "PROVIDER_REFUSED_SHAPE": "Questo endpoint non sa imporre una forma alle risposte: la traduzione continua chiedendola a parole.",
+    "PROVIDER_REFUSED_REQUEST": "Il provider ha rifiutato la richiesta cosi' com'era scritta.",
     "PROVIDER_UNKNOWN": "Il provider ha rifiutato la richiesta senza spiegarsi.",
     "MODEL_NOT_FOUND": "Il provider non conosce questo modello.",
     "CONTEXT_EXCEEDED": "La richiesta non entra nella finestra del modello.",
     "RESPONSE_UNUSABLE": "La risposta non aveva la forma richiesta.",
+    "NO_TRANSLATABLE_CONTENT": "In questo libro non c'è testo che si possa tradurre: forse è fatto di immagini, o i suoi capitoli non sono leggibili.",
     "SOURCE_MISSING": "Il file di partenza non è più dove era.",
     "DISK_FULL": "Il disco è pieno.",
     "PATH_NOT_WRITABLE": "Non si può scrivere in quella cartella.",
@@ -570,6 +574,7 @@
     "provider-recovered": "Il provider ha ripreso a rispondere dopo {{attempts}} tentativi.",
     "provider-slow": "Una richiesta ha impiegato {{seconds}} s.",
     "run-paused": "La corsa si è messa in pausa: {{reason}}",
+    "html-media-type": "Il libro dichiara i suoi capitoli come «text/html» invece che come XHTML: sono stati letti lo stesso.",
     "chunk-failed": "Un gruppo di {{units}} unità non è stato tradotto."
   },
   "errors": {

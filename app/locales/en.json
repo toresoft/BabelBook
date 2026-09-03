@@ -551,10 +551,14 @@
     "PROVIDER_OUT_OF_CREDIT": "The provider's credit is exhausted.",
     "PROVIDER_UNAUTHORIZED": "The key was not accepted.",
     "PROVIDER_SERVER_ERROR": "The provider answered with an error of its own.",
+    "shape-refused": "This endpoint takes no schema: the translation carries on asking for the shape in words.",
+    "PROVIDER_REFUSED_SHAPE": "This endpoint cannot impose a shape on its answers: the translation carries on asking for one in words.",
+    "PROVIDER_REFUSED_REQUEST": "The provider refused the request as it was written.",
     "PROVIDER_UNKNOWN": "The provider refused the request without explaining itself.",
     "MODEL_NOT_FOUND": "The provider does not know this model.",
     "CONTEXT_EXCEEDED": "The request does not fit in the model's window.",
     "RESPONSE_UNUSABLE": "The answer did not have the required shape.",
+    "NO_TRANSLATABLE_CONTENT": "This book holds no text that can be translated: it may be made of images, or its chapters may not be readable.",
     "SOURCE_MISSING": "The source file is no longer where it was.",
     "DISK_FULL": "The disk is full.",
     "PATH_NOT_WRITABLE": "That folder cannot be written to.",
@@ -570,6 +574,7 @@
     "provider-recovered": "The provider started answering again after {{attempts}} attempts.",
     "provider-slow": "A request took {{seconds}}s.",
     "run-paused": "The run paused: {{reason}}",
+    "html-media-type": "The book declares its chapters as “text/html” rather than XHTML: they were read anyway.",
     "chunk-failed": "A group of {{units}} units was not translated."
   },
   "errors": {

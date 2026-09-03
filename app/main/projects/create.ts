@@ -84,6 +84,16 @@ function usableLanguage(tag: string): string | null {
  * Either all of it lands or none of it does. A half-ingested project is worse
  * than no project: the library shows it, and it does not work.
  */
+/**
+ * The two media types that carry prose, and no others.
+ *
+ * EPUB 3 asks for `application/xhtml+xml`. `text/html` is not conforming and
+ * is nevertheless everywhere: ebooklib writes it, and the documents behind it
+ * are well-formed XHTML that every reader opens. Refusing it is refusing the
+ * book, silently, which is what used to happen.
+ */
+const CONTENT_TYPES = new Set(["application/xhtml+xml", "text/html"]);
+
 export async function createProject(
   db: DatabaseSync,
   base: string,
@@ -118,17 +128,48 @@ export async function createProject(
     const declaredLanguage = usableLanguage(pkg.language);
     const sourceLanguage = input.sourceLanguage ?? declaredLanguage;
 
-    const documents: Array<{ id: string; path: string; order: number; units: TranslationUnit[] }> = [];
+    const documents: Array<{
+      id: string; path: string; order: number; units: TranslationUnit[]; nav: boolean;
+    }> = [];
     const byState: Record<string, number> = {};
     let skipped = 0;
+    /** Documents the manifest called `text/html`: read, and worth writing down. */
+    let looseType = 0;
 
-    const spineOrder = new Map(pkg.spine.map((item, at) => [item.idref, at]));
-    const inSpine = pkg.manifest
-      .filter((item) => item.mediaType === "application/xhtml+xml")
-      .sort((a, b) => (spineOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER)
-        - (spineOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+    // The spine is the reading order, and the reading order is the book. The
+    // manifest also holds things no reader ever opens, and translating one of
+    // those spends money on a page nobody sees. Walking the spine also makes it
+    // possible to say what was left out, because there is a list to leave
+    // something out of.
+    //
+    // The navigation document is the one exception, and it is taken whether or
+    // not the spine names it: every reader shows it as the table of contents,
+    // so a book whose nav sat outside the reading order would be read in
+    // Italian from a contents page still in English.
+    const inManifest = new Map(pkg.manifest.map((item) => [item.id, item]));
+    const isNav = (item: { properties?: string }): boolean =>
+      (item.properties ?? "").split(/\s+/).includes("nav");
+
+    const chosen = pkg.spine
+      .map((entry) => inManifest.get(entry.idref))
+      .filter((item): item is NonNullable<typeof item> => item !== undefined);
+    const nav = pkg.manifest.find(isNav);
+    if (nav !== undefined && !chosen.some((item) => item.id === nav.id)) chosen.push(nav);
+
+    const inSpine = chosen;
 
     inSpine.forEach((item, order) => {
+      // Both types carry prose, and only these two do. EPUB 3 asks for the
+      // first; the second is what ebooklib writes, and a good share of the
+      // books that exist were made by ebooklib. Taking only the conforming one
+      // meant a whole book could be read, analysed, translated and composed
+      // without a single one of its chapters ever being looked at.
+      if (!CONTENT_TYPES.has(item.mediaType)) {
+        skipped++;
+        return;
+      }
+      if (item.mediaType === "text/html") looseType++;
+
       const { path } = resolveHref(pkg.path, item.href);
       const bytes = epub.get(path);
       if (bytes === undefined) {
@@ -146,15 +187,40 @@ export async function createProject(
         return;
       }
 
-      const nav = (item.properties ?? "").split(/\s+/).includes("nav");
-      const { units } = extract({ source, doc: path, codeSurfaces: surfaces, nav });
+      const { units } = extract({ source, doc: path, codeSurfaces: surfaces, nav: isNav(item) });
       for (const unit of units) byState[unit.state] = (byState[unit.state] ?? 0) + 1;
 
-      documents.push({ id: randomUUID(), path, order, units });
+      documents.push({ id: randomUUID(), path, order, units, nav: isNav(item) });
     });
 
     const allUnits = documents.flatMap((document) => document.units);
-    const work = allUnits.filter((unit) => unit.state === "translate" || unit.state === "maybe-code");
+    const isWorkUnit = (unit: TranslationUnit): boolean =>
+      unit.state === "translate" || unit.state === "maybe-code";
+    const work = allUnits.filter(isWorkUnit);
+
+    // Refused at the door, before a row exists. A project that can translate
+    // nothing is not a project: it would sit in the library looking ready, run
+    // to `done` without asking a model anything, and write out a copy of the
+    // book it was given. That is what happened to a book whose chapters were
+    // all dropped by a media type, and the only reason it took a whole run to
+    // notice is that nothing here said no.
+    //
+    // The contents page does not count towards it. A table of contents is a
+    // list of the chapters, so a book made entirely of images still has one,
+    // and counting it would keep the door open for exactly the books this is
+    // here to turn away.
+    const content = documents
+      .filter((document) => !document.nav)
+      .flatMap((document) => document.units)
+      .filter(isWorkUnit);
+
+    if (content.length === 0) {
+      throw new BabelError("this book has nothing that can be translated", {
+        code: "NO_TRANSLATABLE_CONTENT",
+        fault: "input",
+        detail: { documents: documents.length, units: allUnits.length, skipped },
+      });
+    }
 
     db.exec("BEGIN");
     try {
@@ -210,14 +276,25 @@ export async function createProject(
         name: sourceLanguage === null ? "needs-language" : "ready",
       });
 
-      if (skipped > 0) {
+      if (skipped > 0 || looseType > 0) {
         db.prepare(`
           INSERT INTO run (id, project_id, phase, started_at) VALUES (?,?,'ingest',?)
         `).run(projectId, projectId, new Date().toISOString());
+      }
+      if (skipped > 0) {
         db.prepare(`
           INSERT INTO run_event (id, run_id, at, code, severity, payload_json)
           VALUES (?,?,?,'document-skipped','degradation',?)
         `).run(randomUUID(), projectId, new Date().toISOString(), JSON.stringify({ documents: skipped }));
+      }
+      // Read, not refused — and still written down. It explains a later
+      // epubcheck complaint that is the book's and not ours, and it is the one
+      // trace of the thing that once made a whole book invisible.
+      if (looseType > 0) {
+        db.prepare(`
+          INSERT INTO run_event (id, run_id, at, code, severity, payload_json)
+          VALUES (?,?,?,'html-media-type','info',?)
+        `).run(randomUUID(), projectId, new Date().toISOString(), JSON.stringify({ documents: looseType }));
       }
 
       db.exec("COMMIT");
