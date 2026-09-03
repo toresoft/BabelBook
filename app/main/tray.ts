@@ -8,7 +8,7 @@ import type { EngineMessage } from "../shared/run.ts";
  * starting an application to check it.
  */
 export interface Lifecycle {
-  onWindowClose(hasRunningWork: boolean, hasTray: boolean): "hide" | "quit";
+  onWindowClose(hasRunningWork: boolean, hasTray: boolean): "hide" | "ask" | "quit";
   onQuitRequested(hasRunningWork: boolean): "confirm" | "quit";
 }
 
@@ -22,9 +22,19 @@ export interface Lifecycle {
  * terminal. A desktop that offers no tray is not rare — GNOME without an
  * extension, and any session where the icon fails to register — so this is the
  * ordinary case, not the exotic one.
+ *
+ * And there it must not simply close either, which is the subtler half. Closing
+ * ran to the end, `window-all-closed` asked the application to quit,
+ * `before-quit` raised the question at last — and Cancel then stopped the
+ * quitting of an application whose only window had already been destroyed. The
+ * process stayed alive with nothing to show and nothing to click.
+ *
+ * So with work in flight and no tray the answer is `ask`: the close is held,
+ * the question is put, and Cancel still has a window to keep.
  */
-export function onWindowClose(hasRunningWork: boolean, hasTray: boolean): "hide" | "quit" {
-  return hasRunningWork && hasTray ? "hide" : "quit";
+export function onWindowClose(hasRunningWork: boolean, hasTray: boolean): "hide" | "ask" | "quit" {
+  if (!hasRunningWork) return "quit";
+  return hasTray ? "hide" : "ask";
 }
 
 /**

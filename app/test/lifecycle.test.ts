@@ -12,10 +12,24 @@ describe("lifecycle", () => {
     expect(onWindowClose(false, true)).toBe("quit");
   });
 
-  // Production break: the window vanishes, the process lives on, and the only
-  // way back is a kill from a terminal.
-  it("quits rather than hiding when there is no tray to come back from", () => {
-    expect(onWindowClose(true, false)).toBe("quit");
+  /**
+   * Production break, the second time.
+   *
+   * Answering `quit` here let the window close before anybody was asked
+   * anything: the close ran to the end, `window-all-closed` asked to quit,
+   * `before-quit` finally raised the question — and Cancel stopped the
+   * quitting of an application whose only window had already been destroyed.
+   * The process stayed alive, invisible, with no tray to call it back from.
+   *
+   * The question has to come first, so that Cancel has a window left to keep.
+   */
+  it("asks before closing when there is no tray to come back from", () => {
+    expect(onWindowClose(true, false)).toBe("ask");
+  });
+
+  it("closes without asking when nothing is running, tray or not", () => {
+    expect(onWindowClose(false, false)).toBe("quit");
+    expect(onWindowClose(false, true)).toBe("quit");
   });
 
   it("asks for confirmation before quitting with work in flight", () => {

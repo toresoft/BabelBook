@@ -87,7 +87,12 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    if (glue.window === null || glue.window === undefined) return;
+    // A window that is gone, or destroyed, is replaced rather than woken: this
+    // is the last way back, and it must work even from a state nobody planned.
+    if (glue.window === null || glue.window === undefined || glue.window.isDestroyed()) {
+      openWindow();
+      return;
+    }
     if (!glue.window.isVisible()) glue.window.show();
     if (glue.window.isMinimized()) glue.window.restore();
     glue.window.focus();
@@ -297,10 +302,16 @@ function openWindow(): void {
   // Closing the window while a book is in flight hides it; the work goes on.
   window.on("close", (event) => {
     if (glue.quitting) return;
-    if (onWindowClose(glue.runtime?.active != null, glue.tray !== null) === "hide") {
-      event.preventDefault();
-      window.hide();
-    }
+    const decision = onWindowClose(glue.runtime?.active != null, glue.tray !== null);
+    if (decision === "quit") return;
+
+    // Held either way: what happens next needs the window still to exist. For
+    // `hide` that is the whole point, and for `ask` it is what gives Cancel
+    // something to keep — `askQuit` closes the window itself, through
+    // `glue.quitting`, once the answer is yes.
+    event.preventDefault();
+    if (decision === "hide") window.hide();
+    else void askQuit();
   });
 
   glue.window = window;
@@ -537,22 +548,27 @@ app.whenReady().then(async () => {
   });
 
   handleRendererProtocol(devServerUrl === undefined ? RENDERER_ROOT : "", join(userDataDir, "projects"));
-  glue.tray = buildTray();
+  // Constructed is not shown, and `glue.tray` means shown.
+  //
+  // The object is built here and held aside; it becomes the application's tray
+  // only once the desktop's watcher says it took the item. Assigning first and
+  // withdrawing later left two seconds in which the application believed in a
+  // tray it had not yet checked — and two seconds is long enough to close a
+  // window into one that was never going to appear.
+  //
+  // The answer is not waited for: the window must not be held up by it, and
+  // nothing can hide before it arrives, because hiding needs a tray.
+  const pending = buildTray();
   openWindow();
 
-  // Constructed is not shown. Where the desktop never took the item, the tray
-  // is let go of rather than believed in: `onWindowClose` reads `glue.tray`,
-  // and a window hidden into an icon that does not exist is a book its owner
-  // cannot reach.
-  //
-  // Not awaited: the answer takes up to two seconds and the window must not
-  // wait for it. Nothing can be hidden before it arrives either, because
-  // hiding needs both a tray and a run, and a run needs a window first.
-  if (glue.tray !== null) {
+  if (pending !== null) {
     void trayIsShown().then((shown) => {
-      if (shown || glue.tray === null) return;
-      glue.tray.destroy();
-      glue.tray = null;
+      if (shown) {
+        glue.tray = pending;
+        refreshTray();
+      } else {
+        pending.destroy();
+      }
     });
   }
 
