@@ -443,6 +443,44 @@ export function modelContextOf(db: DatabaseSync, providerId: string, modelId: st
  * impose answers in prose, and the instructions it was sent — the short ones,
  * which say nothing about a format — have nothing to fall back on.
  */
+/**
+ * Writes down that an endpoint refused a capability the catalogue claimed.
+ *
+ * The catalogue is not wrong about the model — it is answering a different
+ * question. `structured_output` says the model can produce a shape; whether it
+ * can be *asked* for one belongs to the endpoint in front of it, and only a
+ * refused call ever finds that out. This is where the finding is kept, so the
+ * next run starts from what happened rather than from what was advertised.
+ *
+ * Merged into whatever the row holds, never replacing it: the other three
+ * capabilities are none of this fact's business.
+ */
+export function denyCapability(
+  db: DatabaseSync, providerId: string, modelId: string, name: string,
+): void {
+  const row = db.prepare(`
+    SELECT capabilities FROM provider_model
+     WHERE provider_id = ? AND model_id = ?
+  `).get(providerId, modelId) as { capabilities: string | null } | undefined;
+  if (row === undefined) return;
+
+  let held: Record<string, unknown> = {};
+  if (row.capabilities !== null) {
+    try {
+      const parsed = JSON.parse(row.capabilities) as unknown;
+      if (typeof parsed === "object" && parsed !== null) held = parsed as Record<string, unknown>;
+    } catch {
+      // A row nobody can read is a row worth replacing with the one fact we
+      // are sure of, rather than one worth leaving as it was.
+    }
+  }
+
+  db.prepare(`
+    UPDATE provider_model SET capabilities = ?
+     WHERE provider_id = ? AND model_id = ?
+  `).run(JSON.stringify({ ...held, [name]: false }), providerId, modelId);
+}
+
 export function structuredOf(db: DatabaseSync, providerId: string, modelId: string): boolean {
   const row = db.prepare(`
     SELECT capabilities FROM provider_model

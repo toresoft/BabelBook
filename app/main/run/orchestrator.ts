@@ -2,6 +2,7 @@ import { extractCandidates } from "../../../core/analyze/candidates.ts";
 import { indexCodeBlocks } from "../../../core/analyze/code.ts";
 import { isWork, type TranslationUnit } from "../../../core/epub/index.ts";
 import { nullSink, type LlmBackend, type LogSink, type ProjectStore } from "../../../core/ports.ts";
+import { negotiatingBackend } from "../../../core/translate/negotiate.ts";
 import { retryingBackend } from "../../../core/translate/retry.ts";
 import { translateUnits } from "../../../core/translate/engine.ts";
 import { countingBackend, type Usage } from "../../../core/translate/usage.ts";
@@ -103,14 +104,27 @@ export async function runProject(deps: RunProjectDeps): Promise<RunSummary> {
   // Counting innermost, retrying outermost: the counter must see the calls the
   // provider actually answered, and the three phases that speak to a model
   // inherit the retry without any of them having to remember it.
-  const backend = retryingBackend(
-    countingBackend(deps.backend, (total) => {
-      spent.tokensIn = total.tokensIn;
-      spent.tokensOut = total.tokensOut;
-      spent.reasoningTokens = total.reasoningTokens;
-      emit({ type: "usage", ...total });
-    }),
-    { classify: classifyProviderError, log, sleep },
+  // Counting innermost, retrying around it, negotiating outermost: the counter
+  // must see the calls the provider actually answered, the three phases that
+  // speak to a model inherit the retry without remembering it, and the layer
+  // that can stop claiming a shape has to be the one whose `structured` the
+  // engine reads — the decorators below it copy that answer once, at the
+  // moment they are built, and would freeze it at the refused claim.
+  const backend = negotiatingBackend(
+    retryingBackend(
+      countingBackend(deps.backend, (total) => {
+        spent.tokensIn = total.tokensIn;
+        spent.tokensOut = total.tokensOut;
+        spent.reasoningTokens = total.reasoningTokens;
+        emit({ type: "usage", ...total });
+      }),
+      { classify: classifyProviderError, log, sleep },
+    ),
+    {
+      classify: classifyProviderError,
+      log,
+      onDowngrade: () => emit({ type: "capability", name: "structuredOutput", supported: false }),
+    },
   );
 
   const actor = deps.machineSnapshot === undefined

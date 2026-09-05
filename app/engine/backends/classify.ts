@@ -19,6 +19,18 @@ import { BabelError } from "../../../core/errors.ts";
 /** Phrases providers use for the one 429 that waiting will not fix. */
 const OUT_OF_CREDIT = /insufficient (credit|quota|balance)|out of credit|billing|payment required/i;
 const CONTEXT_TOO_LONG = /context length|context window|too many tokens|maximum.*tokens|prompt is too long/i;
+/**
+ * How an endpoint says it cannot be asked to impose a shape.
+ *
+ * A model that can produce structured output and an endpoint that can be
+ * asked for it are two different facts, and the catalogue only knows the
+ * first: DeepSeek's API takes `text` or `json_object` and refuses the
+ * `json_schema` the SDK sends for a schema. The words vary by provider, the
+ * two names in them do not.
+ */
+const SHAPE_REFUSED = /response_format|json_schema|structured output/i;
+/** Long enough for a provider's sentence, short enough not to be a transcript. */
+const BODY_KEPT = 500;
 const UNREACHABLE = new Set([
   "ECONNRESET", "ECONNREFUSED", "ENOTFOUND", "EAI_AGAIN", "EPIPE", "ETIMEDOUT", "UND_ERR_SOCKET",
 ]);
@@ -94,6 +106,27 @@ function apiCallError(error: APICallError): BabelError {
   if ((status !== undefined && status >= 500) || error.isRetryable) {
     return new BabelError("the provider answered with an error of its own", {
       code: "PROVIDER_SERVER_ERROR", fault: "transient", detail, cause: error,
+    });
+  }
+
+  // A 400 is the provider saying the request itself is wrong, which is never
+  // a defect in this application and never something a retry mends: it is the
+  // two sides disagreeing about what may be sent, and only the settings — or
+  // the contract the engine chose — can settle it.
+  //
+  // The body comes along, truncated. It is the whole answer to a 400 and it
+  // used to be dropped, which left the diagnostics file unable to say anything
+  // about the one failure that explains itself. Safe where the request is not:
+  // the key travels in the request, and nothing here is copied wholesale.
+  if (status === 400) {
+    const kept = body === "" ? detail : { ...detail, body: body.slice(0, BODY_KEPT) };
+    if (SHAPE_REFUSED.test(body) || SHAPE_REFUSED.test(error.message)) {
+      return new BabelError("this endpoint cannot be asked to impose a shape", {
+        code: "PROVIDER_REFUSED_SHAPE", fault: "config", detail: kept, cause: error,
+      });
+    }
+    return new BabelError("the provider refused the request as written", {
+      code: "PROVIDER_REFUSED_REQUEST", fault: "config", detail: kept, cause: error,
     });
   }
 

@@ -109,6 +109,14 @@ export type EngineMessage =
   | { type: "phase"; phase: string }
   | { type: "progress"; phase: RunPhase; done: number; total: number }
   | { type: "usage"; tokensIn: number; tokensOut: number; reasoningTokens: number }
+  /**
+   * A capability the catalogue claimed and the endpoint denied.
+   *
+   * The engine learns it and cannot keep it: the claim lives on a row in a
+   * database this process does not reach. So it is sent, once, to the side
+   * that owns the row — and the next run never pays the refused call again.
+   */
+  | { type: "capability"; name: "structuredOutput"; supported: false }
   | { type: "gate"; gate: "terms" | "code" }
   | { type: "transition"; event: RunTransition }
   | { type: "done"; summary: RunSummary }

@@ -540,3 +540,39 @@ describe("where the runtime reads the two gates", () => {
     expect(start.config).toMatchObject({ autoAcceptTerms: false, autoAcceptExclusions: true });
   });
 });
+
+/**
+ * A capability the catalogue claimed and the endpoint denied.
+ *
+ * The engine is where the refusal is felt and the database is where the claim
+ * lives, so the fact has to cross the seam between them. If it does not, every
+ * run of that book pays the same refused call to learn the same thing.
+ */
+describe("a capability the endpoint refused", () => {
+  it("is written onto the model, so the next run never asks again", async () => {
+    const { db, engine } = await running();
+    db.prepare("UPDATE provider_model SET capabilities = ? WHERE id = 'pm1'")
+      .run(JSON.stringify({ toolCall: true, reasoning: true, structuredOutput: true, attachment: false }));
+
+    engine.emit({ type: "capability", name: "structuredOutput", supported: false });
+
+    const row = db.prepare("SELECT capabilities FROM provider_model WHERE id = 'pm1'")
+      .get() as { capabilities: string };
+    const held = JSON.parse(row.capabilities) as Record<string, boolean>;
+    expect(held["structuredOutput"]).toBe(false);
+    // Only the one that was denied: the rest of the row is not this message's
+    // to have an opinion about.
+    expect(held["toolCall"]).toBe(true);
+    expect(held["reasoning"]).toBe(true);
+  });
+
+  it("writes the denial even onto a model the catalogue said nothing about", async () => {
+    const { db, engine } = await running();
+
+    engine.emit({ type: "capability", name: "structuredOutput", supported: false });
+
+    const row = db.prepare("SELECT capabilities FROM provider_model WHERE id = 'pm1'")
+      .get() as { capabilities: string | null };
+    expect(JSON.parse(row.capabilities ?? "{}")["structuredOutput"]).toBe(false);
+  });
+});

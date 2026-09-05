@@ -56,6 +56,11 @@ export function isEngineMessage(message: unknown): message is Exclude<EngineMess
       || message.event === "CODE_INDEXED"
       || message.event === "TRANSLATED"
       || message.event === "COMPOSED";
+    // Narrow on purpose: this is a denial, never a claim. A message that could
+    // turn a capability *on* would let the engine talk the application into
+    // asking for something no endpoint ever agreed to.
+    case "capability":
+      return message.name === "structuredOutput" && message.supported === false;
     case "done": return isRecord(message.summary);
     case "failed": return typeof message.code === "string";
     default: return false;

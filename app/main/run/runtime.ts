@@ -16,7 +16,7 @@ import { diagnosticsDir, pruneDiagnostics } from "./diagnostics.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
 import { enterState, leaveState } from "./states.ts";
-import { modelContextOf, modelPricesOf, reasoningOf } from "../providers/store.ts";
+import { denyCapability, modelContextOf, modelPricesOf, reasoningOf } from "../providers/store.ts";
 import type { Workspace } from "../workspace.ts";
 import type { ProjectEvent } from "../../../core/workflow/project.machine.ts";
 
@@ -305,6 +305,18 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
         tokensOut: message.tokensOut,
         reasoningTokens: message.reasoningTokens,
       });
+      return;
+    }
+    if (message.type === "capability") {
+      // The engine felt the refusal; the claim it contradicts lives here. The
+      // run itself has already gone on under the other contract — this is only
+      // so the next one does not pay the same call to learn the same thing.
+      const configured = db.prepare(
+        "SELECT provider_id, model_id FROM project WHERE id = ?",
+      ).get(activeId) as { provider_id: string | null; model_id: string | null } | undefined;
+      if (configured?.provider_id != null && configured.model_id != null) {
+        denyCapability(db, configured.provider_id, configured.model_id, message.name);
+      }
       return;
     }
     if (message.type === "done") {

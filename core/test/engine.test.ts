@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { BabelError } from "../errors.ts";
 import { translateChunk, translateUnits } from "../translate/engine.ts";
+import { negotiatingBackend } from "../translate/negotiate.ts";
 import { FakeBackend } from "./fake/backend.ts";
 import { FakeStore, fakeStore } from "./fake/store.ts";
 import type { Chunk } from "../translate/plan.ts";
@@ -60,6 +62,54 @@ describe("translateChunk", () => {
     expect(out.translated.get("c1.xhtml#1")).toBe("Passo quattro: le norme");
   });
 
+
+  /**
+   * The failure that cost a whole run: a catalogue saying the model can be
+   * held to a shape, in front of an endpoint that cannot be asked to hold it
+   * to one. Three phases were paid for, and the first chunk of the fourth
+   * ended the run on a 400.
+   *
+   * Asked again in words instead. The refused call is not an attempt — no
+   * translation was ever attempted — so a chunk does not spend a third of its
+   * budget discovering a fact about the endpoint.
+   */
+  it("asks in words when the endpoint refuses to impose a shape", async () => {
+    const refused = new BabelError("no shape here", {
+      code: "PROVIDER_REFUSED_SHAPE", fault: "config",
+    });
+    let asked = 0;
+    const endpoint = new FakeBackend((call) => {
+      asked++;
+      if (call.schema !== undefined) throw refused;
+      return {
+        text: ok("[u:c1.xhtml#1]\nUno", 1),
+        tokensIn: 0, tokensOut: 0, reasoningTokens: 0, finishReason: "stop",
+      };
+    }, true);
+
+    const backend = negotiatingBackend(endpoint, { classify: (error) => error as BabelError });
+    const out = await translateChunk({ chunk: chunk([unit(1, "One")]), terms: [], backend });
+
+    expect(out.translated.get("c1.xhtml#1")).toBe("Uno");
+    expect(out.attempts).toBe(1);
+    expect(asked).toBe(2);
+    // The second went out under the other contract entire: no schema, and the
+    // header the words themselves have to ask for.
+    expect(endpoint.calls[1]!.schema).toBeUndefined();
+    expect(endpoint.calls[1]!.system).toContain("UNITS");
+  });
+
+  /** A refusal that repeats is not an escape hatch: it ends the chunk. */
+  it("gives up when the endpoint refuses the words as well", async () => {
+    const refused = new BabelError("no", { code: "PROVIDER_REFUSED_SHAPE", fault: "config" });
+    const backend = negotiatingBackend(
+      new FakeBackend(() => { throw refused; }, true),
+      { classify: (error) => error as BabelError },
+    );
+
+    await expect(translateChunk({ chunk: chunk([unit(1, "One")]), terms: [], backend }))
+      .rejects.toThrow(refused);
+  });
 
   it("accepts a good answer in one attempt", async () => {
     const out = await translateChunk({

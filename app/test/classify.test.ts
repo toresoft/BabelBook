@@ -77,6 +77,68 @@ describe("classifying what a provider answered", () => {
     expect(classified.fault).toBe("config");
   });
 
+  /**
+   * The failure this taxonomy was missing, and the one that cost a run.
+   *
+   * A model can produce structured output and the endpoint in front of it can
+   * still have no way to ask for one: DeepSeek's API takes `text` or
+   * `json_object` and nothing else. The 400 that comes back is not a defect
+   * and not a fact about the book — it is the two sides disagreeing about the
+   * contract, and the engine has a second contract to fall back on.
+   */
+  it("recognises an endpoint that cannot be asked to impose a shape", () => {
+    const classified = classifyProviderError(apiError({
+      statusCode: 400,
+      body: '{"error":{"message":"response_format.type must be one of text, json_object"}}',
+    }));
+    expect(classified.code).toBe("PROVIDER_REFUSED_SHAPE");
+    expect(classified.fault).toBe("config");
+  });
+
+  it("recognises it from the word the other providers use for the same thing", () => {
+    const classified = classifyProviderError(apiError({
+      statusCode: 400, body: '{"error":{"message":"json_schema is not supported by this model"}}',
+    }));
+    expect(classified.code).toBe("PROVIDER_REFUSED_SHAPE");
+  });
+
+  /**
+   * Every other 400 is still a refusal of the request as written, and the
+   * remedy is still in the settings rather than in this code. It was a
+   * `defect` before, which sent the reader to look for a bug in the
+   * application for something only they could fix.
+   */
+  it("calls any other 400 a matter of configuration, not a defect", () => {
+    const classified = classifyProviderError(apiError({
+      statusCode: 400, body: '{"error":{"message":"temperature must be <= 2"}}',
+    }));
+    expect(classified.code).toBe("PROVIDER_REFUSED_REQUEST");
+    expect(classified.fault).toBe("config");
+  });
+
+  /**
+   * The provider's own sentence is the whole answer to a 400, and it used to
+   * be thrown away — leaving a file kept for understanding failed runs unable
+   * to say anything about the one failure that explains itself.
+   *
+   * The response is safe in the way the request is not: the key travels in the
+   * request, which is why nothing here is ever copied wholesale.
+   */
+  it("keeps the provider's words for a 400, and still not the key", () => {
+    const classified = classifyProviderError(apiError({
+      statusCode: 400, body: '{"error":{"message":"response_format.type must be one of text, json_object"}}',
+    }));
+    expect(String(classified.detail["body"])).toContain("must be one of text, json_object");
+    expect(JSON.stringify(classified.detail)).not.toContain("sk-secret-key");
+  });
+
+  it("truncates a body long enough to be a transcript", () => {
+    const classified = classifyProviderError(apiError({
+      statusCode: 400, body: `{"error":"${"x".repeat(4000)}"}`,
+    }));
+    expect(String(classified.detail["body"]).length).toBeLessThanOrEqual(520);
+  });
+
   it("calls a socket that went away transient", () => {
     const classified = classifyProviderError(
       Object.assign(new Error("fetch failed"), { code: "ECONNRESET" }),

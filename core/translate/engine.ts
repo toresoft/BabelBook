@@ -113,12 +113,30 @@ export async function translateChunk(input: ChunkInput): Promise<ChunkOutcome> {
       ...diagnose(rejections),
     ].join("\n");
 
-    const result = await input.backend.call({
-      prompt,
-      system: structured ? buildSchemaSystem(request) : buildSystem(request),
-      ...(structured ? { schema: TRANSLATION_SCHEMA } : {}),
-      ...(input.signal === undefined ? {} : { signal: input.signal }),
-    });
+    let result: LlmResult;
+    try {
+      result = await input.backend.call({
+        prompt,
+        system: structured ? buildSchemaSystem(request) : buildSystem(request),
+        ...(structured ? { schema: TRANSLATION_SCHEMA } : {}),
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      });
+    } catch (error) {
+      // The one failure that says nothing about this chunk: the endpoint
+      // cannot be asked to impose a shape at all. `negotiatingBackend` has
+      // already dropped the claim, so the next turn of this loop builds the
+      // same request under the other contract — the words that ask for the
+      // shape instead of a schema that imposes it.
+      //
+      // It costs no attempt, because no translation was attempted: charging
+      // one would spend a third of a chunk's budget learning a fact about the
+      // endpoint rather than about the book.
+      if (structured && input.backend.structured !== true) {
+        attempts--;
+        continue;
+      }
+      throw error;
+    }
     tokensIn += result.tokensIn;
     tokensOut += result.tokensOut;
     lastAnswer = {
