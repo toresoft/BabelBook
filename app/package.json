@@ -1,6 +1,6 @@
 {
   "name": "@babelbook/app",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Translates EPUB books with a language model",
   "author": {
     "name": "toresoft",
