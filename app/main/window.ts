@@ -1,4 +1,5 @@
 import { BrowserWindow, nativeImage, nativeTheme } from "electron";
+import { MIN_WINDOW_HEIGHT, MIN_WINDOW_WIDTH } from "../shared/layout.ts";
 import { APP_ICON } from "./icons.ts";
 
 export interface MainWindowOptions {
@@ -28,8 +29,12 @@ export function createMainWindow(options: MainWindowOptions): BrowserWindow {
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
-    minWidth: 900,
-    minHeight: 600,
+    // Not a taste: under `MIN_WINDOW_WIDTH` the project screen drops the
+    // book's column under the list, and the two-column screen the whole
+    // layout is built around stops existing. The floor is what makes that
+    // width unreachable rather than merely unadvisable.
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: MIN_WINDOW_HEIGHT,
     backgroundColor: SURFACE,
     // Wayland takes the window's icon from the desktop entry and ignores this;
     // X11 and Windows use it, and a window with no icon is a grey square in

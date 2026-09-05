@@ -100,10 +100,15 @@ export class Library implements OnDestroy {
     return new Intl.NumberFormat(this.#transloco.getActiveLang()).format(n);
   }
 
-  /** The book the composition wrote, opened with whatever the desktop uses. */
+  /**
+   * The book, opened with whatever the desktop uses.
+   *
+   * Asked for by project, not by path: whether a composition has to run first
+   * is the main process's answer to give, and a tile re-deriving it from a
+   * state's name would be free to disagree with the book's own screen.
+   */
   open(project: ProjectSummary): void {
-    if (project.outputPath === null) return;
-    void this.#ipc.invoke("file.open", { path: project.outputPath }).catch(() => {});
+    void this.#ipc.invoke("project.download", { projectId: project.id }).catch(() => {});
   }
 
   /** The badge tone the state wears: the colour of what the state means. */

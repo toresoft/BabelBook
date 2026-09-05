@@ -87,9 +87,9 @@
 
     <bb-side
       [project]="found"
+      [downloading]="downloading()"
       (start)="start()"
       (pause)="pause()"
-      (compose)="compose()"
       (download)="download()"
       (remove)="remove()" />
   } @else {

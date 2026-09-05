@@ -361,11 +361,6 @@ export function buildHandlers(deps: IpcDeps): Handlers {
       deps.broadcast("project.changed", { id: projectId });
     },
 
-    "run.compose": async ({ projectId }) => {
-      await deps.composeAgain(projectId);
-      deps.broadcast("project.changed", { id: projectId });
-    },
-
     "run.pause": async ({ projectId }) => {
       await deps.pauseRun(projectId);
       deps.broadcast("project.changed", { id: projectId });
@@ -424,6 +419,44 @@ export function buildHandlers(deps: IpcDeps): Handlers {
     "catalog.importFile": async () => deps.catalog.importFile(),
 
     "project.get": async ({ id }) => projectDetail(deps.db, id),
+
+    /**
+     * The book, composed if it still can be, and then handed to the desktop.
+     *
+     * The window used to carry a Recompose button beside the download, which
+     * asked the reader to know the difference between a book and the step
+     * that writes one. It does not any more: the composition happens here,
+     * under the only act a reader actually wants.
+     *
+     * The machine is asked whether it accepts `COMPOSE`, rather than the
+     * state being read for its name — same rule the buttons follow, in the
+     * one process that owns the machine, so the two screens that offer the
+     * download cannot come to different answers.
+     */
+    "project.download": async ({ projectId }) => {
+      const before = projectDetail(deps.db, projectId);
+      if (before === null) throw new Error(`no such project: ${projectId}`);
+
+      let path = before.outputPath;
+      if (before.actions.includes("COMPOSE")) {
+        try {
+          await deps.composeAgain(projectId);
+          deps.broadcast("project.changed", { id: projectId });
+          path = projectDetail(deps.db, projectId)?.outputPath ?? path;
+        } catch (error) {
+          // The engine takes one book at a time, so a download asked while
+          // another book runs is refused. That is no reason to hand back
+          // nothing: what the last composition wrote is still a book, and a
+          // book is what was asked for. The refusal only reaches the window
+          // when there is none.
+          if (path === null) throw error;
+        }
+      }
+
+      if (path === null) throw new Error(`NOTHING_TO_OPEN: ${projectId}`);
+      assertProduced(deps.db, path);
+      await deps.openPath(path);
+    },
 
     "units.list": async ({ projectId, ...query }) => listUnits(deps.db, projectId, query),
 

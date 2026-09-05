@@ -117,7 +117,10 @@ describe("Library", () => {
     download.click();
     await fixture.whenStable();
 
-    expect(calls(invoke, "file.open")[0]![1]).toEqual({ path: "/w/p1/out/a-book-it.epub" });
+    // The shelf asks for the book by name of project, not by path: whether a
+    // composition has to run first is the main process's answer to give, and
+    // the tile has no business re-deriving it from a state's name.
+    expect(calls(invoke, "project.download")[0]![1]).toEqual({ projectId: "p1" });
   });
 
   /**

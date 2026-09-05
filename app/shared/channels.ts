@@ -86,13 +86,20 @@ export interface Invocations {
   "project.export": { req: { id: string; to: string; from?: string }; res: void };
   /** Null when the project is gone: another window may have deleted it. */
   "project.get": { req: { id: string }; res: ProjectDetail | null };
+  /**
+   * The book, made if the machine still accepts making it, and then opened.
+   *
+   * Composing is not an act the window offers: a reader wants the book, not
+   * the step that writes it. The decision of whether to compose first is
+   * asked of the machine in the main process, once — two screens re-deriving
+   * it from a state name would be free to disagree.
+   */
+  "project.download": { req: { projectId: string }; res: void };
   "units.list": {
     req: { projectId: string } & UnitQuery;
     res: { units: UnitRow[]; total: number };
   };
   "run.start": { req: { projectId: string }; res: void };
-  /** The composition again, over translations already held: no model is asked. */
-  "run.compose": { req: { projectId: string }; res: void };
   "run.pause": { req: { projectId: string }; res: void };
   "run.approve": { req: { projectId: string; gate: "terms" | "code" }; res: void };
   /** The last run's log: the states the project lived through, beside the events its engine reported. */
@@ -219,8 +226,8 @@ export const INVOCATIONS = [
   "ui.chooseSave",
   "env.hasKey",
   "projects.list", "projects.counts", "project.chooseEpub", "project.create", "project.update", "project.delete",
-  "project.export", "project.get", "units.list",
-  "run.start", "run.compose", "run.pause", "run.approve", "run.events", "run.diagnostics",
+  "project.export", "project.get", "project.download", "units.list",
+  "run.start", "run.pause", "run.approve", "run.events", "run.diagnostics",
   "terms.list", "terms.decide", "terms.add", "terms.promote",
   "terms.previewInvalidation", "terms.invalidate",
   "exclusions.list", "exclusions.force", "exclusions.clear",

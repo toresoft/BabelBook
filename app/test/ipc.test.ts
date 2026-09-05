@@ -891,3 +891,96 @@ describe("run.diagnostics", () => {
     expect(logged[0]).toMatchObject({ level: "error", detail: { channel: "provider.verify" } });
   });
 });
+
+/**
+ * Composing is no longer an act the window offers.
+ *
+ * A reader wants the book, not the step that writes it, so the button says
+ * "download" and the composition happens under it. The rule that decides
+ * whether to compose is asked of the machine here, in the process that owns
+ * it — never re-derived by the two screens that offer the button, which would
+ * then be free to disagree.
+ */
+describe("project.download", () => {
+  async function withBook(options: {
+    state?: string;
+    composed?: boolean;
+    compose?: () => Promise<void>;
+  } = {}) {
+    const { dir, db, deps: d } = await deps();
+    const workspace = `${dir}/projects/p1`;
+    db.prepare(`
+      INSERT INTO project (id, filename, title, workspace_path, source_sha256, created_at,
+                           target_language, state, cache_key)
+      VALUES ('p1','a.epub','A',?,'h','2026-08-24','it',?,'k1')
+    `).run(workspace, options.state ?? "done");
+
+    const produced = `${workspace}/output/a.it.epub`;
+    if (options.composed !== false) {
+      db.prepare(`
+        INSERT INTO project_phase_result (project_id, phase, cache_key, result_json)
+        VALUES ('p1', 'compose', 'k1', ?)
+      `).run(JSON.stringify({ outputPath: produced }));
+    }
+
+    const opened: string[] = [];
+    const composed: string[] = [];
+    return {
+      produced, opened, composed, db,
+      handlers: buildHandlers({
+        ...d,
+        openPath: async (path: string) => { opened.push(path); },
+        composeAgain: options.compose ?? (async (projectId: string) => { composed.push(projectId); }),
+      }),
+    };
+  }
+
+  it("composes the book before handing it to the desktop", async () => {
+    const { produced, opened, composed, handlers } = await withBook();
+
+    await handlers["project.download"]({ projectId: "p1" });
+
+    expect(composed).toEqual(["p1"]);
+    expect(opened).toEqual([produced]);
+  });
+
+  /**
+   * The engine takes one book at a time, so a download asked while another
+   * book is running is refused — and a refusal is no reason to hand back
+   * nothing. What the last composition wrote is still a book, and a book is
+   * what was asked for.
+   */
+  it("opens the book that already exists when the composition is refused", async () => {
+    const { produced, opened, handlers } = await withBook({
+      compose: async () => { throw new Error("ENGINE_BUSY"); },
+    });
+
+    await handlers["project.download"]({ projectId: "p1" });
+
+    expect(opened).toEqual([produced]);
+  });
+
+  it("lets the refusal through when there is no book to fall back on", async () => {
+    const { opened, handlers } = await withBook({
+      composed: false,
+      compose: async () => { throw new Error("ENGINE_BUSY"); },
+    });
+
+    await expect(handlers["project.download"]({ projectId: "p1" }))
+      .rejects.toThrow(/ENGINE_BUSY/);
+    expect(opened).toEqual([]);
+  });
+
+  /**
+   * A state the machine will not compose from is not an error either: the
+   * book on disk is handed over as it is, and nothing is spent proving it.
+   */
+  it("hands over the book unchanged when the machine refuses to compose", async () => {
+    const { produced, opened, composed, handlers } = await withBook({ state: "running" });
+
+    await handlers["project.download"]({ projectId: "p1" });
+
+    expect(composed).toEqual([]);
+    expect(opened).toEqual([produced]);
+  });
+});

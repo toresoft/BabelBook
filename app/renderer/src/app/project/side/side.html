@@ -115,30 +115,36 @@
     </div>
 
     <div class="side__actions">
-      @if (isDownloadable()) {
-        <div class="side__action" data-testid="side-action">
-          <button type="button" class="btn btn-primary" data-testid="side-download" (click)="download.emit()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" aria-hidden="true">
-              <path d="M12 4v11"></path><path d="M7 12l5 5 5-5"></path><path d="M5 20h14"></path>
-            </svg>
-            {{ t('project.download') }}
-          </button>
-        </div>
-        @if (showComposeBeside()) {
-          <!-- The retry `done` deliberately still allows: quiet, beside the
-               download rather than instead of it, because the download stays
-               the act worth top billing. -->
-          <button type="button" class="btn btn-sm btn-ghost" data-testid="project-compose"
-                  (click)="compose.emit()">
-            {{ t('library.compose') }}
-          </button>
-        }
-      } @else if (primary(); as act) {
+      @if (primary(); as act) {
         <div class="side__action" data-testid="side-action">
           <button type="button" class="btn btn-primary" [attr.data-testid]="testIdFor(act.event)"
                   (click)="onPrimary(act.event)">
             {{ t(act.label) }}
+          </button>
+        </div>
+      }
+
+      <!-- One button, in two sizes. Alone it is the act of the column; beside
+           a run that can still be picked up it steps back and goes small —
+           but it never turns into the word "recompose", because the step that
+           writes the book is not a thing a reader was ever asking for. It
+           happens inside `project.download`, under this. -->
+      @if (isDownloadable()) {
+        <div class="side__action" [class.side__action--beside]="showDownloadBeside()"
+             [attr.data-testid]="showDownloadBeside() ? null : 'side-action'">
+          <button type="button" data-testid="side-download" class="btn"
+                  [class.btn-primary]="!showDownloadBeside()" [class.btn-sm]="showDownloadBeside()"
+                  [disabled]="downloading()" (click)="download.emit()">
+            @if (downloading()) {
+              <span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
+              {{ t('state.composing') }}
+            } @else {
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 4v11"></path><path d="M7 12l5 5 5-5"></path><path d="M5 20h14"></path>
+              </svg>
+              {{ t('project.download') }}
+            }
           </button>
         </div>
       }

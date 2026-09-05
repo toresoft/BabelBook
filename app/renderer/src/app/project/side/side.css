@@ -34,6 +34,10 @@
    one the column is actually offering. */
 .side__actions { display: flex; gap: 0.5rem; padding: 0.75rem 1.5rem 1.5rem; align-items: stretch; }
 .side__action { flex: 1; display: flex; }
+/* A download that shares the row with an act outranking it does not claim
+   half of it: the run is what the reader came back for, and the book as far
+   as it got is the smaller offer beside it. */
+.side__action--beside { flex: 0 0 auto; }
 .side__action .btn { flex: 1; }
 
 .side__meta-rule { border-top: 1px dashed var(--line); margin: 0 1.5rem 1.5rem; }

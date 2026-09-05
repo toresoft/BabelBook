@@ -83,6 +83,7 @@ function mount(invoke = bridge(), bus = events()) {
 
 const catalogue = it_IT as unknown as {
   library: Record<string, string>;
+  state: Record<string, string>;
   phaseCounts: Record<string, string>;
   project: Record<string, unknown>;
 };
@@ -103,46 +104,55 @@ describe("Project", () => {
   /**
    * A book composed wrong stayed composed wrong: `done` allowed nothing, so
    * the screen showed no button and the only way out was to translate the
-   * whole book again.
+   * whole book again. The way back is still there — it is just no longer
+   * spelled "recompose". The screen asks for the book, and the main process
+   * decides whether one has to be written first.
    */
-  it("offers the composition again when the machine allows it", async () => {
-    const { fixture, invoke } = mount(bridge({ ...detail, state: "done", actions: ["COMPOSE"] }));
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const button = fixture.nativeElement.querySelector("[data-testid=project-compose]");
-    expect(button).not.toBeNull();
-    button.click();
-    await fixture.whenStable();
-
-    expect(invoke).toHaveBeenCalledWith("run.compose", { projectId: "p1" });
-  });
-
-  /**
-   * `done` is not final — `COMPOSE` is the retry the machine deliberately
-   * still allows — so a book that already has an EPUB must not lose the way
-   * back to composing it again. The download just outranks it for top
-   * billing: both stay reachable.
-   */
-  it("keeps composing reachable beside the download, once there is one", async () => {
+  it("asks for the book, and never for the step that writes it", async () => {
     const { fixture, invoke } = mount(bridge({
-      ...detail, state: "done", actions: ["COMPOSE"], outputPath: "/tmp/book.epub",
+      ...detail, state: "done", actions: ["COMPOSE"], outputPath: null,
     }));
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const download = fixture.nativeElement.querySelector("[data-testid=side-download]");
-    const compose = fixture.nativeElement.querySelector("[data-testid=project-compose]");
-    expect(download).not.toBeNull();
-    expect(compose).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=project-compose]")).toBeNull();
 
+    const download = fixture.nativeElement.querySelector("[data-testid=side-download]");
+    expect(download).not.toBeNull();
     download.click();
     await fixture.whenStable();
-    expect(invoke).toHaveBeenCalledWith("file.open", { path: "/tmp/book.epub" });
 
-    compose.click();
+    expect(invoke).toHaveBeenCalledWith("project.download", { projectId: "p1" });
+    expect(invoke).not.toHaveBeenCalledWith("run.compose", { projectId: "p1" });
+  });
+
+  /**
+   * The wait is the reason this is worth a state at all: composing rewrites
+   * the whole EPUB and runs EPUBCheck over it, and a button that looks idle
+   * for those seconds gets pressed again.
+   */
+  it("says the book is being composed while it waits for it", async () => {
+    let release = (): void => {};
+    const held = new Promise<undefined>((resolve) => { release = () => resolve(undefined); });
+    const answers = bridge({
+      ...detail, state: "done", actions: ["COMPOSE"], outputPath: "/tmp/book.epub",
+    });
+    const { fixture } = mount(vi.fn(async (channel: string, payload?: unknown) =>
+      channel === "project.download" ? held : answers(channel, payload)));
     await fixture.whenStable();
-    expect(invoke).toHaveBeenCalledWith("run.compose", { projectId: "p1" });
+    fixture.detectChanges();
+
+    const download = fixture.nativeElement.querySelector("[data-testid=side-download]");
+    download.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const busy = fixture.nativeElement.querySelector("[data-testid=side-download]");
+    expect(busy.disabled).toBe(true);
+    expect(busy.textContent).toContain(catalogue.state["composing"]);
+
+    release();
+    await fixture.whenStable();
   });
 
   it("offers nothing when the machine allows nothing", async () => {

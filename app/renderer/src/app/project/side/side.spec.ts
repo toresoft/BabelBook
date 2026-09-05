@@ -183,10 +183,11 @@ describe("Side", () => {
   });
 
   /**
-   * Production break: the download outranking `COMPOSE` in `primary()` left
-   * a finished book with no way to compose it again. `done` is not final.
+   * `done` is not final and `COMPOSE` is still the retry the machine allows —
+   * but a retry is not something a reader should have to know about. The
+   * column offers the book; the composition happens under it.
    */
-  it("keeps composing reachable beside the download, once there is one", async () => {
+  it("never names the composition, even where the machine still accepts one", async () => {
     const { fixture } = mount({
       ...detail, state: "done", actions: ["COMPOSE"], outputPath: "/tmp/book.epub",
     });
@@ -194,7 +195,23 @@ describe("Side", () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector("[data-testid=side-download]")).not.toBeNull();
-    expect(fixture.nativeElement.querySelector("[data-testid=project-compose]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=project-compose]")).toBeNull();
+  });
+
+  /**
+   * A run whose composition was refused has no EPUB at all, and used to offer
+   * only "Recompose" — the one word the reader has no use for. The book is
+   * one act away either way, so it is the book that is offered.
+   */
+  it("offers the download before there is a book, when one can still be written", async () => {
+    const { fixture } = mount({
+      ...detail, state: "failed", actions: ["COMPOSE", "RESUME"], outputPath: null,
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector("[data-testid=side-download]")).not.toBeNull();
+    expect(fixture.nativeElement.querySelector("[data-testid=project-compose]")).toBeNull();
   });
 
   it("offers only the download when the machine has nothing left to retry", async () => {

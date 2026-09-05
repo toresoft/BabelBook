@@ -39,6 +39,16 @@ export class Project implements OnDestroy {
   readonly phase = signal<string | null>(null);
 
   /**
+   * Whether a download asked for is still being answered.
+   *
+   * It is not read off the project's state: the composition it may be waiting
+   * on moves that state through `composing` and out again, and the seconds
+   * before the first change arrives are exactly the ones in which an idle
+   * button gets pressed a second time.
+   */
+  readonly downloading = signal(false);
+
+  /**
    * What the run is doing right now, which is not what the book is.
    *
    * Two numbers, not one. `project.progress` says how much of the book is
@@ -191,20 +201,30 @@ export class Project implements OnDestroy {
   }
 
   /**
-   * The book again, from translations that already exist. No model is asked
-   * anything, so this costs nothing and is the way back from a composition
-   * that came out wrong.
+   * The book, opened with whatever the desktop uses.
+   *
+   * The composition is not asked for here, and no longer has a button of its
+   * own anywhere: `project.download` composes first when the machine still
+   * accepts it, and hands over what already exists when it does not. The one
+   * decision lives in the main process, which owns the machine — two screens
+   * offering this act would otherwise be free to answer it differently.
+   *
+   * Recomposing rewrites the whole EPUB and runs EPUBCheck over it, so the
+   * wait is real and the column is told about it.
    */
-  async compose(): Promise<void> {
-    await this.#ipc.invoke("run.compose", { projectId: this.id() });
+  async download(): Promise<void> {
+    if (this.downloading()) return;
+    this.downloading.set(true);
+    try {
+      await this.#ipc.invoke("project.download", { projectId: this.id() });
+    } catch {
+      // The failure has already been written down by the main process and
+      // reaches the column as the project's own stopped state; a second
+      // report of it here would say the same thing twice.
+    } finally {
+      this.downloading.set(false);
+    }
     await this.reload();
-  }
-
-  /** The book the last composition wrote, opened with whatever the desktop uses — the library's own act, reached from the book's own screen. */
-  download(): void {
-    const found = this.project();
-    if (found === null || found.outputPath === null) return;
-    void this.#ipc.invoke("file.open", { path: found.outputPath }).catch(() => {});
   }
 
   async pause(): Promise<void> {

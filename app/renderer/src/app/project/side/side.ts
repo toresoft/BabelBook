@@ -12,7 +12,7 @@ import { ProgressPanel } from "./progress-panel";
 import { ProjectSettings } from "./project-settings";
 
 /** The event names `primary()` can hand back, and the testid each one carries. */
-const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause", COMPOSE: "project-compose" } as const;
+const ACTION_TESTIDS = { START: "project-start", PAUSE: "project-pause" } as const;
 
 /** One card of the things worth knowing before spending. */
 interface AlertCard {
@@ -49,9 +49,17 @@ const ALERT_TITLES: Record<Exclude<AlertCard["kind"], "stopped">, string> = {
 export class Side implements OnDestroy {
   readonly project = input.required<ProjectDetail>();
 
+  /**
+   * Whether a download asked for is still being answered.
+   *
+   * The screen that owns the call sets it: composing rewrites the whole EPUB
+   * and runs EPUBCheck over it, and a button that looks idle for those
+   * seconds gets pressed again.
+   */
+  readonly downloading = input(false);
+
   readonly start = output<void>();
   readonly pause = output<void>();
-  readonly compose = output<void>();
   readonly download = output<void>();
   readonly remove = output<void>();
 
@@ -208,41 +216,47 @@ export class Side implements OnDestroy {
    * condition written here a second time is a condition that can disagree
    * with the machine the day it changes.
    */
-  primary(): { label: string; event: "START" | "PAUSE" | "COMPOSE" } | null {
+  primary(): { label: string; event: "START" | "PAUSE" } | null {
     if (this.can("PAUSE")) return { label: "library.pause", event: "PAUSE" };
     if (this.can("RESUME")) return { label: "library.resume", event: "START" };
     if (this.can("START")) return { label: "library.translate", event: "START" };
-    if (this.can("COMPOSE")) return { label: "library.compose", event: "COMPOSE" };
     return null;
   }
 
   /**
-   * Once the book is downloadable, that is the act worth top billing: the
-   * file that already exists is more useful than the offer to make another
-   * one. It does not, though, take composing off the column — `done` is not
-   * final, and `COMPOSE` is the retry the machine deliberately still allows
-   * (see `project.machine.ts`'s `done` state). When both apply, `showComposeBeside()`
-   * says so, and the compose button stays, small, next to the download.
+   * Whether the column can hand over a book.
+   *
+   * `COMPOSE` is deliberately not read here as an act to offer. `done` is not
+   * final and the machine still accepts recomposing (see `project.machine.ts`),
+   * but that is a step, and a reader wants the book the step produces. So the
+   * column offers the book wherever there is one *or* one can still be
+   * written, and `project.download` in the main process decides which of the
+   * two it is looking at.
    */
   isDownloadable(): boolean {
     const found = this.project();
-    return found.state === "done" && found.outputPath !== null;
+    return found.outputPath !== null || this.can("COMPOSE");
   }
 
-  /** True when composing again belongs beside the download, not instead of it. */
-  showComposeBeside(): boolean {
-    return this.isDownloadable() && this.primary()?.event === "COMPOSE";
+  /**
+   * True when the download shares the row with an act that outranks it.
+   *
+   * A run that stopped halfway can be picked up *and* handed over as far as it
+   * got: resuming is the act worth top billing there, and the download goes
+   * beside it, small — the same shape the compose button used to have.
+   */
+  showDownloadBeside(): boolean {
+    return this.isDownloadable() && this.primary() !== null;
   }
 
   /** The testid the event's own button carries, so the gates and the live run keep clicking it by name. */
-  testIdFor(event: "START" | "PAUSE" | "COMPOSE"): string {
+  testIdFor(event: "START" | "PAUSE"): string {
     return ACTION_TESTIDS[event];
   }
 
-  onPrimary(event: "START" | "PAUSE" | "COMPOSE"): void {
+  onPrimary(event: "START" | "PAUSE"): void {
     if (event === "START") this.start.emit();
-    else if (event === "PAUSE") this.pause.emit();
-    else this.compose.emit();
+    else this.pause.emit();
   }
 
   /**
