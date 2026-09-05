@@ -16,7 +16,9 @@ import { diagnosticsDir, pruneDiagnostics } from "./diagnostics.ts";
 import { configureEngineHost, startEngine } from "./engine-host.ts";
 import { makeMachineHost } from "./machine-host.ts";
 import { enterState, leaveState } from "./states.ts";
-import { denyCapability, modelContextOf, modelPricesOf, reasoningOf } from "../providers/store.ts";
+import {
+  modelContextOf, modelPricesOf, reasoningOf, refuseCapability, structuredOf,
+} from "../providers/store.ts";
 import type { Workspace } from "../workspace.ts";
 import type { ProjectEvent } from "../../../core/workflow/project.machine.ts";
 
@@ -315,7 +317,7 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
         "SELECT provider_id, model_id FROM project WHERE id = ?",
       ).get(activeId) as { provider_id: string | null; model_id: string | null } | undefined;
       if (configured?.provider_id != null && configured.model_id != null) {
-        denyCapability(db, configured.provider_id, configured.model_id, message.name);
+        refuseCapability(db, configured.provider_id, configured.model_id, message.name);
       }
       return;
     }
@@ -451,9 +453,18 @@ export function makeRunRuntime(deps: RunRuntimeDeps): RunRuntime {
     // part of the key: the same book translated by another model is other
     // work, and reusing one for the other is not a saving but a mixture.
     const backend = deps.backendSpec(projectId);
+    // The claim, not what the endpoint turned out to accept. `backend.structured`
+    // is the contract this run will actually speak, and it goes down by one the
+    // moment an endpoint refuses a schema — but that refusal is a fact about
+    // the endpoint and none about the book. Read into the key it renamed every
+    // project on that model, so a run resumed after one found nothing of its
+    // own work under the name it now went looking by, and translated a whole
+    // book a second time.
+    const declared = configured?.provider_id != null && configured.model_id != null
+      && structuredOf(db, configured.provider_id, configured.model_id);
     const key = projectCacheKey(
       db, projectId, backend.kind === "sdk" ? backend.spec : "fake", reasoning,
-      backend.kind === "sdk" && backend.structured ? "schema" : "text",
+      backend.kind === "sdk" && declared ? "schema" : "text",
     );
     // Written down, because every screen reads the key from here: the library
     // counts progress under it, the units tab shows translations under it, and

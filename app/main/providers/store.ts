@@ -437,37 +437,36 @@ export function modelContextOf(db: DatabaseSync, providerId: string, modelId: st
 }
 
 /**
- * Whether the catalogue says this model can be held to a schema.
- *
- * Absent, unreadable or false all mean no. A model asked for a shape it cannot
- * impose answers in prose, and the instructions it was sent — the short ones,
- * which say nothing about a format — have nothing to fall back on.
- */
-/**
  * Writes down that an endpoint refused a capability the catalogue claimed.
  *
  * The catalogue is not wrong about the model — it is answering a different
  * question. `structured_output` says the model can produce a shape; whether it
  * can be *asked* for one belongs to the endpoint in front of it, and only a
- * refused call ever finds that out. This is where the finding is kept, so the
- * next run starts from what happened rather than from what was advertised.
+ * refused call ever finds that out.
  *
- * Merged into whatever the row holds, never replacing it: the other three
- * capabilities are none of this fact's business.
+ * It goes in `refused`, and never into `capabilities`, for two reasons that
+ * are really one. `refreshCatalogMetadata` rewrites `capabilities` from the
+ * catalogue entry, so a refusal parked there lasted until the next start of
+ * the application. And the cache key reads the catalogue's claim: a refusal
+ * that edited it renamed the work of every project on that model, which is how
+ * a book paused near the end came back to be translated from the first line.
+ *
+ * Merged into whatever the column holds, never replacing it: one endpoint may
+ * refuse more than one thing, and each refusal is its own finding.
  */
-export function denyCapability(
+export function refuseCapability(
   db: DatabaseSync, providerId: string, modelId: string, name: string,
 ): void {
   const row = db.prepare(`
-    SELECT capabilities FROM provider_model
+    SELECT refused FROM provider_model
      WHERE provider_id = ? AND model_id = ?
-  `).get(providerId, modelId) as { capabilities: string | null } | undefined;
+  `).get(providerId, modelId) as { refused: string | null } | undefined;
   if (row === undefined) return;
 
   let held: Record<string, unknown> = {};
-  if (row.capabilities !== null) {
+  if (row.refused !== null) {
     try {
-      const parsed = JSON.parse(row.capabilities) as unknown;
+      const parsed = JSON.parse(row.refused) as unknown;
       if (typeof parsed === "object" && parsed !== null) held = parsed as Record<string, unknown>;
     } catch {
       // A row nobody can read is a row worth replacing with the one fact we
@@ -476,11 +475,51 @@ export function denyCapability(
   }
 
   db.prepare(`
-    UPDATE provider_model SET capabilities = ?
+    UPDATE provider_model SET refused = ?
      WHERE provider_id = ? AND model_id = ?
-  `).run(JSON.stringify({ ...held, [name]: false }), providerId, modelId);
+  `).run(JSON.stringify({ ...held, [name]: true }), providerId, modelId);
 }
 
+/**
+ * Whether a schema may actually be sent: claimed by the catalogue, and not
+ * refused by the endpoint in front of it.
+ *
+ * This is the backend's question, and deliberately not the cache key's. The
+ * key asks `structuredOf`, because it names the work rather than the
+ * conversation: an endpoint's refusal says nothing about the book, and a key
+ * that moved when one arrived would tell a resumed run that everything it had
+ * already translated belonged to somebody else.
+ */
+export function structuredAccepted(
+  db: DatabaseSync, providerId: string, modelId: string,
+): boolean {
+  if (!structuredOf(db, providerId, modelId)) return false;
+
+  const row = db.prepare(`
+    SELECT refused FROM provider_model
+     WHERE provider_id = ? AND model_id = ?
+  `).get(providerId, modelId) as { refused: string | null } | undefined;
+  if (row?.refused == null) return true;
+
+  try {
+    return (JSON.parse(row.refused) as { structuredOutput?: unknown }).structuredOutput !== true;
+  } catch {
+    // Unreadable is not permission: the column exists to record a refusal, and
+    // a blob that cannot be read is not evidence that none was written.
+    return false;
+  }
+}
+
+/**
+ * Whether the catalogue says this model can be held to a schema.
+ *
+ * Absent, unreadable or false all mean no. A model asked for a shape it cannot
+ * impose answers in prose, and the instructions it was sent — the short ones,
+ * which say nothing about a format — have nothing to fall back on.
+ *
+ * This is the claim alone, which no refusal ever edits, and it is what the
+ * cache key is built from: see `structuredAccepted` for the other question.
+ */
 export function structuredOf(db: DatabaseSync, providerId: string, modelId: string): boolean {
   const row = db.prepare(`
     SELECT capabilities FROM provider_model

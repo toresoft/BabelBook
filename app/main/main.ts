@@ -18,7 +18,7 @@ import {
 import { probeLocalRuntimes } from "./catalog/local.ts";
 import {
   getProvider, providerNameOf, readKey, reasoningOf, refreshCatalogMetadata,
-  resolveProviderOptions, structuredOf, type Crypto,
+  resolveProviderOptions, structuredAccepted, type Crypto,
 } from "./providers/store.ts";
 import { loadMigrations, migrate, openDatabase } from "./db/open.ts";
 import { registerIpc, readSettings } from "./ipc.ts";
@@ -383,9 +383,16 @@ app.whenReady().then(async () => {
           reasoningOf(db, row.providerId, row.modelId),
         ),
         name: name === row.route ? null : name,
-        // Which of the two contracts this run will translate under. The key is
-        // computed from the same answer, so the two cannot disagree.
-        structured: structuredOf(db, row.providerId, row.modelId),
+        // Which of the two contracts this run will actually speak — the claim,
+        // less anything the endpoint has already refused.
+        //
+        // The cache key deliberately asks the other question, `structuredOf`,
+        // and the two are meant to be able to disagree: this one describes the
+        // conversation, the key names the work. They were once the same answer,
+        // and so a refused schema renamed the work of every project on that
+        // model — a book paused near the end came back with none of its own
+        // translations under the key its next run looked in.
+        structured: structuredAccepted(db, row.providerId, row.modelId),
       };
     },
     broadcast: (channel, payload) => {

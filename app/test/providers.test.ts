@@ -3,7 +3,7 @@ import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import {
   createProvider, deleteProvider, getProvider, listProviders, modelPricesOf, PRESETS, readKey,
   providerNameOf, reasoningOf, reasoningOptions, refreshCatalogMetadata, resolveProviderOptions,
-  routeDefaults, setReasoning, updateProvider,
+  refuseCapability, routeDefaults, setReasoning, structuredAccepted, structuredOf, updateProvider,
 } from "../main/providers/store.ts";
 import type { Catalog, CatalogProvider } from "../main/catalog/shape.ts";
 
@@ -376,5 +376,69 @@ describe("the reasoning of a model", () => {
 
     expect(reasoningOf(d, provider.id, "m1")).toBe("off");
     expect(listProviders(d)[0]!.models[0]!.reasoningLevel).toBeNull();
+  });
+});
+
+/**
+ * A capability the catalogue claims and a capability the endpoint grants are
+ * two different facts, and this is the suite that keeps them apart.
+ *
+ * They used to share one column, which is how a refusal came to rewrite what
+ * the catalogue had said. The cache key is computed from the declaration, so
+ * that rewrite moved the key of every project on that model, and a book
+ * paused at ninety-seven per cent came back to be translated from the start.
+ */
+describe("what the endpoint refused", () => {
+  /** Acme's catalogue claims the shape; whether the endpoint grants it is another matter. */
+  const claiming = {
+    ...acme,
+    models: [{
+      ...acme.models[0]!,
+      capabilities: {
+        toolCall: true, reasoning: false, structuredOutput: true, attachment: false,
+      },
+    }],
+  };
+
+  it("does not touch what the catalogue declared", () => {
+    const d = db();
+    const p = createProvider(d, crypto, { ...claiming, apiKey: "k" });
+
+    refuseCapability(d, p.id, "m1", "structuredOutput");
+
+    expect(structuredOf(d, p.id, "m1")).toBe(true);
+  });
+
+  it("is what the backend asks before it sends a schema", () => {
+    const d = db();
+    const p = createProvider(d, crypto, { ...claiming, apiKey: "k" });
+    expect(structuredAccepted(d, p.id, "m1")).toBe(true);
+
+    refuseCapability(d, p.id, "m1", "structuredOutput");
+
+    expect(structuredAccepted(d, p.id, "m1")).toBe(false);
+  });
+
+  it("has nothing to grant where the catalogue claimed nothing", () => {
+    const d = db();
+    const p = createProvider(d, crypto, { ...acme, apiKey: "k" });
+
+    expect(structuredAccepted(d, p.id, "m1")).toBe(false);
+  });
+
+  /**
+   * The refresh replaces `capabilities` wholesale, which is its job: the
+   * catalogue owns that column. A refusal written into it therefore lived
+   * until the next start of the application and no longer.
+   */
+  it("survives a catalogue refresh, because the catalogue does not own it", () => {
+    const d = db();
+    const p = createProvider(d, crypto, { ...claiming, apiKey: "k", catalogId: "acme" });
+    refuseCapability(d, p.id, "m1", "structuredOutput");
+
+    refreshCatalogMetadata(d, catalogOf("2026-09-06"));
+
+    expect(structuredOf(d, p.id, "m1")).toBe(true);
+    expect(structuredAccepted(d, p.id, "m1")).toBe(false);
   });
 });

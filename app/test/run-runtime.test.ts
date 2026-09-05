@@ -8,6 +8,7 @@ import { buildEpub } from "../../core/test/corpus/build.ts";
 import { loadMigrations, migrate, openDatabase } from "../main/db/open.ts";
 import { createProject } from "../main/projects/create.ts";
 import { configureEngineHost } from "../main/run/engine-host.ts";
+import { projectCacheKey } from "../main/run/cache-key.ts";
 import { makeRunRuntime } from "../main/run/runtime.ts";
 import { enterState, statesOf, type StateRecord } from "../main/run/states.ts";
 import type { EngineMessage, MessagePortLike, RunConfig } from "../shared/run.ts";
@@ -549,30 +550,79 @@ describe("where the runtime reads the two gates", () => {
  * run of that book pays the same refused call to learn the same thing.
  */
 describe("a capability the endpoint refused", () => {
-  it("is written onto the model, so the next run never asks again", async () => {
+  it("is written beside the claim, not over it, so the next run never asks again", async () => {
     const { db, engine } = await running();
     db.prepare("UPDATE provider_model SET capabilities = ? WHERE id = 'pm1'")
       .run(JSON.stringify({ toolCall: true, reasoning: true, structuredOutput: true, attachment: false }));
 
     engine.emit({ type: "capability", name: "structuredOutput", supported: false });
 
-    const row = db.prepare("SELECT capabilities FROM provider_model WHERE id = 'pm1'")
-      .get() as { capabilities: string };
-    const held = JSON.parse(row.capabilities) as Record<string, boolean>;
-    expect(held["structuredOutput"]).toBe(false);
-    // Only the one that was denied: the rest of the row is not this message's
-    // to have an opinion about.
-    expect(held["toolCall"]).toBe(true);
-    expect(held["reasoning"]).toBe(true);
+    const row = db.prepare("SELECT capabilities, refused FROM provider_model WHERE id = 'pm1'")
+      .get() as { capabilities: string; refused: string | null };
+    expect(JSON.parse(row.refused ?? "{}")["structuredOutput"]).toBe(true);
+    // The catalogue's own column is left exactly as the catalogue wrote it: a
+    // refusal is a fact about the endpoint, and the claim it contradicts is
+    // what the cache key is built from.
+    const claimed = JSON.parse(row.capabilities) as Record<string, boolean>;
+    expect(claimed["structuredOutput"]).toBe(true);
+    expect(claimed["toolCall"]).toBe(true);
   });
 
-  it("writes the denial even onto a model the catalogue said nothing about", async () => {
+  it("writes the refusal even for a model the catalogue said nothing about", async () => {
     const { db, engine } = await running();
 
     engine.emit({ type: "capability", name: "structuredOutput", supported: false });
 
-    const row = db.prepare("SELECT capabilities FROM provider_model WHERE id = 'pm1'")
-      .get() as { capabilities: string | null };
-    expect(JSON.parse(row.capabilities ?? "{}")["structuredOutput"]).toBe(false);
+    const row = db.prepare("SELECT refused FROM provider_model WHERE id = 'pm1'")
+      .get() as { refused: string | null };
+    expect(JSON.parse(row.refused ?? "{}")["structuredOutput"]).toBe(true);
+  });
+
+  /**
+   * The regression this whole column exists to prevent.
+   *
+   * The key names the work, so it is built from what the catalogue claims. The
+   * backend sends what the endpoint will actually take, which after a refusal
+   * is the other contract — and reading the key from that answer is what once
+   * renamed a book's work halfway through and translated all of it again.
+   */
+  it("leaves the cache key on the catalogue's claim, not on what was sent", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "babelbook-refused-key-"));
+    const db = openDatabase(":memory:");
+    migrate(db, loadMigrations("app/main/db/migrations"));
+    db.prepare(`
+      INSERT INTO provider (id, name, route, headers, options)
+      VALUES ('pv1', 'Acme', 'openai-compatible', '{}', '{}')
+    `).run();
+    db.prepare(`
+      INSERT INTO provider_model (id, provider_id, model_id, display_name, capabilities, refused)
+      VALUES ('pm1', 'pv1', 'm1', 'M1', ?, ?)
+    `).run(JSON.stringify({ structuredOutput: true }), JSON.stringify({ structuredOutput: true }));
+    const epubPath = join(dir, "book.epub");
+    await writeFile(epubPath, await buildEpub({
+      title: "The Book", language: "en",
+      documents: [{ path: "OEBPS/c1.xhtml", xhtml: "<p>One</p>" }],
+    }));
+    const created = await createProject(db, dir, {
+      epubPath, targetLanguage: "it", providerId: "pv1", modelId: "m1",
+    });
+    fakeEngine();
+    const runtime = makeRunRuntime({
+      db,
+      settings: () => ({ concurrency: 2 }),
+      // What the endpoint will take: the shape has already been refused once.
+      backendSpec: () => ({
+        kind: "sdk", spec: "openai-compatible:m1", apiKey: null, baseUrl: null,
+        headers: {}, options: {}, name: null, structured: false,
+      }),
+      broadcast: () => {},
+    });
+
+    await runtime.start(created.id);
+
+    const row = db.prepare("SELECT cache_key FROM project WHERE id = ?")
+      .get(created.id) as { cache_key: string };
+    expect(row.cache_key)
+      .toBe(projectCacheKey(db, created.id, "openai-compatible:m1", "off", "schema"));
   });
 });

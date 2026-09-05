@@ -56,7 +56,7 @@ describe("migrate", () => {
     expect(migrate(db, migrations).applied)
       .toEqual([
         "011-model-reasoning", "012-model-reasoning-level", "013-machinery-not-a-unit",
-        "014-project-state", "015-project-auto-accept",
+        "014-project-state", "015-project-auto-accept", "016-endpoint-refusals",
       ]);
 
     const rows = db.prepare("SELECT id, options FROM provider ORDER BY id").all() as
@@ -101,7 +101,10 @@ describe("migrate", () => {
     unit.run("u5", 5, "c1.xhtml#5", "block", "translate", "One", null, null);
 
     expect(migrate(db, migrations).applied)
-      .toEqual(["013-machinery-not-a-unit", "014-project-state", "015-project-auto-accept"]);
+      .toEqual([
+        "013-machinery-not-a-unit", "014-project-state", "015-project-auto-accept",
+        "016-endpoint-refusals",
+      ]);
 
     const rows = db.prepare("SELECT id FROM unit ORDER BY ordinal").all() as Array<{ id: string }>;
     expect(rows.map((row) => row.id)).toEqual(["u2", "u3", "u4", "u5"]);
@@ -119,7 +122,7 @@ describe("migrate", () => {
     `).run();
 
     expect(migrate(db, migrations).applied)
-      .toEqual(["014-project-state", "015-project-auto-accept"]);
+      .toEqual(["014-project-state", "015-project-auto-accept", "016-endpoint-refusals"]);
     expect(db.prepare(`
       SELECT project_id, kind, name, entered_at, left_at
         FROM project_state WHERE project_id = 'p1'
@@ -142,7 +145,8 @@ describe("migrate", () => {
     `).run();
     db.prepare("INSERT INTO setting (key, value) VALUES ('autoAcceptTerms', 'true')").run();
 
-    expect(migrate(db, migrations).applied).toEqual(["015-project-auto-accept"]);
+    expect(migrate(db, migrations).applied)
+      .toEqual(["015-project-auto-accept", "016-endpoint-refusals"]);
 
     // The row said true, so both books keep walking past the terms gate. The
     // exclusions row was absent, and absent is how readSettings spelled false:
@@ -170,5 +174,36 @@ describe("migrate", () => {
     expect(db.prepare(`
       SELECT auto_accept_terms AS terms, auto_accept_exclusions AS exclusions FROM project
     `).get()).toEqual({ terms: 1, exclusions: 1 });
+  });
+
+  /**
+   * The refusals written before there was a column of their own.
+   *
+   * A false in `capabilities` could only ever have been put there by a refused
+   * call: the catalogue writes that column from its own entry, and an entry
+   * that claims nothing leaves the key out rather than setting it false. So the
+   * fact is moved rather than lost, and the claim it was overwriting is left
+   * for the next refresh to restore.
+   */
+  it("moves a refusal out of the column the catalogue owns", () => {
+    const db = openDatabase(":memory:");
+    const migrations = loadMigrations("app/main/db/migrations");
+    migrate(db, migrations.filter((migration) => migration.id < "016-endpoint-refusals"));
+    db.prepare("INSERT INTO provider (id, name, route) VALUES ('pv1', 'Acme', 'acme')").run();
+    db.prepare(`
+      INSERT INTO provider_model (id, provider_id, model_id, capabilities)
+      VALUES ('pm1', 'pv1', 'refused', ?), ('pm2', 'pv1', 'claimed', ?), ('pm3', 'pv1', 'silent', NULL)
+    `).run(
+      JSON.stringify({ toolCall: true, structuredOutput: false }),
+      JSON.stringify({ toolCall: true, structuredOutput: true }),
+    );
+
+    expect(migrate(db, migrations).applied).toEqual(["016-endpoint-refusals"]);
+
+    expect(db.prepare("SELECT model_id, refused FROM provider_model ORDER BY id").all()).toEqual([
+      { model_id: "refused", refused: '{"structuredOutput":true}' },
+      { model_id: "claimed", refused: null },
+      { model_id: "silent", refused: null },
+    ]);
   });
 });
